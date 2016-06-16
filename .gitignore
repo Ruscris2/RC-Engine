@@ -3,3 +3,7 @@
 *.ilk
 *.obj
 *.tlog
+bin/log.txt
+RC-Engine.VC.db
+*.log
+*.idb

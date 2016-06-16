@@ -10,15 +10,20 @@
 #include "StdInc.h"
 #include "LogManager.h"
 #include "WinWindow.h"
+#include "Settings.h"
 
 LRESULT CALLBACK WinWindowProc(HWND hwnd, UINT umsg, WPARAM wparam, LPARAM lparam);
 
 LogManager * gLogManager;
+Settings * gSettings;
 
 bool gProgramRunning = true;
 
 int main()
 {
+	HWND consoleWindow = GetConsoleWindow();
+	SetWindowPos(consoleWindow, NULL, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+
 	gLogManager = new LogManager();
 	if (!gLogManager->Init())
 	{
@@ -27,8 +32,14 @@ int main()
 	}
 	gLogManager->AddMessage(std::string(PROGRAM_IDENTIFIER) + " started!");
 
+	gSettings = new Settings();
+	if (!gSettings->ReadSettings())
+		gLogManager->AddMessage("WARNING: Couldn't read settings.cfg! Using defaults...");
+	else
+		gLogManager->AddMessage("SUCESS: Loaded settings.cfg!");
+
 	WinWindow * window = new WinWindow();
-	if (!window->Create(PROGRAM_NAME, 800, 600, 100, 100, WinWindowProc))
+	if (!window->Create(PROGRAM_NAME, gSettings->GetWindowWidth(), gSettings->GetWindowHeight(), 100, 100, WinWindowProc))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init render window!");
 		THROW_ERROR();

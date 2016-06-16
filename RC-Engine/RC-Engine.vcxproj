@@ -120,10 +120,12 @@
   <ItemGroup>
     <ClCompile Include="LogManager.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Settings.cpp" />
     <ClCompile Include="WinWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LogManager.h" />
+    <ClInclude Include="Settings.h" />
     <ClInclude Include="StdInc.h" />
     <ClInclude Include="WinWindow.h" />
   </ItemGroup>
