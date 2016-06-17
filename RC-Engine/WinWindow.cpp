@@ -4,6 +4,7 @@
 |                             File: WinWindow.cpp                                        |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
+
 #include "WinWindow.h"
 #include "LogManager.h"
 

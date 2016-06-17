@@ -11,6 +11,7 @@
 #include "LogManager.h"
 #include "WinWindow.h"
 #include "Settings.h"
+#include "VulkanInterface.h"
 
 LRESULT CALLBACK WinWindowProc(HWND hwnd, UINT umsg, WPARAM wparam, LPARAM lparam);
 
@@ -21,9 +22,11 @@ bool gProgramRunning = true;
 
 int main()
 {
+	// Console window
 	HWND consoleWindow = GetConsoleWindow();
 	SetWindowPos(consoleWindow, NULL, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
+	// Log manager
 	gLogManager = new LogManager();
 	if (!gLogManager->Init())
 	{
@@ -32,19 +35,31 @@ int main()
 	}
 	gLogManager->AddMessage(std::string(PROGRAM_IDENTIFIER) + " started!");
 
+	// Settings
 	gSettings = new Settings();
 	if (!gSettings->ReadSettings())
 		gLogManager->AddMessage("WARNING: Couldn't read settings.cfg! Using defaults...");
 	else
-		gLogManager->AddMessage("SUCESS: Loaded settings.cfg!");
+		gLogManager->AddMessage("SUCCESS: Loaded settings.cfg!");
 
+	// Render window
 	WinWindow * window = new WinWindow();
-	if (!window->Create(PROGRAM_NAME, gSettings->GetWindowWidth(), gSettings->GetWindowHeight(), 100, 100, WinWindowProc))
+	if (!window->Create(PROGRAM_NAME, gSettings->GetWindowWidth(), gSettings->GetWindowHeight(), 500, 50, WinWindowProc))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init render window!");
 		THROW_ERROR();
 	}
 
+	//Vulkan interface
+	VulkanInterface * vulkan = new VulkanInterface();
+	if (!vulkan->Init())
+	{
+		gLogManager->AddMessage("ERROR: Failed to init vulkan interface!");
+		THROW_ERROR();
+	}
+	gLogManager->AddMessage("SUCCESS: Vulkan interface initialized!");
+
+	// Main loop
 	MSG msg;
 	while (gProgramRunning)
 	{
@@ -56,7 +71,9 @@ int main()
 	}
 
 	gLogManager->AddMessage("Unloading...");
+	SAFE_DELETE(vulkan);
 	SAFE_DELETE(window);
+	SAFE_DELETE(gSettings);
 	SAFE_DELETE(gLogManager);
 	
 	return 0;

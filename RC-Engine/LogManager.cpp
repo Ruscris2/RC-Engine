@@ -4,6 +4,7 @@
 |                             File: LogManager.cpp                                       |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
+
 #include <time.h>
 
 #include "LogManager.h"

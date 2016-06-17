@@ -4,6 +4,7 @@
 |                             File: Settings.cpp                                         |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
+
 #include <fstream>
 #include <limits>
 
