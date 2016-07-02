@@ -114,19 +114,7 @@ bool VulkanShader::Init(VulkanDevice * vulkanDevice)
 	delete[] fsBuffer;
 
 	// Uniform buffer
-	float fov = glm::radians(45.0f);
-	if (gSettings->GetWindowWidth() > gSettings->GetWindowHeight())
-		fov *= (float)gSettings->GetWindowHeight() / gSettings->GetWindowWidth();
-
-	projectionMatrix = glm::perspective(fov, (float)gSettings->GetWindowWidth() / gSettings->GetWindowHeight(), 0.1f, 100.0f);
-	viewMatrix = glm::lookAt(glm::vec3(0, 0, -5.0f), glm::vec3(0, 0, 0), glm::vec3(0, -1, 0));
-	modelMatrix = glm::mat4(1.0f);
-	clipMatrix = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, -1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 0.5f, 0.5f,
-		0.0f, 0.0f, 0.0f, 1.0f);
-
-	MVP = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
+	MVP = glm::mat4();
 
 	VkBufferCreateInfo bufferCI{};
 	bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -139,13 +127,12 @@ bool VulkanShader::Init(VulkanDevice * vulkanDevice)
 	if (result != VK_SUCCESS)
 		return false;
 
-	VkMemoryRequirements memReq;
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), uniformBuffer, &memReq);
+	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), uniformBuffer, &uniformBufferMemoryReq);
 
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memReq.size;
-	if (!vulkanDevice->MemoryTypeFromProperties(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &allocInfo.memoryTypeIndex))
+	allocInfo.allocationSize = uniformBufferMemoryReq.size;
+	if (!vulkanDevice->MemoryTypeFromProperties(uniformBufferMemoryReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &allocInfo.memoryTypeIndex))
 		return false;
 
 	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &memory);
@@ -153,7 +140,7 @@ bool VulkanShader::Init(VulkanDevice * vulkanDevice)
 		return false;
 
 	uint8_t *pData;
-	result = vkMapMemory(vulkanDevice->GetDevice(), memory, 0, memReq.size, 0, (void**)&pData);
+	result = vkMapMemory(vulkanDevice->GetDevice(), memory, 0, uniformBufferMemoryReq.size, 0, (void**)&pData);
 	if (result != VK_SUCCESS)
 		return false;
 
@@ -245,6 +232,27 @@ void VulkanShader::Unload(VulkanDevice * vulkanDevice)
 	vkDestroyBuffer(vulkanDevice->GetDevice(), uniformBuffer, VK_NULL_HANDLE);
 	vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderStages[1].module, VK_NULL_HANDLE);
 	vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderStages[0].module, VK_NULL_HANDLE);
+}
+
+void VulkanShader::Update(VulkanDevice * vulkanDevice, Camera * camera)
+{
+	float fov = glm::radians(45.0f);
+	if (gSettings->GetWindowWidth() > gSettings->GetWindowHeight())
+		fov *= (float)gSettings->GetWindowHeight() / gSettings->GetWindowWidth();
+
+	projectionMatrix = glm::perspective(fov, (float)gSettings->GetWindowWidth() / gSettings->GetWindowHeight(), 0.1f, 100.0f);
+	modelMatrix = glm::mat4(1.0f);
+	clipMatrix = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, -1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.5f, 0.5f,
+		0.0f, 0.0f, 0.0f, 1.0f);
+
+	MVP = clipMatrix * projectionMatrix * camera->GetViewMatrix() * modelMatrix;
+
+	uint8_t *pData;
+	vkMapMemory(vulkanDevice->GetDevice(), memory, 0, uniformBufferMemoryReq.size, 0, (void**)&pData);
+	memcpy(pData, &MVP, sizeof(MVP));
+	vkUnmapMemory(vulkanDevice->GetDevice(), memory);
 }
 
 void VulkanShader::SetActive(VulkanCommandBuffer * commandBuffer)

@@ -37,6 +37,7 @@ VulkanInterface::~VulkanInterface()
 	vkDestroyImage(vulkanDevice->GetDevice(), depthImage.image, VK_NULL_HANDLE); depthImage.image = VK_NULL_HANDLE;
 	vkDestroyImageView(vulkanDevice->GetDevice(), depthImage.view, VK_NULL_HANDLE); depthImage.view = VK_NULL_HANDLE;
 	
+	SAFE_DELETE(camera);
 	SAFE_UNLOAD(model, vulkanDevice);
 	SAFE_UNLOAD(vulkanPipeline, vulkanDevice);
 	SAFE_UNLOAD(vulkanShader, vulkanDevice);
@@ -134,11 +135,17 @@ bool VulkanInterface::Init(HWND hwnd)
 		gLogManager->AddMessage("ERROR: Failed to init model!");
 		return false;
 	}
+	
+	camera = new Camera();
+	camera->Init();
 	return true;
 }
 
 void VulkanInterface::Render()
 {
+	camera->HandleInput();
+	vulkanShader->Update(vulkanDevice, camera);
+
 	renderCommandBuffer->BeginRecording();
 	InitViewportAndScissors();
 

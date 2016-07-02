@@ -1,29 +1,27 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: Input.h                                              |
+|                             File: Camera.h                                             |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 #pragma once
 
-#define KEYBOARD_KEY_ESCAPE 0x1B
-#define KEYBOARD_KEY_F 0x46
-#define KEYBOARD_KEY_W 0x57
-#define KEYBOARD_KEY_A 0x41
-#define KEYBOARD_KEY_S 0x53
-#define KEYBOARD_KEY_D 0x44
-#define MOUSE_LEFTBUTTON 0x01
+#include <glm.hpp>
+#include <gtc/matrix_transform.hpp>
 
-class Input
+class Camera
 {
 	private:
-		int prevCursorX, prevCursorY;
-		int cursorRelativeX, cursorRelativeY;
-	public:
-		Input();
-
-		bool IsKeyPressed(int key);
+		glm::mat4 viewMatrix;
+		glm::vec3 position;
+		glm::vec3 lookAt;
+		glm::vec3 up;
+		glm::vec3 direction;
+		float pitch, yaw, roll;
+	private:
 		void Update();
-		int GetCursorRelativeX();
-		int GetCursorRelativeY();
+	public:
+		void Init();
+		void HandleInput();
+		glm::mat4 GetViewMatrix();
 };

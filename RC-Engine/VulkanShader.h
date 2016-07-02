@@ -11,6 +11,7 @@
 
 #include "VulkanDevice.h"
 #include "VulkanCommandBuffer.h"
+#include "Camera.h"
 
 class VulkanShader
 {
@@ -24,9 +25,9 @@ class VulkanShader
 		VkBuffer uniformBuffer;
 		VkDeviceMemory memory;
 		VkDescriptorBufferInfo bufferInfo;
+		VkMemoryRequirements uniformBufferMemoryReq;
 
 		glm::mat4 projectionMatrix;
-		glm::mat4 viewMatrix;
 		glm::mat4 modelMatrix;
 		glm::mat4 clipMatrix;
 		glm::mat4 MVP;
@@ -36,6 +37,7 @@ class VulkanShader
 
 		bool Init(VulkanDevice * vulkanDevice);
 		void Unload(VulkanDevice * vulkanDevice);
+		void Update(VulkanDevice * vulkanDevice, Camera * camera);
 		void SetActive(VulkanCommandBuffer * commandBuffer);
 		VkPipelineShaderStageCreateInfo * GetShaderStages();
 		VkPipelineLayout GetPipelineLayout();

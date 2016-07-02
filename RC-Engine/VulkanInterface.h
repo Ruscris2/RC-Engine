@@ -16,6 +16,7 @@
 #include "VulkanShader.h"
 #include "VulkanPipeline.h"
 #include "Model.h"
+#include "Camera.h"
 
 class VulkanInterface
 {
@@ -41,6 +42,7 @@ class VulkanInterface
 		VkRect2D scissor;
 
 		Model * model;
+		Camera * camera;
 #ifdef _DEBUG
 		VkDebugReportCallbackEXT debugReport;
 #endif

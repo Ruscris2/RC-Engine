@@ -53,7 +53,7 @@ int main()
 		gLogManager->AddMessage("ERROR: Failed to init render window!");
 		THROW_ERROR();
 	}
-
+	
 	// Input
 	gInput = new Input();
 
@@ -80,6 +80,7 @@ int main()
 			DispatchMessage(&msg);
 		}
 		gTimer->Update();
+		gInput->Update();
 		vulkan->Render();
 
 		if (gInput->IsKeyPressed(KEYBOARD_KEY_ESCAPE))
