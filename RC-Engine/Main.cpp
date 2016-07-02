@@ -12,11 +12,15 @@
 #include "WinWindow.h"
 #include "Settings.h"
 #include "VulkanInterface.h"
+#include "Input.h"
+#include "Timer.h"
 
 LRESULT CALLBACK WinWindowProc(HWND hwnd, UINT umsg, WPARAM wparam, LPARAM lparam);
 
 LogManager * gLogManager;
 Settings * gSettings;
+Input * gInput;
+Timer * gTimer;
 
 bool gProgramRunning = true;
 
@@ -50,6 +54,9 @@ int main()
 		THROW_ERROR();
 	}
 
+	// Input
+	gInput = new Input();
+
 	//Vulkan interface
 	VulkanInterface * vulkan = new VulkanInterface();
 	if (!vulkan->Init(window->GetHWND()))
@@ -58,6 +65,10 @@ int main()
 		THROW_ERROR();
 	}
 	gLogManager->AddMessage("SUCCESS: Vulkan interface initialized!");
+
+	// Timer
+	gTimer = new Timer();
+	gTimer->Init();
 
 	// Main loop
 	MSG msg;
@@ -68,11 +79,23 @@ int main()
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
+		gTimer->Update();
 		vulkan->Render();
+
+		if (gInput->IsKeyPressed(KEYBOARD_KEY_ESCAPE))
+			gProgramRunning = false;
+		if (gInput->IsKeyPressed(KEYBOARD_KEY_F))
+		{
+			char msg[16];
+			sprintf(msg, "FPS: %d", gTimer->GetFPS());
+			gLogManager->AddMessage(msg);
+		}
 	}
 
 	gLogManager->AddMessage("Unloading...");
+	SAFE_DELETE(gTimer);
 	SAFE_DELETE(vulkan);
+	SAFE_DELETE(gInput);
 	SAFE_DELETE(window);
 	SAFE_DELETE(gSettings);
 	SAFE_DELETE(gLogManager);

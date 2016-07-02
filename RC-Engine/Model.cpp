@@ -7,8 +7,6 @@
 
 #include "Model.h"
 
-#define XYZ1(_x_, _y_, _z_) (_x_), (_y_), (_z_), 1.f
-
 Model::Model()
 {
 	vertexBuffer = VK_NULL_HANDLE;
