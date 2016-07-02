@@ -6,23 +6,48 @@
 ==========================================================================================*/
 #pragma once
 
-#include <vulkan/vulkan.h>
+#define VK_USE_PLATFORM_WIN32_KHR
+
+#include "VulkanInstance.h"
+#include "VulkanDevice.h"
+#include "VulkanCommandPool.h"
+#include "VulkanCommandBuffer.h"
+#include "VulkanSwapchain.h"
+#include "VulkanShader.h"
+#include "VulkanPipeline.h"
+#include "Model.h"
 
 class VulkanInterface
 {
 	private:
-		VkInstance instance;
-		VkDevice device;
-		VkPhysicalDevice gpu;
-		uint32_t graphicsQueueFamilyIndex;
-		VkPhysicalDeviceProperties gpuProperties;
+		struct
+		{
+			VkFormat format;
+			VkImage image;
+			VkDeviceMemory mem;
+			VkImageView view;
+		} depthImage;
 
+		VulkanInstance * vulkanInstance;
+		VulkanDevice * vulkanDevice;
+		VulkanCommandPool * vulkanCommandPool;
+		VulkanCommandBuffer * initCommandBuffer;
+		VulkanCommandBuffer * renderCommandBuffer;
+		VulkanSwapchain * vulkanSwapchain;
+		VulkanShader * vulkanShader;
+		VulkanPipeline * vulkanPipeline;
+
+		VkViewport viewport;
+		VkRect2D scissor;
+
+		Model * model;
 #ifdef _DEBUG
 		VkDebugReportCallbackEXT debugReport;
 #endif
 	private:
-		bool InitInstance();
-		bool InitDevice();
+		bool InitDepthBuffer();
+		void InitViewportAndScissors();
+		void SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout);
 #ifdef _DEBUG
 		bool InitVulkanDebugMode();
 		void UnloadVulkanDebugMode();
@@ -31,5 +56,6 @@ class VulkanInterface
 		VulkanInterface();
 		~VulkanInterface();
 
-		bool Init();
+		bool Init(HWND hwnd);
+		void Render();
 };

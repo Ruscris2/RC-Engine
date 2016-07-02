@@ -52,7 +52,7 @@ int main()
 
 	//Vulkan interface
 	VulkanInterface * vulkan = new VulkanInterface();
-	if (!vulkan->Init())
+	if (!vulkan->Init(window->GetHWND()))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init vulkan interface!");
 		THROW_ERROR();
@@ -68,6 +68,7 @@ int main()
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
+		vulkan->Render();
 	}
 
 	gLogManager->AddMessage("Unloading...");
