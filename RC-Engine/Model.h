@@ -17,13 +17,14 @@ class Model
 			float r, g, b, a;
 		};
 		VkBuffer vertexBuffer;
-		VkDeviceMemory memory;
-		VkDescriptorBufferInfo bufferInfo;
+		VkDeviceMemory vertexMemory;
+		VkBuffer indexBuffer;
+		VkDeviceMemory indexMemory;
 	public:
 		Model();
 		~Model();
 
-		bool Init(VulkanDevice * vulkanDevice);
+		bool Init(VulkanDevice * vulkanDevice, VulkanCommandPool * cmdPool);
 		void Unload(VulkanDevice * vulkanDevice);
 		void Render(VulkanCommandBuffer * commandBuffer);
 };

@@ -130,7 +130,7 @@ bool VulkanInterface::Init(HWND hwnd)
 	}
 
 	model = new Model();
-	if (!model->Init(vulkanDevice))
+	if (!model->Init(vulkanDevice, vulkanCommandPool))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init model!");
 		return false;
