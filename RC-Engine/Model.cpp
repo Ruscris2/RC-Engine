@@ -11,17 +11,26 @@
 Model::Model()
 {
 	vertexBuffer = VK_NULL_HANDLE;
+	indexBuffer = VK_NULL_HANDLE;
+	descriptorPool = VK_NULL_HANDLE;
+	uniformBuffer = VK_NULL_HANDLE;
 }
 
 Model::~Model()
 {
+	uniformBuffer = VK_NULL_HANDLE;
+	descriptorPool = VK_NULL_HANDLE;
+	indexBuffer = VK_NULL_HANDLE;
 	vertexBuffer = VK_NULL_HANDLE;
 }
 
-bool Model::Init(VulkanDevice * vulkanDevice, VulkanCommandPool * cmdPool)
+bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader)
 {
-	VkResult result;
+	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
+	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
 
+	VkResult result;
+	
 	Vertex triangle[3];
 	triangle[0].x = -0.5f;
 	triangle[0].y = 0.0f;
@@ -167,7 +176,7 @@ bool Model::Init(VulkanDevice * vulkanDevice, VulkanCommandPool * cmdPool)
 	if (result != VK_SUCCESS)
 		return false;
 
-	// Command buffer
+	// Copy data to VRAM using command buffer
 	VulkanCommandBuffer * cmdBuffer = new VulkanCommandBuffer();
 	if (!cmdBuffer->Init(vulkanDevice, cmdPool))
 		return false;
@@ -189,22 +198,126 @@ bool Model::Init(VulkanDevice * vulkanDevice, VulkanCommandPool * cmdPool)
 	vkDestroyBuffer(vulkanDevice->GetDevice(), stagingVertexBuffer, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), stagingIndexMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), stagingIndexBuffer, VK_NULL_HANDLE);
+
+	// Matrix init
+	positionMatrix = glm::mat4(1.0f);
+	MVP = glm::mat4();
+	
+	// Uniform buffer
+	VkBufferCreateInfo bufferCI{};
+	bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferCI.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	bufferCI.size = sizeof(MVP);
+	bufferCI.queueFamilyIndexCount = 0;
+	bufferCI.pQueueFamilyIndices = VK_NULL_HANDLE;
+	bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	result = vkCreateBuffer(vulkanDevice->GetDevice(), &bufferCI, VK_NULL_HANDLE, &uniformBuffer);
+	if (result != VK_SUCCESS)
+		return false;
+
+	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), uniformBuffer, &uniformBufferMemoryReq);
+
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = uniformBufferMemoryReq.size;
+	if (!vulkanDevice->MemoryTypeFromProperties(uniformBufferMemoryReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &allocInfo.memoryTypeIndex))
+		return false;
+
+	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &uniformMemory);
+	if (result != VK_SUCCESS)
+		return false;
+
+	result = vkMapMemory(vulkanDevice->GetDevice(), uniformMemory, 0, uniformBufferMemoryReq.size, 0, (void**)&pData);
+	if (result != VK_SUCCESS)
+		return false;
+
+	memcpy(pData, &MVP, sizeof(MVP));
+
+	vkUnmapMemory(vulkanDevice->GetDevice(), uniformMemory);
+
+	result = vkBindBufferMemory(vulkanDevice->GetDevice(), uniformBuffer, uniformMemory, 0);
+	if (result != VK_SUCCESS)
+		return false;
+
+	uniformBufferInfo.buffer = uniformBuffer;
+	uniformBufferInfo.offset = 0;
+	uniformBufferInfo.range = sizeof(MVP);
+	
+	// Descriptor pool
+	VkDescriptorPoolSize typeCount;
+	typeCount.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCount.descriptorCount = 1;
+
+	VkDescriptorPoolCreateInfo descriptorPoolCI{};
+	descriptorPoolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPoolCI.maxSets = 1;
+	descriptorPoolCI.poolSizeCount = 1;
+	descriptorPoolCI.pPoolSizes = &typeCount;
+
+	result = vkCreateDescriptorPool(vulkanDevice->GetDevice(), &descriptorPoolCI, VK_NULL_HANDLE, &descriptorPool);
+	if (result != VK_SUCCESS)
+		return false;
+
+	// Descriptor set
+	VkDescriptorSetAllocateInfo descSetAllocInfo[1];
+	descSetAllocInfo[0].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descSetAllocInfo[0].pNext = NULL;
+	descSetAllocInfo[0].descriptorPool = descriptorPool;
+	descSetAllocInfo[0].descriptorSetCount = 1;
+	descSetAllocInfo[0].pSetLayouts = shader->GetDescriptorLayout();
+	result = vkAllocateDescriptorSets(vulkanDevice->GetDevice(), descSetAllocInfo, &descriptorSet);
+	if (result != VK_SUCCESS)
+		return false;
+
+	VkWriteDescriptorSet write[1];
+
+	write[0] = {};
+	write[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write[0].pNext = NULL;
+	write[0].dstSet = descriptorSet;
+	write[0].descriptorCount = 1;
+	write[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	write[0].pBufferInfo = &uniformBufferInfo;
+	write[0].dstArrayElement = 0;
+	write[0].dstBinding = 0;
+
+	vkUpdateDescriptorSets(vulkanDevice->GetDevice(), 1, write, 0, NULL);
+
 	return true;
 }
 
-void Model::Unload(VulkanDevice * vulkanDevice)
+void Model::Unload(VulkanInterface * vulkan)
 {
+	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
+	
+	vkDestroyDescriptorPool(vulkanDevice->GetDevice(), descriptorPool, VK_NULL_HANDLE);
+	vkFreeMemory(vulkanDevice->GetDevice(), uniformMemory, VK_NULL_HANDLE);
+	vkDestroyBuffer(vulkanDevice->GetDevice(), uniformBuffer, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), indexMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), indexBuffer, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), vertexMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), vertexBuffer, VK_NULL_HANDLE);
 }
-
-void Model::Render(VulkanCommandBuffer * commandBuffer)
+#define GLM_DEPTH_ZERO_TO_ONE
+void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanShader * shader, Camera * camera)
 {
+	// Update uniform buffer
+	MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * positionMatrix;
+
+	uint8_t *pData;
+	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), uniformMemory, 0, uniformBufferMemoryReq.size, 0, (void**)&pData);
+	memcpy(pData, &MVP, sizeof(MVP));
+	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), uniformMemory);
+
+	// Draw
 	VkDeviceSize offsets[1] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer->GetCommandBuffer(), 0, 1, &vertexBuffer, offsets);
 	vkCmdBindIndexBuffer(commandBuffer->GetCommandBuffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindDescriptorSets(commandBuffer->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, shader->GetPipelineLayout(), 0, 1, &descriptorSet, 0, NULL);
 
 	vkCmdDrawIndexed(commandBuffer->GetCommandBuffer(), 3, 1, 0, 0, 0);
+}
+
+void Model::SetPosition(float x, float y, float z)
+{
+	positionMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, z));
 }

@@ -14,6 +14,7 @@
 #include "VulkanInterface.h"
 #include "Input.h"
 #include "Timer.h"
+#include "SceneManager.h"
 
 LRESULT CALLBACK WinWindowProc(HWND hwnd, UINT umsg, WPARAM wparam, LPARAM lparam);
 
@@ -66,6 +67,14 @@ int main()
 	}
 	gLogManager->AddMessage("SUCCESS: Vulkan interface initialized!");
 
+	// Scene manager
+	SceneManager * sceneManager = new SceneManager();
+	if (!sceneManager->Init(vulkan))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init scene manager!");
+		THROW_ERROR();
+	}
+
 	// Timer
 	gTimer = new Timer();
 	gTimer->Init();
@@ -81,7 +90,7 @@ int main()
 		}
 		gTimer->Update();
 		gInput->Update();
-		vulkan->Render();
+		sceneManager->Render(vulkan);
 
 		if (gInput->IsKeyPressed(KEYBOARD_KEY_ESCAPE))
 			gProgramRunning = false;
@@ -95,6 +104,7 @@ int main()
 
 	gLogManager->AddMessage("Unloading...");
 	SAFE_DELETE(gTimer);
+	SAFE_UNLOAD(sceneManager, vulkan);
 	SAFE_DELETE(vulkan);
 	SAFE_DELETE(gInput);
 	SAFE_DELETE(window);

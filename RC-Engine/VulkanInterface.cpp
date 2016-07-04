@@ -21,11 +21,7 @@ VulkanInterface::VulkanInterface()
 	vulkanDevice = NULL;
 	vulkanCommandPool = NULL;
 	initCommandBuffer = NULL;
-	renderCommandBuffer = NULL;
 	vulkanSwapchain = NULL;
-	vulkanShader = NULL;
-	vulkanPipeline = NULL;
-	model = NULL;
 }
 
 VulkanInterface::~VulkanInterface()
@@ -37,12 +33,7 @@ VulkanInterface::~VulkanInterface()
 	vkDestroyImage(vulkanDevice->GetDevice(), depthImage.image, VK_NULL_HANDLE); depthImage.image = VK_NULL_HANDLE;
 	vkDestroyImageView(vulkanDevice->GetDevice(), depthImage.view, VK_NULL_HANDLE); depthImage.view = VK_NULL_HANDLE;
 	
-	SAFE_DELETE(camera);
-	SAFE_UNLOAD(model, vulkanDevice);
-	SAFE_UNLOAD(vulkanPipeline, vulkanDevice);
-	SAFE_UNLOAD(vulkanShader, vulkanDevice);
 	SAFE_UNLOAD(vulkanSwapchain, vulkanDevice);
-	SAFE_UNLOAD(renderCommandBuffer, vulkanDevice, vulkanCommandPool);
 	SAFE_UNLOAD(initCommandBuffer, vulkanDevice, vulkanCommandPool);
 	SAFE_UNLOAD(vulkanCommandPool, vulkanDevice);
 	SAFE_UNLOAD(vulkanDevice, vulkanInstance);
@@ -87,18 +78,11 @@ bool VulkanInterface::Init(HWND hwnd)
 		gLogManager->AddMessage("ERROR: Failed to init command pool!");
 		return false;
 	}
-	
+
 	initCommandBuffer = new VulkanCommandBuffer();
 	if (!initCommandBuffer->Init(vulkanDevice, vulkanCommandPool))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create a command buffer! (initCommandBuffer)");
-		return false;
-	}
-
-	renderCommandBuffer = new VulkanCommandBuffer();
-	if (!renderCommandBuffer->Init(vulkanDevice, vulkanCommandPool))
-	{
-		gLogManager->AddMessage("ERROR: Failed to create a command buffer! (renderCommandBuffer)");
 		return false;
 	}
 
@@ -114,50 +98,48 @@ bool VulkanInterface::Init(HWND hwnd)
 		gLogManager->AddMessage("ERROR: Failed to create swapchain!");
 		return false;
 	}
-	
-	vulkanShader = new VulkanShader();
-	if (!vulkanShader->Init(vulkanDevice))
-	{
-		gLogManager->AddMessage("ERROR: Failed to init shader!");
-		return false;
-	}
-	
-	vulkanPipeline = new VulkanPipeline();
-	if (!vulkanPipeline->Init(vulkanDevice, vulkanShader, vulkanSwapchain))
-	{
-		gLogManager->AddMessage("ERROR: Failed to init pipeline!");
-		return false;
-	}
 
-	model = new Model();
-	if (!model->Init(vulkanDevice, vulkanCommandPool))
-	{
-		gLogManager->AddMessage("ERROR: Failed to init model!");
-		return false;
-	}
-	
-	camera = new Camera();
-	camera->Init();
+	float fov = glm::radians(45.0f);
+	float aspectRatio = (float)gSettings->GetWindowWidth() / gSettings->GetWindowHeight();
+	projectionMatrix = glm::perspective(fov, aspectRatio, 0.1f, 100.0f);
+
 	return true;
 }
 
-void VulkanInterface::Render()
+void VulkanInterface::BeginScene(VulkanCommandBuffer * commandBuffer)
 {
-	camera->HandleInput();
-	vulkanShader->Update(vulkanDevice, camera);
-
-	renderCommandBuffer->BeginRecording();
-	InitViewportAndScissors();
-
 	vulkanSwapchain->AcquireNextImage(vulkanDevice);
 	SetImageLayout(vulkanSwapchain->GetCurrentImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	vulkanSwapchain->ClearImage(renderCommandBuffer, 0.0f, 0.0f, 0.0f, 1.0f);
 
-	vulkanPipeline->SetActive(renderCommandBuffer);
-	vulkanShader->SetActive(renderCommandBuffer);
+	commandBuffer->BeginRecording();
+	InitViewportAndScissors(commandBuffer);
 
-	model->Render(renderCommandBuffer);
-	vkCmdEndRenderPass(renderCommandBuffer->GetCommandBuffer());
+	VkClearValue clear[2];
+	clear[0].color.float32[0] = 0.0f;
+	clear[0].color.float32[1] = 0.0f;
+	clear[0].color.float32[2] = 0.0f;
+	clear[0].color.float32[3] = 0.0f;
+	clear[1].depthStencil.depth = 1.0f;
+	clear[1].depthStencil.stencil = 0;
+
+	VkRenderPassBeginInfo rpBegin{};
+	rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	rpBegin.pNext = NULL;
+	rpBegin.renderPass = vulkanSwapchain->GetRenderpass();
+	rpBegin.framebuffer = vulkanSwapchain->GetCurrentFramebuffer();
+	rpBegin.renderArea.offset.x = 0;
+	rpBegin.renderArea.offset.y = 0;
+	rpBegin.renderArea.extent.width = gSettings->GetWindowWidth();
+	rpBegin.renderArea.extent.height = gSettings->GetWindowHeight();
+	rpBegin.clearValueCount = 2;
+	rpBegin.pClearValues = clear;
+
+	vkCmdBeginRenderPass(commandBuffer->GetCommandBuffer(), &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+}
+
+void VulkanInterface::EndScene(VulkanCommandBuffer * commandBuffer)
+{
+	vkCmdEndRenderPass(commandBuffer->GetCommandBuffer());
 
 	VkImageMemoryBarrier prePresentBarrier{};
 	prePresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -168,16 +150,36 @@ void VulkanInterface::Render()
 	prePresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	prePresentBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	prePresentBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    prePresentBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    prePresentBarrier.subresourceRange.baseMipLevel = 0;
+	prePresentBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	prePresentBarrier.subresourceRange.baseMipLevel = 0;
 	prePresentBarrier.subresourceRange.levelCount = 1;
 	prePresentBarrier.subresourceRange.baseArrayLayer = 0;
 	prePresentBarrier.subresourceRange.layerCount = 1;
 	prePresentBarrier.image = vulkanSwapchain->GetCurrentImage();
-	vkCmdPipelineBarrier(renderCommandBuffer->GetCommandBuffer(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &prePresentBarrier);
+	vkCmdPipelineBarrier(commandBuffer->GetCommandBuffer(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &prePresentBarrier);
 
-	renderCommandBuffer->EndRecording();
-	vulkanSwapchain->Present(vulkanDevice, renderCommandBuffer);
+	commandBuffer->EndRecording();
+	vulkanSwapchain->Present(vulkanDevice, commandBuffer);
+}
+
+VulkanCommandPool * VulkanInterface::GetVulkanCommandPool()
+{
+	return vulkanCommandPool;
+}
+
+VulkanDevice * VulkanInterface::GetVulkanDevice()
+{
+	return vulkanDevice;
+}
+
+VulkanSwapchain * VulkanInterface::GetVulkanSwapchain()
+{
+	return vulkanSwapchain;
+}
+
+glm::mat4 VulkanInterface::GetProjectionMatrix()
+{
+	return projectionMatrix;
 }
 
 bool VulkanInterface::InitDepthBuffer()
@@ -261,7 +263,7 @@ bool VulkanInterface::InitDepthBuffer()
 	return true;
 }
 
-void VulkanInterface::InitViewportAndScissors()
+void VulkanInterface::InitViewportAndScissors(VulkanCommandBuffer * commandBuffer)
 {
 	viewport.width = (float)gSettings->GetWindowWidth();
 	viewport.height = (float)gSettings->GetWindowHeight();
@@ -269,13 +271,13 @@ void VulkanInterface::InitViewportAndScissors()
 	viewport.maxDepth = 1.0f;
 	viewport.x = 0;
 	viewport.y = 0;
-	vkCmdSetViewport(renderCommandBuffer->GetCommandBuffer(), 0, 1, &viewport);
+	vkCmdSetViewport(commandBuffer->GetCommandBuffer(), 0, 1, &viewport);
 
 	scissor.extent.width = (uint32_t)gSettings->GetWindowWidth();
 	scissor.extent.height = (uint32_t)gSettings->GetWindowHeight();
 	scissor.offset.x = 0;
 	scissor.offset.y = 0;
-	vkCmdSetScissor(renderCommandBuffer->GetCommandBuffer(), 0, 1, &scissor);
+	vkCmdSetScissor(commandBuffer->GetCommandBuffer(), 0, 1, &scissor);
 }
 
 void VulkanInterface::SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout)

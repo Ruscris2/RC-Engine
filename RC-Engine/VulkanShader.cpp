@@ -20,12 +20,10 @@ VulkanShader::VulkanShader()
 	shaderStages[1].module = VK_NULL_HANDLE;
 	descriptorLayout = VK_NULL_HANDLE;
 	pipelineLayout = VK_NULL_HANDLE;
-	descriptorPool = VK_NULL_HANDLE;
 }
 
 VulkanShader::~VulkanShader()
 {
-	descriptorPool = VK_NULL_HANDLE;
 	descriptorLayout = VK_NULL_HANDLE;
 	shaderStages[1].module = VK_NULL_HANDLE;
 	shaderStages[0].module = VK_NULL_HANDLE;
@@ -113,49 +111,6 @@ bool VulkanShader::Init(VulkanDevice * vulkanDevice)
 	delete[] vsBuffer;
 	delete[] fsBuffer;
 
-	// Uniform buffer
-	MVP = glm::mat4();
-
-	VkBufferCreateInfo bufferCI{};
-	bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferCI.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	bufferCI.size = sizeof(MVP);
-	bufferCI.queueFamilyIndexCount = 0;
-	bufferCI.pQueueFamilyIndices = VK_NULL_HANDLE;
-	bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	result = vkCreateBuffer(vulkanDevice->GetDevice(), &bufferCI, VK_NULL_HANDLE, &uniformBuffer);
-	if (result != VK_SUCCESS)
-		return false;
-
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), uniformBuffer, &uniformBufferMemoryReq);
-
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = uniformBufferMemoryReq.size;
-	if (!vulkanDevice->MemoryTypeFromProperties(uniformBufferMemoryReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &allocInfo.memoryTypeIndex))
-		return false;
-
-	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &memory);
-	if (result != VK_SUCCESS)
-		return false;
-
-	uint8_t *pData;
-	result = vkMapMemory(vulkanDevice->GetDevice(), memory, 0, uniformBufferMemoryReq.size, 0, (void**)&pData);
-	if (result != VK_SUCCESS)
-		return false;
-
-	memcpy(pData, &MVP, sizeof(MVP));
-
-	vkUnmapMemory(vulkanDevice->GetDevice(), memory);
-
-	result = vkBindBufferMemory(vulkanDevice->GetDevice(), uniformBuffer, memory, 0);
-	if (result != VK_SUCCESS)
-		return false;
-
-	bufferInfo.buffer = uniformBuffer;
-	bufferInfo.offset = 0;
-	bufferInfo.range = sizeof(MVP);
-
 	// Pipeline layout
 	VkDescriptorSetLayoutBinding layoutBinding;
 	layoutBinding.binding = 0;
@@ -180,84 +135,15 @@ bool VulkanShader::Init(VulkanDevice * vulkanDevice)
 
 	result = vkCreatePipelineLayout(vulkanDevice->GetDevice(), &pipelineCI, VK_NULL_HANDLE, &pipelineLayout);
 
-	// Descriptor pool
-	VkDescriptorPoolSize typeCount;
-	typeCount.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	typeCount.descriptorCount = 1;
-
-	VkDescriptorPoolCreateInfo descriptorPoolCI{};
-	descriptorPoolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolCI.maxSets = 1;
-	descriptorPoolCI.poolSizeCount = 1;
-	descriptorPoolCI.pPoolSizes = &typeCount;
-
-	result = vkCreateDescriptorPool(vulkanDevice->GetDevice(), &descriptorPoolCI, VK_NULL_HANDLE, &descriptorPool);
-	if (result != VK_SUCCESS)
-		return false;
-
-	// Descriptor set
-	VkDescriptorSetAllocateInfo descSetAllocInfo[1];
-	descSetAllocInfo[0].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descSetAllocInfo[0].pNext = NULL;
-	descSetAllocInfo[0].descriptorPool = descriptorPool;
-	descSetAllocInfo[0].descriptorSetCount = 1;
-	descSetAllocInfo[0].pSetLayouts = &descriptorLayout;
-	result = vkAllocateDescriptorSets(vulkanDevice->GetDevice(), descSetAllocInfo, &descriptorSet);
-	if (result != VK_SUCCESS)
-		return false;
-
-	VkWriteDescriptorSet write[1];
-
-	write[0] = {};
-	write[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	write[0].pNext = NULL;
-	write[0].dstSet = descriptorSet;
-	write[0].descriptorCount = 1;
-	write[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	write[0].pBufferInfo = &bufferInfo;
-	write[0].dstArrayElement = 0;
-	write[0].dstBinding = 0;
-
-	vkUpdateDescriptorSets(vulkanDevice->GetDevice(), 1, write, 0, NULL);
-
 	return true;
 }
 
 void VulkanShader::Unload(VulkanDevice * vulkanDevice)
 {
-	vkDestroyDescriptorPool(vulkanDevice->GetDevice(), descriptorPool, VK_NULL_HANDLE);
 	vkDestroyPipelineLayout(vulkanDevice->GetDevice(), pipelineLayout, VK_NULL_HANDLE);
 	vkDestroyDescriptorSetLayout(vulkanDevice->GetDevice(), descriptorLayout, VK_NULL_HANDLE);
-	vkFreeMemory(vulkanDevice->GetDevice(), memory, VK_NULL_HANDLE);
-	vkDestroyBuffer(vulkanDevice->GetDevice(), uniformBuffer, VK_NULL_HANDLE);
 	vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderStages[1].module, VK_NULL_HANDLE);
 	vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderStages[0].module, VK_NULL_HANDLE);
-}
-
-void VulkanShader::Update(VulkanDevice * vulkanDevice, Camera * camera)
-{
-	float fov = glm::radians(45.0f);
-	if (gSettings->GetWindowWidth() > gSettings->GetWindowHeight())
-		fov *= (float)gSettings->GetWindowHeight() / gSettings->GetWindowWidth();
-
-	projectionMatrix = glm::perspective(fov, (float)gSettings->GetWindowWidth() / gSettings->GetWindowHeight(), 0.1f, 100.0f);
-	modelMatrix = glm::mat4(1.0f);
-	clipMatrix = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, -1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 0.5f, 0.5f,
-		0.0f, 0.0f, 0.0f, 1.0f);
-
-	MVP = clipMatrix * projectionMatrix * camera->GetViewMatrix() * modelMatrix;
-
-	uint8_t *pData;
-	vkMapMemory(vulkanDevice->GetDevice(), memory, 0, uniformBufferMemoryReq.size, 0, (void**)&pData);
-	memcpy(pData, &MVP, sizeof(MVP));
-	vkUnmapMemory(vulkanDevice->GetDevice(), memory);
-}
-
-void VulkanShader::SetActive(VulkanCommandBuffer * commandBuffer)
-{
-	vkCmdBindDescriptorSets(commandBuffer->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
 }
 
 VkPipelineShaderStageCreateInfo * VulkanShader::GetShaderStages()
@@ -268,4 +154,9 @@ VkPipelineShaderStageCreateInfo * VulkanShader::GetShaderStages()
 VkPipelineLayout VulkanShader::GetPipelineLayout()
 {
 	return pipelineLayout;
+}
+
+VkDescriptorSetLayout * VulkanShader::GetDescriptorLayout()
+{
+	return &descriptorLayout;
 }
