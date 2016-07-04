@@ -7,6 +7,9 @@
 
 #include "Model.h"
 #include "StdInc.h"
+#include "LogManager.h"
+
+extern LogManager * gLogManager;
 
 Model::Model()
 {
@@ -24,40 +27,31 @@ Model::~Model()
 	vertexBuffer = VK_NULL_HANDLE;
 }
 
-bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader, Texture * texture)
+bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanShader * shader, Texture * texture)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
 
 	VkResult result;
 	
-	Vertex triangle[3];
-	triangle[0].x = -0.5f;
-	triangle[0].y = 0.0f;
-	triangle[0].z = 0.0f;
-	triangle[0].w = 1.0f;
-	triangle[0].u = 0.0f;
-	triangle[0].v = 0.0f;
+	FILE * file = fopen(filename.c_str(), "rb");
+	if (file == NULL)
+	{
+		gLogManager->AddMessage("ERROR: Model file not found!");
+		return false;
+	}
 
-	triangle[1].x = 0.0f;
-	triangle[1].y = 1.0f;
-	triangle[1].z = 0.0f;
-	triangle[1].w = 1.0f;
-	triangle[1].u = 0.5f;
-	triangle[1].v = 1.0f;
+	fread(&vertexCount, sizeof(unsigned int), 1, file);
+	fread(&indexCount, sizeof(unsigned int), 1, file);
 
-	triangle[2].x = 0.5f;
-	triangle[2].y = 0.0f;
-	triangle[2].z = 0.0f;
-	triangle[2].w = 1.0f;
-	triangle[2].u = 1.0f;
-	triangle[2].v = 0.0f;
+	Vertex * vertexData = new Vertex[vertexCount];
+	uint32_t * indexData = new uint32_t[indexCount];
+	
+	fread(vertexData, sizeof(Vertex), vertexCount, file);
+	fread(indexData, sizeof(uint32_t), indexCount, file);
 
-	uint32_t indexData[3];
-	indexData[0] = 0;
-	indexData[1] = 1;
-	indexData[2] = 2;
-
+	fclose(file);
+	
 	VkMemoryRequirements memReq;
 	VkMemoryAllocateInfo allocInfo{};
 	uint8_t *pData;
@@ -69,7 +63,7 @@ bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader, Texture * text
 	VkBufferCreateInfo vertexBufferCI{};
 	vertexBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	vertexBufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	vertexBufferCI.size = sizeof(triangle);
+	vertexBufferCI.size = sizeof(Vertex) * vertexCount;
 	result = vkCreateBuffer(vulkanDevice->GetDevice(), &vertexBufferCI, VK_NULL_HANDLE, &stagingVertexBuffer);
 	if (result != VK_SUCCESS)
 		return false;
@@ -89,7 +83,7 @@ bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader, Texture * text
 	if (result != VK_SUCCESS)
 		return false;
 
-	memcpy(pData, triangle, sizeof(triangle));
+	memcpy(pData, vertexData, sizeof(Vertex) * vertexCount);
 
 	vkUnmapMemory(vulkanDevice->GetDevice(), stagingVertexMemory);
 
@@ -123,7 +117,7 @@ bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader, Texture * text
 	VkBufferCreateInfo indexBufferCI{};
 	indexBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	indexBufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	indexBufferCI.size = sizeof(indexData);
+	indexBufferCI.size = sizeof(uint32_t) * indexCount;
 	
 	result = vkCreateBuffer(vulkanDevice->GetDevice(), &indexBufferCI, VK_NULL_HANDLE, &stagingIndexBuffer);
 	if (result != VK_SUCCESS)
@@ -143,7 +137,7 @@ bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader, Texture * text
 	if (result != VK_SUCCESS)
 		return false;
 
-	memcpy(pData, indexData, sizeof(indexData));
+	memcpy(pData, indexData, sizeof(uint32_t) * indexCount);
 
 	vkUnmapMemory(vulkanDevice->GetDevice(), stagingIndexMemory);
 
@@ -178,9 +172,9 @@ bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader, Texture * text
 	cmdBuffer->BeginRecording();
 
 	VkBufferCopy copyRegion{};
-	copyRegion.size = sizeof(triangle);
+	copyRegion.size = sizeof(Vertex) * vertexCount;
 	vkCmdCopyBuffer(cmdBuffer->GetCommandBuffer(), stagingVertexBuffer, vertexBuffer, 1, &copyRegion);
-	copyRegion.size = sizeof(indexData);
+	copyRegion.size = sizeof(uint32_t) * indexCount;
 	vkCmdCopyBuffer(cmdBuffer->GetCommandBuffer(), stagingIndexBuffer, indexBuffer, 1, &copyRegion);
 
 	cmdBuffer->EndRecording();
@@ -192,6 +186,9 @@ bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader, Texture * text
 	vkDestroyBuffer(vulkanDevice->GetDevice(), stagingVertexBuffer, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), stagingIndexMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), stagingIndexBuffer, VK_NULL_HANDLE);
+
+	delete[] vertexData;
+	delete[] indexData;
 
 	// Matrix init
 	positionMatrix = glm::mat4(1.0f);
@@ -325,7 +322,7 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 	vkCmdBindIndexBuffer(commandBuffer->GetCommandBuffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindDescriptorSets(commandBuffer->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, shader->GetPipelineLayout(), 0, 1, &descriptorSet, 0, NULL);
 
-	vkCmdDrawIndexed(commandBuffer->GetCommandBuffer(), 3, 1, 0, 0, 0);
+	vkCmdDrawIndexed(commandBuffer->GetCommandBuffer(), indexCount, 1, 0, 0, 0);
 }
 
 void Model::SetPosition(float x, float y, float z)

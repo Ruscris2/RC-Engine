@@ -16,9 +16,12 @@ class Model
 {
 	private:
 		struct Vertex {
-			float x, y, z, w;
+			float x, y, z;
 			float u, v;
 		};
+		unsigned int vertexCount;
+		unsigned int indexCount;
+
 		glm::mat4 positionMatrix;
 		glm::mat4 MVP;
 
@@ -37,7 +40,7 @@ class Model
 		Model();
 		~Model();
 
-		bool Init(VulkanInterface * vulkan, VulkanShader * shader, Texture * texture);
+		bool Init(std::string filename, VulkanInterface * vulkan, VulkanShader * shader, Texture * texture);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanShader * shader, Camera * camera);
 		void SetPosition(float x, float y, float z);

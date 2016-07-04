@@ -60,7 +60,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	}
 
 	model = new Model();
-	if (!model->Init(vulkan, vulkanShader, texture))
+	if (!model->Init("data/models/teapot.rcm", vulkan, vulkanShader, texture))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init model!");
 		return false;
@@ -68,7 +68,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	model->SetPosition(-2.0f, 0.0f, 0.0f);
 
 	model2 = new Model();
-	if (!model2->Init(vulkan, vulkanShader, texture))
+	if (!model2->Init("data/models/teapot.rcm", vulkan, vulkanShader, texture))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init model2!");
 		return false;
