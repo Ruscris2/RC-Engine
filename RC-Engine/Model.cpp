@@ -297,7 +297,7 @@ void Model::Unload(VulkanInterface * vulkan)
 	vkFreeMemory(vulkanDevice->GetDevice(), vertexMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), vertexBuffer, VK_NULL_HANDLE);
 }
-#define GLM_DEPTH_ZERO_TO_ONE
+
 void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanShader * shader, Camera * camera)
 {
 	// Update uniform buffer

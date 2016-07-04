@@ -108,33 +108,12 @@ bool VulkanInterface::Init(HWND hwnd)
 
 void VulkanInterface::BeginScene(VulkanCommandBuffer * commandBuffer)
 {
-	vulkanSwapchain->AcquireNextImage(vulkanDevice);
-	SetImageLayout(vulkanSwapchain->GetCurrentImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
 	commandBuffer->BeginRecording();
 	InitViewportAndScissors(commandBuffer);
 
-	VkClearValue clear[2];
-	clear[0].color.float32[0] = 0.0f;
-	clear[0].color.float32[1] = 0.0f;
-	clear[0].color.float32[2] = 0.0f;
-	clear[0].color.float32[3] = 0.0f;
-	clear[1].depthStencil.depth = 1.0f;
-	clear[1].depthStencil.stencil = 0;
-
-	VkRenderPassBeginInfo rpBegin{};
-	rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	rpBegin.pNext = NULL;
-	rpBegin.renderPass = vulkanSwapchain->GetRenderpass();
-	rpBegin.framebuffer = vulkanSwapchain->GetCurrentFramebuffer();
-	rpBegin.renderArea.offset.x = 0;
-	rpBegin.renderArea.offset.y = 0;
-	rpBegin.renderArea.extent.width = gSettings->GetWindowWidth();
-	rpBegin.renderArea.extent.height = gSettings->GetWindowHeight();
-	rpBegin.clearValueCount = 2;
-	rpBegin.pClearValues = clear;
-
-	vkCmdBeginRenderPass(commandBuffer->GetCommandBuffer(), &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+	vulkanSwapchain->AcquireNextImage(vulkanDevice);
+	SetImageLayout(vulkanSwapchain->GetCurrentImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	vulkanSwapchain->ClearImage(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 void VulkanInterface::EndScene(VulkanCommandBuffer * commandBuffer)

@@ -226,6 +226,31 @@ void VulkanSwapchain::AcquireNextImage(VulkanDevice * vulkanDevice)
 	vkAcquireNextImageKHR(vulkanDevice->GetDevice(), swapChain, UINT64_MAX, presentCompleteSemaphore, VK_NULL_HANDLE, &currentBuffer);
 }
 
+void VulkanSwapchain::ClearImage(VulkanCommandBuffer * commandBuffer, float r, float g, float b, float a)
+{
+	VkClearValue clear[2];
+	clear[0].color.float32[0] = r;
+	clear[0].color.float32[1] = g;
+	clear[0].color.float32[2] = b;
+	clear[0].color.float32[3] = a;
+	clear[1].depthStencil.depth = 1.0f;
+	clear[1].depthStencil.stencil = 0;
+
+	VkRenderPassBeginInfo rpBegin{};
+	rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	rpBegin.pNext = NULL;
+	rpBegin.renderPass = renderPass;
+	rpBegin.framebuffer = frameBuffers[currentBuffer];
+	rpBegin.renderArea.offset.x = 0;
+	rpBegin.renderArea.offset.y = 0;
+	rpBegin.renderArea.extent.width = gSettings->GetWindowWidth();
+	rpBegin.renderArea.extent.height = gSettings->GetWindowHeight();
+	rpBegin.clearValueCount = 2;
+	rpBegin.pClearValues = clear;
+
+	vkCmdBeginRenderPass(commandBuffer->GetCommandBuffer(), &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+}
+
 void VulkanSwapchain::Present(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer)
 {
 	commandBuffer->Execute(vulkanDevice, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, presentCompleteSemaphore, drawCompleteSemaphore);

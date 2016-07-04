@@ -30,6 +30,7 @@ class VulkanSwapchain
 		bool Init(VulkanDevice * vulkanDevice, VkImageView depthImageView, VkFormat depthImageFormat);
 		void Unload(VulkanDevice * vulkanDevice);
 		void AcquireNextImage(VulkanDevice * vulkanDevice);
+		void ClearImage(VulkanCommandBuffer * commandBuffer, float r, float g, float b, float a);
 		void Present(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer);
 		VkImage GetCurrentImage();
 		VkFramebuffer GetCurrentFramebuffer();
