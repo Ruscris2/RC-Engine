@@ -183,6 +183,11 @@ VkFormat VulkanDevice::GetFormat()
 	return format;
 }
 
+VkPhysicalDeviceProperties VulkanDevice::GetGPUProperties()
+{
+	return gpuProperties;
+}
+
 bool VulkanDevice::MemoryTypeFromProperties(uint32_t typeBits, VkFlags reqMask, uint32_t * typeIndex)
 {
 	for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)

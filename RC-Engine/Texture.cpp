@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "Texture.h"
-#include "lodepng.h"
 #include "LogManager.h"
 
 extern LogManager * gLogManager;
@@ -31,14 +30,24 @@ bool Texture::Init(VulkanInterface * vulkan, std::string filename)
 {
 	VkResult result;
 	unsigned int width, height;
-	std::vector<unsigned char> pngData;
+	unsigned int fileSize;
+	unsigned char * fileData;
 
-	unsigned int errorCode = lodepng::decode(pngData, width, height, filename);
-	if (errorCode != 0)
+	FILE * file = fopen(filename.c_str(), "rb");
+	if (file == NULL)
 	{
-		gLogManager->AddMessage("ERROR: PNG file not found/decoded !");
+		gLogManager->AddMessage("ERROR: Texture file not found!");
 		return false;
 	}
+
+	fread(&width, sizeof(unsigned int), 1, file);
+	fread(&height, sizeof(unsigned int), 1, file);
+	fread(&fileSize, sizeof(unsigned int), 1, file);
+
+	fileData = new unsigned char[fileSize];
+	fread(fileData, sizeof(unsigned char), fileSize, file);
+
+	fclose(file);
 
 	VkImageCreateInfo imageCI{};
 	imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -90,7 +99,7 @@ bool Texture::Init(VulkanInterface * vulkan, std::string filename)
 	if (result != VK_SUCCESS)
 		return false;
 
-	memcpy(pData, pngData.data(), pngData.size());
+	memcpy(pData, fileData, fileSize);
 
 	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), textureMemory);
 
@@ -115,7 +124,7 @@ bool Texture::Init(VulkanInterface * vulkan, std::string filename)
 	samplerCI.compareOp = VK_COMPARE_OP_NEVER;
 	samplerCI.minLod = 0.0f;
 	samplerCI.maxLod = 0.0f;
-	samplerCI.maxAnisotropy = 8;
+	samplerCI.maxAnisotropy = vulkan->GetVulkanDevice()->GetGPUProperties().limits.maxSamplerAnisotropy;
 	samplerCI.anisotropyEnable = VK_TRUE;
 	samplerCI.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 	result = vkCreateSampler(vulkan->GetVulkanDevice()->GetDevice(), &samplerCI, VK_NULL_HANDLE, &sampler);
@@ -140,6 +149,7 @@ bool Texture::Init(VulkanInterface * vulkan, std::string filename)
 	if (result != VK_SUCCESS)
 		return false;
 
+	delete[] fileData;
 	return true;
 }
 

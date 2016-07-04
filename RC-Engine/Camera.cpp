@@ -7,8 +7,12 @@
 
 #include "Camera.h"
 #include "Input.h"
+#include "Timer.h"
+#include "LogManager.h"
 
 extern Input * gInput;
+extern Timer * gTimer;
+extern LogManager * gLogManager;
 
 void Camera::Init()
 {
@@ -23,6 +27,9 @@ void Camera::Init()
 
 void Camera::HandleInput()
 {
+	float speed = 0.006f;
+	float sensivity = 0.2f;
+
 	bool update = false;
 
 	if (gInput->IsKeyPressed(MOUSE_LEFTBUTTON))
@@ -30,12 +37,12 @@ void Camera::HandleInput()
 		if (gInput->GetCursorRelativeX() != 0)
 		{
 			update = true;
-			yaw -= gInput->GetCursorRelativeX() * 0.2f;
+			yaw -= gInput->GetCursorRelativeX() * sensivity;
 		}
 		if (gInput->GetCursorRelativeY() != 0)
 		{
 			update = true;
-			pitch -= gInput->GetCursorRelativeY() * 0.2f;
+			pitch -= gInput->GetCursorRelativeY() * sensivity;
 		}
 	}
 
@@ -47,22 +54,22 @@ void Camera::HandleInput()
 	if (gInput->IsKeyPressed(KEYBOARD_KEY_W))
 	{
 		update = true;
-		position = position + (direction * 0.01f);
+		position = position + (direction * gTimer->GetDelta() * speed);
 	}
 	if (gInput->IsKeyPressed(KEYBOARD_KEY_S))
 	{
 		update = true;
-		position = position - (direction * 0.01f);
+		position = position - (direction * gTimer->GetDelta() * speed);
 	}
 	if (gInput->IsKeyPressed(KEYBOARD_KEY_A))
 	{
 		update = true;
-		position = position + glm::cross(up, direction) * 0.01f;
+		position = position + (glm::cross(up, direction) * gTimer->GetDelta() * speed);
 	}
 	if (gInput->IsKeyPressed(KEYBOARD_KEY_D))
 	{
 		update = true;
-		position = position - glm::cross(up, direction) * 0.01f;
+		position = position - (glm::cross(up, direction) * gTimer->GetDelta() * speed);
 	}
 
 	lookAt = position + direction;

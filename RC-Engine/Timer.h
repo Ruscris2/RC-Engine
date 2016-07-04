@@ -6,13 +6,18 @@
 ==========================================================================================*/
 #pragma once
 
+#include <Windows.h>
+
 class Timer
 {
 	private:
+		INT64 frequency, startTime;
+		float ticksPerMs, delta;
 		int fps, fpsCounter;
 		unsigned long fpsStartTime;
 	public:
-		void Init();
+		bool Init();
 		void Update();
 		int GetFPS();
+		float GetDelta();
 };

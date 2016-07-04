@@ -53,7 +53,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	}
 
 	texture = new Texture();
-	if (!texture->Init(vulkan, "data/textures/test.png"))
+	if (!texture->Init(vulkan, "data/textures/test.rct"))
 	{
 		gLogManager->AddMessage("ERROR: Couldn't init texture!");
 		return false;

@@ -5,14 +5,22 @@
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 
-#include <Windows.h>
-
 #include "Timer.h"
 
-void Timer::Init()
+bool Timer::Init()
 {
 	fpsCounter = fps = 1;
 	fpsStartTime = timeGetTime();
+
+	QueryPerformanceFrequency((LARGE_INTEGER*)&frequency);
+	if (frequency == 0)
+		return false;
+
+	ticksPerMs = (float)(frequency / 1000);
+
+	QueryPerformanceCounter((LARGE_INTEGER*)&startTime);
+
+	return true;
 }
 
 void Timer::Update()
@@ -25,9 +33,22 @@ void Timer::Update()
 
 		fpsStartTime = timeGetTime();
 	}
+
+	INT64 currentTime;
+	float timeDifference;
+
+	QueryPerformanceCounter((LARGE_INTEGER*)&currentTime);
+	timeDifference = (float)(currentTime - startTime);
+	delta = timeDifference / ticksPerMs;
+	startTime = currentTime;
 }
 
 int Timer::GetFPS()
 {
 	return fps;
+}
+
+float Timer::GetDelta()
+{
+	return delta;
 }

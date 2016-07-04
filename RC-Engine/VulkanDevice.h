@@ -40,4 +40,5 @@ class VulkanDevice
 		uint32_t GetGraphicsQueueFamilyIndex();
 		VkSurfaceKHR GetSurface();
 		VkFormat GetFormat();
+		VkPhysicalDeviceProperties GetGPUProperties();
 };

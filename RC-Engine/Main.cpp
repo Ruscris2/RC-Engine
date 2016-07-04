@@ -77,7 +77,11 @@ int main()
 
 	// Timer
 	gTimer = new Timer();
-	gTimer->Init();
+	if (!gTimer->Init())
+	{
+		gLogManager->AddMessage("ERROR: Failed to init timer!");
+		return false;
+	}
 
 	// Main loop
 	MSG msg;
