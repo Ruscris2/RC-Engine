@@ -92,9 +92,9 @@ int main()
 		gInput->Update();
 		sceneManager->Render(vulkan);
 
-		if (gInput->IsKeyPressed(KEYBOARD_KEY_ESCAPE))
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_ESCAPE))
 			gProgramRunning = false;
-		if (gInput->IsKeyPressed(KEYBOARD_KEY_F))
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_F))
 		{
 			char msg[16];
 			sprintf(msg, "FPS: %d", gTimer->GetFPS());
