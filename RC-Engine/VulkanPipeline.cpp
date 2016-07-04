@@ -35,7 +35,7 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, VulkanShader * vulkanShad
 
 	vertexLayout[1].binding = 0;
 	vertexLayout[1].location = 1;
-	vertexLayout[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	vertexLayout[1].format = VK_FORMAT_R32G32_SFLOAT;
 	vertexLayout[1].offset = 16;
 
 	// Pipeline cache

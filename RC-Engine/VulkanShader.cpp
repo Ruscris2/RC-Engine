@@ -112,17 +112,22 @@ bool VulkanShader::Init(VulkanDevice * vulkanDevice)
 	delete[] fsBuffer;
 
 	// Pipeline layout
-	VkDescriptorSetLayoutBinding layoutBinding;
-	layoutBinding.binding = 0;
-	layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	layoutBinding.descriptorCount = 1;
-	layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	layoutBinding.pImmutableSamplers = VK_NULL_HANDLE;
+	VkDescriptorSetLayoutBinding layoutBindings[2];
+	layoutBindings[0].binding = 0;
+	layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindings[0].descriptorCount = 1;
+	layoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	layoutBindings[0].pImmutableSamplers = VK_NULL_HANDLE;
+	layoutBindings[1].binding = 1;
+	layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindings[1].descriptorCount = 1;
+	layoutBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindings[1].pImmutableSamplers = VK_NULL_HANDLE;
 
 	VkDescriptorSetLayoutCreateInfo descriptorLayoutCI{};
 	descriptorLayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptorLayoutCI.bindingCount = 1;
-	descriptorLayoutCI.pBindings = &layoutBinding;
+	descriptorLayoutCI.bindingCount = 2;
+	descriptorLayoutCI.pBindings = layoutBindings;
 
 	result = vkCreateDescriptorSetLayout(vulkanDevice->GetDevice(), &descriptorLayoutCI, VK_NULL_HANDLE, &descriptorLayout);
 	if (result != VK_SUCCESS)

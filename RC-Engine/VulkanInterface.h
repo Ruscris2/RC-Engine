@@ -47,7 +47,7 @@ class VulkanInterface
 	private:
 		bool InitDepthBuffer();
 		void InitViewportAndScissors(VulkanCommandBuffer * commandBuffer);
-		void SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout);
+	
 #ifdef _DEBUG
 		bool InitVulkanDebugMode();
 		void UnloadVulkanDebugMode();
@@ -59,6 +59,7 @@ class VulkanInterface
 		bool Init(HWND hwnd);
 		void BeginScene(VulkanCommandBuffer * commandBuffer);
 		void EndScene(VulkanCommandBuffer * commandBuffer);
+		void SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange * range);
 		VulkanCommandPool * GetVulkanCommandPool();
 		VulkanDevice * GetVulkanDevice();
 		VulkanSwapchain * GetVulkanSwapchain();

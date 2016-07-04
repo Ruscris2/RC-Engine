@@ -112,7 +112,7 @@ void VulkanInterface::BeginScene(VulkanCommandBuffer * commandBuffer)
 	InitViewportAndScissors(commandBuffer);
 
 	vulkanSwapchain->AcquireNextImage(vulkanDevice);
-	SetImageLayout(vulkanSwapchain->GetCurrentImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	SetImageLayout(vulkanSwapchain->GetCurrentImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
 	vulkanSwapchain->ClearImage(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f);
 }
 
@@ -232,7 +232,7 @@ bool VulkanInterface::InitDepthBuffer()
 	if (result != VK_SUCCESS)
 		return false;
 
-	SetImageLayout(depthImage.image, viewCI.subresourceRange.aspectMask, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	SetImageLayout(depthImage.image, viewCI.subresourceRange.aspectMask, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, NULL);
 	
 	viewCI.image = depthImage.image;
 	result = vkCreateImageView(vulkanDevice->GetDevice(), &viewCI, VK_NULL_HANDLE, &depthImage.view);
@@ -259,7 +259,7 @@ void VulkanInterface::InitViewportAndScissors(VulkanCommandBuffer * commandBuffe
 	vkCmdSetScissor(commandBuffer->GetCommandBuffer(), 0, 1, &scissor);
 }
 
-void VulkanInterface::SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout)
+void VulkanInterface::SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange * range)
 {
 	initCommandBuffer->BeginRecording();
 
@@ -270,11 +270,17 @@ void VulkanInterface::SetImageLayout(VkImage image, VkImageAspectFlags aspectMas
 	imageMemBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	imageMemBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	imageMemBarrier.image = image;
-	imageMemBarrier.subresourceRange.aspectMask = aspectMask;
-	imageMemBarrier.subresourceRange.baseMipLevel = 0;
-	imageMemBarrier.subresourceRange.levelCount = 1;
-	imageMemBarrier.subresourceRange.baseArrayLayer = 0;
-	imageMemBarrier.subresourceRange.layerCount = 1;
+	
+	if (range == NULL)
+	{
+		imageMemBarrier.subresourceRange.aspectMask = aspectMask;
+		imageMemBarrier.subresourceRange.baseMipLevel = 0;
+		imageMemBarrier.subresourceRange.levelCount = 1;
+		imageMemBarrier.subresourceRange.baseArrayLayer = 0;
+		imageMemBarrier.subresourceRange.layerCount = 1;
+	}
+	else
+		imageMemBarrier.subresourceRange = *range;
 
 	if (oldImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		imageMemBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -287,10 +293,7 @@ void VulkanInterface::SetImageLayout(VkImage image, VkImageAspectFlags aspectMas
 	if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
 		imageMemBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 	if (newImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-	{
-		imageMemBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
 		imageMemBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	}
 	if (newImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		imageMemBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	if (newImageLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)

@@ -10,7 +10,7 @@
 
 #define PROGRAM_NAME "RC-Engine"
 #define PROGRAM_VERSION "0.1"
-#define PROGRAM_BUILD "build 7"
+#define PROGRAM_BUILD "build 8"
 #define PROGRAM_IDENTIFIER PROGRAM_NAME " " PROGRAM_VERSION " " PROGRAM_BUILD
 
 #define THROW_ERROR() { MessageBox(NULL, "An error has been detected! Check log.txt for more information!", "ERROR!", MB_OK | MB_ICONERROR); ExitProcess(1); }

@@ -12,6 +12,7 @@
 #include "VulkanPipeline.h"
 #include "VulkanCommandBuffer.h"
 #include "Model.h"
+#include "Texture.h"
 
 class SceneManager
 {
@@ -22,6 +23,7 @@ class SceneManager
 		VulkanCommandBuffer * renderCommandBuffer;
 		Model * model;
 		Model * model2;
+		Texture * texture;
 	public:
 		SceneManager();
 		~SceneManager();

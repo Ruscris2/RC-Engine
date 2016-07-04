@@ -10,13 +10,14 @@
 #include "VulkanCommandBuffer.h"
 #include "VulkanShader.h"
 #include "Camera.h"
+#include "Texture.h"
 
 class Model
 {
 	private:
 		struct Vertex {
 			float x, y, z, w;
-			float r, g, b, a;
+			float u, v;
 		};
 		glm::mat4 positionMatrix;
 		glm::mat4 MVP;
@@ -36,7 +37,7 @@ class Model
 		Model();
 		~Model();
 
-		bool Init(VulkanInterface * vulkan, VulkanShader * shader);
+		bool Init(VulkanInterface * vulkan, VulkanShader * shader, Texture * texture);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanShader * shader, Camera * camera);
 		void SetPosition(float x, float y, float z);

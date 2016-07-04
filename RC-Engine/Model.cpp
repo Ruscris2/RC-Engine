@@ -24,7 +24,7 @@ Model::~Model()
 	vertexBuffer = VK_NULL_HANDLE;
 }
 
-bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader)
+bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader, Texture * texture)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
@@ -36,28 +36,22 @@ bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader)
 	triangle[0].y = 0.0f;
 	triangle[0].z = 0.0f;
 	triangle[0].w = 1.0f;
-	triangle[0].r = 1.0f;
-	triangle[0].g = 0.0f;
-	triangle[0].b = 0.0f;
-	triangle[0].a = 0.0f;
+	triangle[0].u = 0.0f;
+	triangle[0].v = 0.0f;
 
 	triangle[1].x = 0.0f;
 	triangle[1].y = 1.0f;
 	triangle[1].z = 0.0f;
 	triangle[1].w = 1.0f;
-	triangle[1].r = 0.0f;
-	triangle[1].g = 0.0f;
-	triangle[1].b = 1.0f;
-	triangle[1].a = 0.0f;
+	triangle[1].u = 0.5f;
+	triangle[1].v = 1.0f;
 
 	triangle[2].x = 0.5f;
 	triangle[2].y = 0.0f;
 	triangle[2].z = 0.0f;
 	triangle[2].w = 1.0f;
-	triangle[2].r = 0.0f;
-	triangle[2].g = 1.0f;
-	triangle[2].b = 0.0f;
-	triangle[2].a = 0.0f;
+	triangle[2].u = 1.0f;
+	triangle[2].v = 0.0f;
 
 	uint32_t indexData[3];
 	indexData[0] = 0;
@@ -243,15 +237,17 @@ bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader)
 	uniformBufferInfo.range = sizeof(MVP);
 	
 	// Descriptor pool
-	VkDescriptorPoolSize typeCount;
-	typeCount.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	typeCount.descriptorCount = 1;
+	VkDescriptorPoolSize typeCounts[2];
+	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[0].descriptorCount = 1;
+	typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[1].descriptorCount = 1;
 
 	VkDescriptorPoolCreateInfo descriptorPoolCI{};
 	descriptorPoolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	descriptorPoolCI.maxSets = 1;
-	descriptorPoolCI.poolSizeCount = 1;
-	descriptorPoolCI.pPoolSizes = &typeCount;
+	descriptorPoolCI.poolSizeCount = 2;
+	descriptorPoolCI.pPoolSizes = typeCounts;
 
 	result = vkCreateDescriptorPool(vulkanDevice->GetDevice(), &descriptorPoolCI, VK_NULL_HANDLE, &descriptorPool);
 	if (result != VK_SUCCESS)
@@ -268,7 +264,7 @@ bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader)
 	if (result != VK_SUCCESS)
 		return false;
 
-	VkWriteDescriptorSet write[1];
+	VkWriteDescriptorSet write[2];
 
 	write[0] = {};
 	write[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -280,7 +276,22 @@ bool Model::Init(VulkanInterface * vulkan, VulkanShader * shader)
 	write[0].dstArrayElement = 0;
 	write[0].dstBinding = 0;
 
-	vkUpdateDescriptorSets(vulkanDevice->GetDevice(), 1, write, 0, NULL);
+	VkDescriptorImageInfo textureDesc{};
+	textureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	textureDesc.imageView = texture->GetImageView();
+	textureDesc.sampler = texture->GetSampler();
+
+	write[1] = {};
+	write[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write[1].pNext = NULL;
+	write[1].dstSet = descriptorSet;
+	write[1].descriptorCount = 1;
+	write[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	write[1].pImageInfo = &textureDesc;
+	write[1].dstArrayElement = 0;
+	write[1].dstBinding = 1;
+
+	vkUpdateDescriptorSets(vulkanDevice->GetDevice(), 2, write, 0, NULL);
 
 	return true;
 }

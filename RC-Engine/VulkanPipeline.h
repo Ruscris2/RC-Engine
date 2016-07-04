@@ -16,7 +16,7 @@ class VulkanPipeline
 	private:
 		struct Vertex {
 			float x, y, z, w;
-			float r, g, b, a;      
+			float u, v;
 		};
 		VkVertexInputBindingDescription vertexBinding;
 		VkVertexInputAttributeDescription vertexLayout[2];
