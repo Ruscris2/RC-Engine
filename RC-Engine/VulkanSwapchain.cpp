@@ -13,16 +13,14 @@ extern Settings * gSettings;
 VulkanSwapchain::VulkanSwapchain()
 {
 	swapChain = VK_NULL_HANDLE;
-	renderPass = VK_NULL_HANDLE;
 }
 
 VulkanSwapchain::~VulkanSwapchain()
 {
 	swapChain = VK_NULL_HANDLE;
-	renderPass = VK_NULL_HANDLE;
 }
 
-bool VulkanSwapchain::Init(VulkanDevice * vulkanDevice, VkImageView depthImageView, VkFormat depthImageFormat)
+bool VulkanSwapchain::Init(VulkanDevice * vulkanDevice, VkImageView depthImageView, VulkanRenderpass * vulkanRenderpass)
 {
 	VkResult result;
 
@@ -61,8 +59,9 @@ bool VulkanSwapchain::Init(VulkanDevice * vulkanDevice, VkImageView depthImageVi
 			swapChainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
 	}
 
-	uint32_t numSwapChainImages = surfaceCapabilities.minImageCount + 1;
-	if ((surfaceCapabilities.maxImageCount > 0) && (numSwapChainImages > surfaceCapabilities.maxImageCount))
+	// Use double-buffering
+	uint32_t numSwapChainImages = 2;
+	if (numSwapChainImages > surfaceCapabilities.maxImageCount)
 		numSwapChainImages = surfaceCapabilities.maxImageCount;
 
 	VkSurfaceTransformFlagBitsKHR preTransform;
@@ -130,62 +129,13 @@ bool VulkanSwapchain::Init(VulkanDevice * vulkanDevice, VkImageView depthImageVi
 	delete[] pSwapChainImages;
 	delete[] pPresentModes;
 
-	// Render pass
-	VkAttachmentDescription attachmentDesc[2];
-	attachmentDesc[0].format = vulkanDevice->GetFormat();
-	attachmentDesc[0].samples = VK_SAMPLE_COUNT_1_BIT;
-	attachmentDesc[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	attachmentDesc[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	attachmentDesc[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	attachmentDesc[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachmentDesc[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	attachmentDesc[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	attachmentDesc[0].flags = 0;
-
-	attachmentDesc[1].format = depthImageFormat;
-	attachmentDesc[1].samples = VK_SAMPLE_COUNT_1_BIT;
-	attachmentDesc[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	attachmentDesc[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	attachmentDesc[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-	attachmentDesc[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-	attachmentDesc[1].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	attachmentDesc[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	attachmentDesc[1].flags = 0;
-
-	VkAttachmentReference colorRef{};
-	colorRef.attachment = 0;
-	colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference depthRef{};
-	depthRef.attachment = 1;
-	depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkSubpassDescription subpass{};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colorRef;
-	subpass.pDepthStencilAttachment = &depthRef;
-
-	VkRenderPassCreateInfo renderpassCI{};
-	renderpassCI.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderpassCI.attachmentCount = 2;
-	renderpassCI.pAttachments = attachmentDesc;
-	renderpassCI.subpassCount = 1;
-	renderpassCI.pSubpasses = &subpass;
-	renderpassCI.dependencyCount = 0;
-	renderpassCI.pDependencies = VK_NULL_HANDLE;
-
-	result = vkCreateRenderPass(vulkanDevice->GetDevice(), &renderpassCI, VK_NULL_HANDLE, &renderPass);
-	if (result != VK_SUCCESS)
-		return false;
-
 	// Frame buffers
 	VkImageView attachments[2];
 	attachments[1] = depthImageView;
 
 	VkFramebufferCreateInfo fbCI{};
 	fbCI.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	fbCI.renderPass = renderPass;
+	fbCI.renderPass = vulkanRenderpass->GetRenderpass();
 	fbCI.attachmentCount = 2;
 	fbCI.pAttachments = attachments;
 	fbCI.width = gSettings->GetWindowWidth();
@@ -212,7 +162,6 @@ void VulkanSwapchain::Unload(VulkanDevice * vulkanDevice)
 		vkDestroyFramebuffer(vulkanDevice->GetDevice(), frameBuffers[i], VK_NULL_HANDLE);
 		vkDestroyImageView(vulkanDevice->GetDevice(), swapChainBuffers[i].view, VK_NULL_HANDLE);
 	}
-	vkDestroyRenderPass(vulkanDevice->GetDevice(), renderPass, VK_NULL_HANDLE);
 	vkDestroySwapchainKHR(vulkanDevice->GetDevice(), swapChain, VK_NULL_HANDLE);
 }
 
@@ -224,31 +173,6 @@ void VulkanSwapchain::AcquireNextImage(VulkanDevice * vulkanDevice)
 	vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCI, VK_NULL_HANDLE, &drawCompleteSemaphore);
 
 	vkAcquireNextImageKHR(vulkanDevice->GetDevice(), swapChain, UINT64_MAX, presentCompleteSemaphore, VK_NULL_HANDLE, &currentBuffer);
-}
-
-void VulkanSwapchain::ClearImage(VulkanCommandBuffer * commandBuffer, float r, float g, float b, float a)
-{
-	VkClearValue clear[2];
-	clear[0].color.float32[0] = r;
-	clear[0].color.float32[1] = g;
-	clear[0].color.float32[2] = b;
-	clear[0].color.float32[3] = a;
-	clear[1].depthStencil.depth = 1.0f;
-	clear[1].depthStencil.stencil = 0;
-
-	VkRenderPassBeginInfo rpBegin{};
-	rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	rpBegin.pNext = NULL;
-	rpBegin.renderPass = renderPass;
-	rpBegin.framebuffer = frameBuffers[currentBuffer];
-	rpBegin.renderArea.offset.x = 0;
-	rpBegin.renderArea.offset.y = 0;
-	rpBegin.renderArea.extent.width = gSettings->GetWindowWidth();
-	rpBegin.renderArea.extent.height = gSettings->GetWindowHeight();
-	rpBegin.clearValueCount = 2;
-	rpBegin.pClearValues = clear;
-
-	vkCmdBeginRenderPass(commandBuffer->GetCommandBuffer(), &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void VulkanSwapchain::Present(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer)
@@ -278,9 +202,4 @@ VkImage VulkanSwapchain::GetCurrentImage()
 VkFramebuffer VulkanSwapchain::GetCurrentFramebuffer()
 {
 	return frameBuffers[currentBuffer];
-}
-
-VkRenderPass VulkanSwapchain::GetRenderpass()
-{
-	return renderPass;
 }

@@ -16,7 +16,7 @@ SceneManager::SceneManager()
 	camera = NULL;
 	light = NULL;
 	renderCommandBuffer = NULL;
-	vulkanShader = NULL;
+	defaultShader = NULL;
 	vulkanPipeline = NULL;
 	model = NULL;
 	model2 = NULL;
@@ -42,15 +42,15 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
-	vulkanShader = new VulkanShader();
-	if (!vulkanShader->Init(vulkan->GetVulkanDevice()))
+	defaultShader = new DefaultShader();
+	if (!defaultShader->Init(vulkan->GetVulkanDevice()))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init shader!");
 		return false;
 	}
 
 	vulkanPipeline = new VulkanPipeline();
-	if (!vulkanPipeline->Init(vulkan->GetVulkanDevice(), vulkanShader, vulkan->GetVulkanSwapchain()))
+	if (!vulkanPipeline->Init(vulkan->GetVulkanDevice(), defaultShader, vulkan->GetVulkanRenderpass()))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init pipeline!");
 		return false;
@@ -78,6 +78,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 	model2->SetPosition(2.0f, 0.0f, 0.0f);
+	model2->SetRotation(0.0f, 135.0f, -30.0f);
 
 	return true;
 }
@@ -86,7 +87,7 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 {
 	SAFE_UNLOAD(texture, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(vulkanPipeline, vulkan->GetVulkanDevice());
-	SAFE_UNLOAD(vulkanShader, vulkan->GetVulkanDevice());
+	SAFE_UNLOAD(defaultShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(model2, vulkan);
 	SAFE_UNLOAD(model, vulkan);
 	SAFE_UNLOAD(renderCommandBuffer, vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());

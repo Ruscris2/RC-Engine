@@ -1,32 +1,32 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: VulkanShader.cpp                                     |
+|                             File: DefaultShader.cpp                                    |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 
 #include <fstream>
 
-#include "VulkanShader.h"
+#include "DefaultShader.h"
 #include "LogManager.h"
 #include "Settings.h"
 
 extern LogManager * gLogManager;
 extern Settings * gSettings;
 
-VulkanShader::VulkanShader()
+DefaultShader::DefaultShader()
 {
 	shaderStages[0].module = VK_NULL_HANDLE;
 	shaderStages[1].module = VK_NULL_HANDLE;
 }
 
-VulkanShader::~VulkanShader()
+DefaultShader::~DefaultShader()
 {
 	shaderStages[1].module = VK_NULL_HANDLE;
 	shaderStages[0].module = VK_NULL_HANDLE;
 }
 
-bool VulkanShader::Init(VulkanDevice * vulkanDevice)
+bool DefaultShader::Init(VulkanDevice * vulkanDevice)
 {
 	VkResult result;
 
@@ -110,13 +110,13 @@ bool VulkanShader::Init(VulkanDevice * vulkanDevice)
 	return true;
 }
 
-void VulkanShader::Unload(VulkanDevice * vulkanDevice)
+void DefaultShader::Unload(VulkanDevice * vulkanDevice)
 {
 	vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderStages[1].module, VK_NULL_HANDLE);
 	vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderStages[0].module, VK_NULL_HANDLE);
 }
 
-VkPipelineShaderStageCreateInfo * VulkanShader::GetShaderStages()
+VkPipelineShaderStageCreateInfo * DefaultShader::GetShaderStages()
 {
 	return shaderStages;
 }

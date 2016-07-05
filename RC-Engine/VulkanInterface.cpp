@@ -22,6 +22,7 @@ VulkanInterface::VulkanInterface()
 	vulkanCommandPool = NULL;
 	initCommandBuffer = NULL;
 	vulkanSwapchain = NULL;
+	mainRenderPass = NULL;
 }
 
 VulkanInterface::~VulkanInterface()
@@ -34,6 +35,7 @@ VulkanInterface::~VulkanInterface()
 	vkDestroyImageView(vulkanDevice->GetDevice(), depthImage.view, VK_NULL_HANDLE); depthImage.view = VK_NULL_HANDLE;
 	
 	SAFE_UNLOAD(vulkanSwapchain, vulkanDevice);
+	SAFE_UNLOAD(mainRenderPass, vulkanDevice);
 	SAFE_UNLOAD(initCommandBuffer, vulkanDevice, vulkanCommandPool);
 	SAFE_UNLOAD(vulkanCommandPool, vulkanDevice);
 	SAFE_UNLOAD(vulkanDevice, vulkanInstance);
@@ -92,8 +94,36 @@ bool VulkanInterface::Init(HWND hwnd)
 		return false;
 	}
 
+	VkAttachmentDescription attachmentDesc[2];
+	attachmentDesc[0].format = vulkanDevice->GetFormat();
+	attachmentDesc[0].samples = VK_SAMPLE_COUNT_1_BIT;
+	attachmentDesc[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachmentDesc[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachmentDesc[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachmentDesc[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachmentDesc[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	attachmentDesc[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	attachmentDesc[0].flags = 0;
+
+	attachmentDesc[1].format = depthImage.format;
+	attachmentDesc[1].samples = VK_SAMPLE_COUNT_1_BIT;
+	attachmentDesc[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachmentDesc[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachmentDesc[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+	attachmentDesc[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachmentDesc[1].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	attachmentDesc[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	attachmentDesc[1].flags = 0;
+
+	mainRenderPass = new VulkanRenderpass();
+	if (!mainRenderPass->Init(vulkanDevice, attachmentDesc, 2))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init main render pass!");
+		return false;
+	}
+
 	vulkanSwapchain = new VulkanSwapchain();
-	if (!vulkanSwapchain->Init(vulkanDevice, depthImage.view, depthImage.format))
+	if (!vulkanSwapchain->Init(vulkanDevice, depthImage.view, mainRenderPass))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create swapchain!");
 		return false;
@@ -113,12 +143,12 @@ void VulkanInterface::BeginScene(VulkanCommandBuffer * commandBuffer)
 
 	vulkanSwapchain->AcquireNextImage(vulkanDevice);
 	SetImageLayout(vulkanSwapchain->GetCurrentImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
-	vulkanSwapchain->ClearImage(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f);
+	mainRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 0.0f, vulkanSwapchain->GetCurrentFramebuffer());
 }
 
 void VulkanInterface::EndScene(VulkanCommandBuffer * commandBuffer)
 {
-	vkCmdEndRenderPass(commandBuffer->GetCommandBuffer());
+	mainRenderPass->EndRenderpass(commandBuffer);
 
 	VkImageMemoryBarrier prePresentBarrier{};
 	prePresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -151,9 +181,9 @@ VulkanDevice * VulkanInterface::GetVulkanDevice()
 	return vulkanDevice;
 }
 
-VulkanSwapchain * VulkanInterface::GetVulkanSwapchain()
+VulkanRenderpass * VulkanInterface::GetVulkanRenderpass()
 {
-	return vulkanSwapchain;
+	return mainRenderPass;
 }
 
 glm::mat4 VulkanInterface::GetProjectionMatrix()
@@ -323,14 +353,7 @@ void VulkanInterface::SetImageLayout(VkImage image, VkImageAspectFlags aspectMas
 		if (flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) outputMsg = "[DEBUG] ";
 
 		outputMsg += msg;
-
-		if (minimalisticDebugInfo == true)
-		{
-			if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT || flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT || flags & VK_DEBUG_REPORT_ERROR_BIT_EXT)
-				gLogManager->AddMessage(outputMsg);
-		}
-		else
-			gLogManager->AddMessage(outputMsg);
+		gLogManager->AddMessage(outputMsg);
 
 		return false;
 	}
@@ -347,8 +370,15 @@ void VulkanInterface::SetImageLayout(VkImage image, VkImageAspectFlags aspectMas
 
 		VkDebugReportCallbackCreateInfoEXT debugCI{};
 		debugCI.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
-		debugCI.flags = VK_DEBUG_REPORT_INFORMATION_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT |
-			VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_DEBUG_BIT_EXT;
+		if (minimalisticDebugInfo == true)
+		{
+			debugCI.flags = VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT | VK_DEBUG_REPORT_ERROR_BIT_EXT;
+		}
+		else
+		{
+			debugCI.flags = VK_DEBUG_REPORT_INFORMATION_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT |
+				VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_DEBUG_BIT_EXT;
+		}
 		debugCI.pfnCallback = VulkanDebugCallback;
 
 		fvkCreateDebugReportCallbackEXT(vulkanInstance->GetInstance(), &debugCI, VK_NULL_HANDLE, &debugReport);

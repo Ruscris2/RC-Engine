@@ -1,22 +1,23 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: VulkanShader.h                                       |
+|                             File: DefaultShader.h                                      |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 #pragma once
 
+#include "Shader.h"
 #include "VulkanDevice.h"
 #include "VulkanCommandBuffer.h"
 
-class VulkanShader
+class DefaultShader : public Shader
 {
 	private:
 		VkPipelineShaderStageCreateInfo shaderStages[2];
 
 	public:
-		VulkanShader();
-		~VulkanShader();
+		DefaultShader();
+		~DefaultShader();
 
 		bool Init(VulkanDevice * vulkanDevice);
 		void Unload(VulkanDevice * vulkanDevice);

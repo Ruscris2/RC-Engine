@@ -8,6 +8,7 @@
 
 #define VK_USE_PLATFORM_WIN32_KHR
 
+#include <Windows.h>
 #include <vector>
 #include <vulkan/vulkan.h>
 

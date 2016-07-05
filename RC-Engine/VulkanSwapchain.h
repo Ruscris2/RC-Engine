@@ -8,6 +8,7 @@
 
 #include "VulkanDevice.h"
 #include "VulkanCommandBuffer.h"
+#include "VulkanRenderpass.h"
 
 class VulkanSwapchain
 {
@@ -22,17 +23,14 @@ class VulkanSwapchain
 		uint32_t currentBuffer = 0;
 		VkSemaphore presentCompleteSemaphore, drawCompleteSemaphore;
 		VkFramebuffer * frameBuffers;
-		VkRenderPass renderPass;
 	public:
 		VulkanSwapchain();
 		~VulkanSwapchain();
 
-		bool Init(VulkanDevice * vulkanDevice, VkImageView depthImageView, VkFormat depthImageFormat);
+		bool Init(VulkanDevice * vulkanDevice, VkImageView depthImageView, VulkanRenderpass * vulkanRenderpass);
 		void Unload(VulkanDevice * vulkanDevice);
 		void AcquireNextImage(VulkanDevice * vulkanDevice);
-		void ClearImage(VulkanCommandBuffer * commandBuffer, float r, float g, float b, float a);
 		void Present(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer);
 		VkImage GetCurrentImage();
 		VkFramebuffer GetCurrentFramebuffer();
-		VkRenderPass GetRenderpass();
 };

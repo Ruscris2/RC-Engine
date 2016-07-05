@@ -18,6 +18,7 @@
 #include "VulkanCommandPool.h"
 #include "VulkanCommandBuffer.h"
 #include "VulkanSwapchain.h"
+#include "VulkanRenderpass.h"
 
 class VulkanInterface
 {
@@ -35,6 +36,7 @@ class VulkanInterface
 		VulkanCommandPool * vulkanCommandPool;
 		VulkanCommandBuffer * initCommandBuffer;
 		VulkanSwapchain * vulkanSwapchain;
+		VulkanRenderpass * mainRenderPass;
 
 		VkViewport viewport;
 		VkRect2D scissor;
@@ -62,6 +64,6 @@ class VulkanInterface
 		void SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange * range);
 		VulkanCommandPool * GetVulkanCommandPool();
 		VulkanDevice * GetVulkanDevice();
-		VulkanSwapchain * GetVulkanSwapchain();
+		VulkanRenderpass * GetVulkanRenderpass();
 		glm::mat4 GetProjectionMatrix();
 };

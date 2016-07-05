@@ -23,7 +23,7 @@ VulkanPipeline::~VulkanPipeline()
 	pipelineCache = VK_NULL_HANDLE;
 }
 
-bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, VulkanShader * vulkanShader, VulkanSwapchain * vulkanSwapchain)
+bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRenderpass * vulkanRenderpass)
 {
 	VkResult result;
 
@@ -219,9 +219,9 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, VulkanShader * vulkanShad
 	pipelineCI.pDynamicState = &dynamicStateCI;
 	pipelineCI.pViewportState = &vp;
 	pipelineCI.pDepthStencilState = &ds;
-	pipelineCI.pStages = vulkanShader->GetShaderStages();
+	pipelineCI.pStages = shader->GetShaderStages();
 	pipelineCI.stageCount = 2;
-	pipelineCI.renderPass = vulkanSwapchain->GetRenderpass();
+	pipelineCI.renderPass = vulkanRenderpass->GetRenderpass();
 	pipelineCI.subpass = 0;
 
 	result = vkCreateGraphicsPipelines(vulkanDevice->GetDevice(), pipelineCache, 1, &pipelineCI, VK_NULL_HANDLE, &pipeline);

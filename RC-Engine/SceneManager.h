@@ -8,7 +8,7 @@
 
 #include "Camera.h"
 #include "VulkanInterface.h"
-#include "VulkanShader.h"
+#include "DefaultShader.h"
 #include "VulkanPipeline.h"
 #include "VulkanCommandBuffer.h"
 #include "Model.h"
@@ -20,7 +20,7 @@ class SceneManager
 	private:
 		Camera * camera;
 		Light * light;
-		VulkanShader * vulkanShader;
+		DefaultShader * defaultShader;
 		VulkanPipeline * vulkanPipeline;
 		VulkanCommandBuffer * renderCommandBuffer;
 		Model * model;

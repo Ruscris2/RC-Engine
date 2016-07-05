@@ -159,7 +159,8 @@
     <ClCompile Include="VulkanInstance.cpp" />
     <ClCompile Include="VulkanInterface.cpp" />
     <ClCompile Include="VulkanPipeline.cpp" />
-    <ClCompile Include="VulkanShader.cpp" />
+    <ClCompile Include="DefaultShader.cpp" />
+    <ClCompile Include="VulkanRenderpass.cpp" />
     <ClCompile Include="VulkanSwapchain.cpp" />
     <ClCompile Include="WinWindow.cpp" />
   </ItemGroup>
@@ -169,6 +170,7 @@
     <ClInclude Include="Light.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="SceneManager.h" />
+    <ClInclude Include="Shader.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="VulkanCommandBuffer.h" />
@@ -180,7 +182,8 @@
     <ClInclude Include="VulkanInstance.h" />
     <ClInclude Include="VulkanInterface.h" />
     <ClInclude Include="VulkanPipeline.h" />
-    <ClInclude Include="VulkanShader.h" />
+    <ClInclude Include="DefaultShader.h" />
+    <ClInclude Include="VulkanRenderpass.h" />
     <ClInclude Include="VulkanSwapchain.h" />
     <ClInclude Include="WinWindow.h" />
   </ItemGroup>

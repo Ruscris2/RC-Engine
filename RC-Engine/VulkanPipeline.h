@@ -7,8 +7,8 @@
 #pragma once
 
 #include "VulkanDevice.h"
-#include "VulkanShader.h"
-#include "VulkanSwapchain.h"
+#include "Shader.h"
+#include "VulkanRenderpass.h"
 #include "VulkanCommandBuffer.h"
 
 class VulkanPipeline
@@ -28,7 +28,7 @@ class VulkanPipeline
 		VulkanPipeline();
 		~VulkanPipeline();
 
-		bool Init(VulkanDevice * vulkanDevice, VulkanShader * vulkanShader, VulkanSwapchain * vulkanSwapchain);
+		bool Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRenderpass * vulkanRenderpass);
 		void Unload(VulkanDevice * vulkanDevice);
 		void SetActive(VulkanCommandBuffer * commandBuffer);
 		VkDescriptorSetLayout * GetDescriptorLayout();

@@ -193,7 +193,7 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 	delete[] indexData;
 
 	// Matrix init
-	vertexUniformBuffer.positionMatrix = glm::mat4(1.0f);
+	vertexUniformBuffer.worldMatrix = glm::mat4(1.0f);
 	vertexUniformBuffer.MVP = glm::mat4();
 	
 	// Vertex shader Uniform buffer
@@ -365,7 +365,7 @@ void Model::Unload(VulkanInterface * vulkan)
 void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera, Light * light)
 {
 	// Update vertex uniform buffer
-	vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * vertexUniformBuffer.positionMatrix;
+	vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
 
 	uint8_t *pData;
 	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);
@@ -373,9 +373,9 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory);
 
 	// Update fragment uniform buffer
-	//vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), fsUniformMemory, 0, fsMemReq.size, 0, (void**)&pData);
-	//memcpy(pData, light->GetLightBuffer(), light->GetLightBufferSize());
-	//vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), fsUniformMemory);
+	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), fsUniformMemory, 0, fsMemReq.size, 0, (void**)&pData);
+	memcpy(pData, light->GetLightBuffer(), light->GetLightBufferSize());
+	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), fsUniformMemory);
 
 	// Draw
 	VkDeviceSize offsets[1] = { 0 };
@@ -388,5 +388,24 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 
 void Model::SetPosition(float x, float y, float z)
 {
-	vertexUniformBuffer.positionMatrix = glm::translate(vertexUniformBuffer.positionMatrix, glm::vec3(x, y, z));
+	posX = x;
+	posY = y;
+	posZ = z;
+	UpdateWorldMatrix();
+}
+
+void Model::SetRotation(float x, float y, float z)
+{
+	rotX = x;
+	rotY = y;
+	rotZ = z;
+	UpdateWorldMatrix();
+}
+
+void Model::UpdateWorldMatrix()
+{
+	vertexUniformBuffer.worldMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(posX, posY, posZ));
+	vertexUniformBuffer.worldMatrix = glm::rotate(vertexUniformBuffer.worldMatrix, glm::radians(rotX), glm::vec3(1.0f, 0.0f, 0.0f));
+	vertexUniformBuffer.worldMatrix = glm::rotate(vertexUniformBuffer.worldMatrix, glm::radians(rotY), glm::vec3(0.0f, 1.0f, 0.0f));
+	vertexUniformBuffer.worldMatrix = glm::rotate(vertexUniformBuffer.worldMatrix, glm::radians(rotZ), glm::vec3(0.0f, 0.0f, 1.0f));
 }

@@ -24,10 +24,13 @@ class Model
 		unsigned int vertexCount;
 		unsigned int indexCount;
 
+		float posX, posY, posZ;
+		float rotX, rotY, rotZ;
+
 		struct VertexUniformBuffer
 		{
 			glm::mat4 MVP;
-			glm::mat4 positionMatrix;
+			glm::mat4 worldMatrix;
 		};
 		VertexUniformBuffer vertexUniformBuffer;
 
@@ -48,6 +51,8 @@ class Model
 		VkDeviceMemory fsUniformMemory;
 		VkDescriptorBufferInfo fsUniformBufferInfo;
 		VkMemoryRequirements fsMemReq;
+	private:
+		void UpdateWorldMatrix();
 	public:
 		Model();
 		~Model();
@@ -56,4 +61,5 @@ class Model
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera, Light * light);
 		void SetPosition(float x, float y, float z);
+		void SetRotation(float x, float y, float z);
 };
