@@ -9,12 +9,16 @@
 
 VulkanPipeline::VulkanPipeline()
 {
+	descriptorLayout = VK_NULL_HANDLE;
+	pipelineLayout = VK_NULL_HANDLE;
 	pipelineCache = VK_NULL_HANDLE;
 	pipeline = VK_NULL_HANDLE;
 }
 
 VulkanPipeline::~VulkanPipeline()
 {
+	descriptorLayout = VK_NULL_HANDLE;
+	pipelineLayout = VK_NULL_HANDLE;
 	pipeline = VK_NULL_HANDLE;
 	pipelineCache = VK_NULL_HANDLE;
 }
@@ -28,6 +32,8 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, VulkanShader * vulkanShad
 	vertexBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 	vertexBinding.stride = sizeof(Vertex);
 
+	VkVertexInputAttributeDescription vertexLayout[3];
+
 	vertexLayout[0].binding = 0;
 	vertexLayout[0].location = 0;
 	vertexLayout[0].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -37,6 +43,53 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, VulkanShader * vulkanShad
 	vertexLayout[1].location = 1;
 	vertexLayout[1].format = VK_FORMAT_R32G32_SFLOAT;
 	vertexLayout[1].offset = sizeof(float) * 3;
+
+	vertexLayout[2].binding = 0;
+	vertexLayout[2].location = 2;
+	vertexLayout[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexLayout[2].offset = sizeof(float) * 5;
+
+	// Pipeline layout
+	VkDescriptorSetLayoutBinding layoutBindings[3];
+
+	// Vertex shader uniform buffer
+	layoutBindings[0].binding = 0;
+	layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindings[0].descriptorCount = 1;
+	layoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	layoutBindings[0].pImmutableSamplers = VK_NULL_HANDLE;
+
+	// Fragment shader sampler
+	layoutBindings[1].binding = 1;
+	layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindings[1].descriptorCount = 1;
+	layoutBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindings[1].pImmutableSamplers = VK_NULL_HANDLE;
+
+	// Fragment shader uniform buffer
+	layoutBindings[2].binding = 2;
+	layoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindings[2].descriptorCount = 1;
+	layoutBindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindings[2].pImmutableSamplers = VK_NULL_HANDLE;
+
+	VkDescriptorSetLayoutCreateInfo descriptorLayoutCI{};
+	descriptorLayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	descriptorLayoutCI.bindingCount = sizeof(layoutBindings) / sizeof(layoutBindings[0]);
+	descriptorLayoutCI.pBindings = layoutBindings;
+
+	result = vkCreateDescriptorSetLayout(vulkanDevice->GetDevice(), &descriptorLayoutCI, VK_NULL_HANDLE, &descriptorLayout);
+	if (result != VK_SUCCESS)
+		return false;
+
+	VkPipelineLayoutCreateInfo pipelineLayoutCI{};
+	pipelineLayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutCI.setLayoutCount = 1;
+	pipelineLayoutCI.pSetLayouts = &descriptorLayout;
+
+	result = vkCreatePipelineLayout(vulkanDevice->GetDevice(), &pipelineLayoutCI, VK_NULL_HANDLE, &pipelineLayout);
+	if (result != VK_SUCCESS)
+		return false;
 
 	// Pipeline cache
 	VkPipelineCacheCreateInfo pipelineCacheCI{};
@@ -62,7 +115,7 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, VulkanShader * vulkanShad
 	vi.flags = 0;
 	vi.vertexBindingDescriptionCount = 1;
 	vi.pVertexBindingDescriptions = &vertexBinding;
-	vi.vertexAttributeDescriptionCount = 2;
+	vi.vertexAttributeDescriptionCount = sizeof(vertexLayout) / sizeof(vertexLayout[0]);
 	vi.pVertexAttributeDescriptions = vertexLayout;
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyCI{};
@@ -153,7 +206,7 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, VulkanShader * vulkanShad
 	VkGraphicsPipelineCreateInfo pipelineCI{};
 	pipelineCI.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineCI.pNext = NULL;
-	pipelineCI.layout = vulkanShader->GetPipelineLayout();
+	pipelineCI.layout = pipelineLayout;
 	pipelineCI.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineCI.basePipelineIndex = 0;
 	pipelineCI.flags = 0;
@@ -180,6 +233,8 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, VulkanShader * vulkanShad
 
 void VulkanPipeline::Unload(VulkanDevice * vulkanDevice)
 {
+	vkDestroyPipelineLayout(vulkanDevice->GetDevice(), pipelineLayout, VK_NULL_HANDLE);
+	vkDestroyDescriptorSetLayout(vulkanDevice->GetDevice(), descriptorLayout, VK_NULL_HANDLE);
 	vkDestroyPipeline(vulkanDevice->GetDevice(), pipeline, VK_NULL_HANDLE);
 	vkDestroyPipelineCache(vulkanDevice->GetDevice(), pipelineCache, VK_NULL_HANDLE);
 }
@@ -187,4 +242,14 @@ void VulkanPipeline::Unload(VulkanDevice * vulkanDevice)
 void VulkanPipeline::SetActive(VulkanCommandBuffer * commandBuffer)
 {
 	vkCmdBindPipeline(commandBuffer->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+}
+
+VkDescriptorSetLayout * VulkanPipeline::GetDescriptorLayout()
+{
+	return &descriptorLayout;
+}
+
+VkPipelineLayout VulkanPipeline::GetPipelineLayout()
+{
+	return pipelineLayout;
 }

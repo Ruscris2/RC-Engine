@@ -8,9 +8,10 @@
 
 #include "VulkanInterface.h"
 #include "VulkanCommandBuffer.h"
-#include "VulkanShader.h"
+#include "VulkanPipeline.h"
 #include "Camera.h"
 #include "Texture.h"
+#include "Light.h"
 
 class Model
 {
@@ -18,12 +19,17 @@ class Model
 		struct Vertex {
 			float x, y, z;
 			float u, v;
+			float nx, ny, nz;
 		};
 		unsigned int vertexCount;
 		unsigned int indexCount;
 
-		glm::mat4 positionMatrix;
-		glm::mat4 MVP;
+		struct VertexUniformBuffer
+		{
+			glm::mat4 MVP;
+			glm::mat4 positionMatrix;
+		};
+		VertexUniformBuffer vertexUniformBuffer;
 
 		VkBuffer vertexBuffer;
 		VkDeviceMemory vertexMemory;
@@ -32,16 +38,22 @@ class Model
 
 		VkDescriptorPool descriptorPool;
 		VkDescriptorSet descriptorSet;
-		VkBuffer uniformBuffer;
-		VkDeviceMemory uniformMemory;
-		VkDescriptorBufferInfo uniformBufferInfo;
-		VkMemoryRequirements uniformBufferMemoryReq;
+		
+		VkBuffer vsUniformBuffer;
+		VkDeviceMemory vsUniformMemory;
+		VkDescriptorBufferInfo vsUniformBufferInfo;
+		VkMemoryRequirements vsMemReq;
+
+		VkBuffer fsUniformBuffer;
+		VkDeviceMemory fsUniformMemory;
+		VkDescriptorBufferInfo fsUniformBufferInfo;
+		VkMemoryRequirements fsMemReq;
 	public:
 		Model();
 		~Model();
 
-		bool Init(std::string filename, VulkanInterface * vulkan, VulkanShader * shader, Texture * texture);
+		bool Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, Texture * texture, Light * light);
 		void Unload(VulkanInterface * vulkan);
-		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanShader * shader, Camera * camera);
+		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera, Light * light);
 		void SetPosition(float x, float y, float z);
 };

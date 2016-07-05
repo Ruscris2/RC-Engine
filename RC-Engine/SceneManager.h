@@ -13,11 +13,13 @@
 #include "VulkanCommandBuffer.h"
 #include "Model.h"
 #include "Texture.h"
+#include "Light.h"
 
 class SceneManager
 {
 	private:
 		Camera * camera;
+		Light * light;
 		VulkanShader * vulkanShader;
 		VulkanPipeline * vulkanPipeline;
 		VulkanCommandBuffer * renderCommandBuffer;

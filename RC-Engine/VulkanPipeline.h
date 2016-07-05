@@ -17,9 +17,11 @@ class VulkanPipeline
 		struct Vertex {
 			float x, y, z;
 			float u, v;
+			float nx, ny, nz;
 		};
 		VkVertexInputBindingDescription vertexBinding;
-		VkVertexInputAttributeDescription vertexLayout[2];
+		VkDescriptorSetLayout descriptorLayout;
+		VkPipelineLayout pipelineLayout;
 		VkPipelineCache pipelineCache;
 		VkPipeline pipeline;
 	public:
@@ -29,4 +31,6 @@ class VulkanPipeline
 		bool Init(VulkanDevice * vulkanDevice, VulkanShader * vulkanShader, VulkanSwapchain * vulkanSwapchain);
 		void Unload(VulkanDevice * vulkanDevice);
 		void SetActive(VulkanCommandBuffer * commandBuffer);
+		VkDescriptorSetLayout * GetDescriptorLayout();
+		VkPipelineLayout GetPipelineLayout();
 };

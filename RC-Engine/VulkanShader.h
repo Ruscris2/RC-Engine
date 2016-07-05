@@ -13,8 +13,6 @@ class VulkanShader
 {
 	private:
 		VkPipelineShaderStageCreateInfo shaderStages[2];
-		VkDescriptorSetLayout descriptorLayout;
-		VkPipelineLayout pipelineLayout;
 
 	public:
 		VulkanShader();
@@ -23,6 +21,4 @@ class VulkanShader
 		bool Init(VulkanDevice * vulkanDevice);
 		void Unload(VulkanDevice * vulkanDevice);
 		VkPipelineShaderStageCreateInfo * GetShaderStages();
-		VkPipelineLayout GetPipelineLayout();
-		VkDescriptorSetLayout * GetDescriptorLayout();
 };

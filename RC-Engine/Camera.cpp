@@ -8,11 +8,9 @@
 #include "Camera.h"
 #include "Input.h"
 #include "Timer.h"
-#include "LogManager.h"
 
 extern Input * gInput;
 extern Timer * gTimer;
-extern LogManager * gLogManager;
 
 void Camera::Init()
 {
@@ -28,7 +26,7 @@ void Camera::Init()
 void Camera::HandleInput()
 {
 	float speed = 0.006f;
-	float sensivity = 0.2f;
+	float sensitivity = 0.2f;
 
 	bool update = false;
 
@@ -37,12 +35,12 @@ void Camera::HandleInput()
 		if (gInput->GetCursorRelativeX() != 0)
 		{
 			update = true;
-			yaw -= gInput->GetCursorRelativeX() * sensivity;
+			yaw -= gInput->GetCursorRelativeX() * sensitivity;
 		}
 		if (gInput->GetCursorRelativeY() != 0)
 		{
 			update = true;
-			pitch -= gInput->GetCursorRelativeY() * sensivity;
+			pitch -= gInput->GetCursorRelativeY() * sensitivity;
 		}
 	}
 

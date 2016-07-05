@@ -18,16 +18,12 @@ VulkanShader::VulkanShader()
 {
 	shaderStages[0].module = VK_NULL_HANDLE;
 	shaderStages[1].module = VK_NULL_HANDLE;
-	descriptorLayout = VK_NULL_HANDLE;
-	pipelineLayout = VK_NULL_HANDLE;
 }
 
 VulkanShader::~VulkanShader()
 {
-	descriptorLayout = VK_NULL_HANDLE;
 	shaderStages[1].module = VK_NULL_HANDLE;
 	shaderStages[0].module = VK_NULL_HANDLE;
-	pipelineLayout = VK_NULL_HANDLE;
 }
 
 bool VulkanShader::Init(VulkanDevice * vulkanDevice)
@@ -111,42 +107,11 @@ bool VulkanShader::Init(VulkanDevice * vulkanDevice)
 	delete[] vsBuffer;
 	delete[] fsBuffer;
 
-	// Pipeline layout
-	VkDescriptorSetLayoutBinding layoutBindings[2];
-	layoutBindings[0].binding = 0;
-	layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	layoutBindings[0].descriptorCount = 1;
-	layoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	layoutBindings[0].pImmutableSamplers = VK_NULL_HANDLE;
-	layoutBindings[1].binding = 1;
-	layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layoutBindings[1].descriptorCount = 1;
-	layoutBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	layoutBindings[1].pImmutableSamplers = VK_NULL_HANDLE;
-
-	VkDescriptorSetLayoutCreateInfo descriptorLayoutCI{};
-	descriptorLayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptorLayoutCI.bindingCount = 2;
-	descriptorLayoutCI.pBindings = layoutBindings;
-
-	result = vkCreateDescriptorSetLayout(vulkanDevice->GetDevice(), &descriptorLayoutCI, VK_NULL_HANDLE, &descriptorLayout);
-	if (result != VK_SUCCESS)
-		return false;
-
-	VkPipelineLayoutCreateInfo pipelineCI{};
-	pipelineCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineCI.setLayoutCount = 1;
-	pipelineCI.pSetLayouts = &descriptorLayout;
-
-	result = vkCreatePipelineLayout(vulkanDevice->GetDevice(), &pipelineCI, VK_NULL_HANDLE, &pipelineLayout);
-
 	return true;
 }
 
 void VulkanShader::Unload(VulkanDevice * vulkanDevice)
 {
-	vkDestroyPipelineLayout(vulkanDevice->GetDevice(), pipelineLayout, VK_NULL_HANDLE);
-	vkDestroyDescriptorSetLayout(vulkanDevice->GetDevice(), descriptorLayout, VK_NULL_HANDLE);
 	vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderStages[1].module, VK_NULL_HANDLE);
 	vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderStages[0].module, VK_NULL_HANDLE);
 }
@@ -154,14 +119,4 @@ void VulkanShader::Unload(VulkanDevice * vulkanDevice)
 VkPipelineShaderStageCreateInfo * VulkanShader::GetShaderStages()
 {
 	return shaderStages;
-}
-
-VkPipelineLayout VulkanShader::GetPipelineLayout()
-{
-	return pipelineLayout;
-}
-
-VkDescriptorSetLayout * VulkanShader::GetDescriptorLayout()
-{
-	return &descriptorLayout;
 }

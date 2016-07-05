@@ -14,6 +14,7 @@ extern LogManager * gLogManager;
 SceneManager::SceneManager()
 {
 	camera = NULL;
+	light = NULL;
 	renderCommandBuffer = NULL;
 	vulkanShader = NULL;
 	vulkanPipeline = NULL;
@@ -23,6 +24,7 @@ SceneManager::SceneManager()
 
 SceneManager::~SceneManager()
 {
+	SAFE_DELETE(light);
 	SAFE_DELETE(camera);
 }
 
@@ -31,6 +33,8 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	camera = new Camera();
 	camera->Init();
 	
+	light = new Light();
+
 	renderCommandBuffer = new VulkanCommandBuffer();
 	if (!renderCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool()))
 	{
@@ -60,7 +64,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	}
 
 	model = new Model();
-	if (!model->Init("data/models/teapot.rcm", vulkan, vulkanShader, texture))
+	if (!model->Init("data/models/teapot.rcm", vulkan, vulkanPipeline, texture, light))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init model!");
 		return false;
@@ -68,7 +72,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	model->SetPosition(-2.0f, 0.0f, 0.0f);
 
 	model2 = new Model();
-	if (!model2->Init("data/models/teapot.rcm", vulkan, vulkanShader, texture))
+	if (!model2->Init("data/models/teapot.rcm", vulkan, vulkanPipeline, texture, light))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init model2!");
 		return false;
@@ -96,8 +100,8 @@ void SceneManager::Render(VulkanInterface * vulkan)
 
 	vulkanPipeline->SetActive(renderCommandBuffer);
 	
-	model->Render(vulkan, renderCommandBuffer, vulkanShader, camera);
-	model2->Render(vulkan, renderCommandBuffer, vulkanShader, camera);
+	model->Render(vulkan, renderCommandBuffer, vulkanPipeline, camera, light);
+	model2->Render(vulkan, renderCommandBuffer, vulkanPipeline, camera, light);
 
 	vulkan->EndScene(renderCommandBuffer);
 }
