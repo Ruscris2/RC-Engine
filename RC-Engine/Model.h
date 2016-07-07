@@ -17,6 +17,7 @@ class Model
 	private:
 		std::vector<Mesh*> meshes;
 		std::vector<Texture*> diffuseTextures;
+		std::vector<VulkanCommandBuffer*> drawCmdBuffers;
 
 		float posX, posY, posZ;
 		float rotX, rotY, rotZ;

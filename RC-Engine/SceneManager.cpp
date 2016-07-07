@@ -42,14 +42,14 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	light = new Light();
 
 	deferredCommandBuffer = new VulkanCommandBuffer();
-	if (!deferredCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool()))
+	if (!deferredCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create a command buffer! (deferredCommandBuffer)");
 		return false;
 	}
 
 	renderCommandBuffer = new VulkanCommandBuffer();
-	if (!renderCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool()))
+	if (!renderCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create a command buffer! (renderCommandBuffer)");
 		return false;
@@ -90,7 +90,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	}
 
 	model = new Model();
-	if (!model->Init("data/models/teapot.rcm", vulkan, deferredPipeline, renderCommandBuffer))
+	if (!model->Init("data/models/test.rcm", vulkan, deferredPipeline, renderCommandBuffer))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init model!");
 		return false;
@@ -139,8 +139,6 @@ void SceneManager::Render(VulkanInterface * vulkan)
 
 	vulkan->BeginScene3D(deferredCommandBuffer);
 
-	deferredPipeline->SetActive(deferredCommandBuffer);
-	
 	model->Render(vulkan, deferredCommandBuffer, deferredPipeline, camera);
 	model2->Render(vulkan, deferredCommandBuffer, deferredPipeline, camera);
 

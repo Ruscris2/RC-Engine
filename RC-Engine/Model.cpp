@@ -67,6 +67,15 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 			return false;
 		}
 		diffuseTextures.push_back(diffuse);
+
+		// Init draw command buffers for each meash
+		VulkanCommandBuffer * drawCmdBuffer = new VulkanCommandBuffer();
+		if (!drawCmdBuffer->Init(vulkanDevice, vulkan->GetVulkanCommandPool(), false))
+		{
+			gLogManager->AddMessage("ERROR: Failed to create a draw command buffer!");
+			return false;
+		}
+		drawCmdBuffers.push_back(drawCmdBuffer);
 	}
 
 	fclose(file);
@@ -170,6 +179,7 @@ void Model::Unload(VulkanInterface * vulkan)
 
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
+		SAFE_UNLOAD(drawCmdBuffers[i], vulkanDevice, vulkan->GetVulkanCommandPool());
 		SAFE_UNLOAD(diffuseTextures[i], vulkanDevice);
 		SAFE_UNLOAD(meshes[i], vulkan);
 	}
@@ -201,11 +211,17 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 		descriptorWrite[1].pImageInfo = &textureDesc;
 		descriptorWrite[1].dstArrayElement = 0;
 		descriptorWrite[1].dstBinding = 1;
-
 		vkUpdateDescriptorSets(vulkan->GetVulkanDevice()->GetDevice(), sizeof(descriptorWrite) / sizeof(descriptorWrite[0]), descriptorWrite, 0, NULL);
+		
+		drawCmdBuffers[i]->BeginRecordingSecondary(vulkan->GetDeferredRenderpass()->GetRenderpass(), vulkan->GetDeferredFramebuffer());
 
-		vkCmdBindDescriptorSets(commandBuffer->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->GetPipelineLayout(), 0, 1, &descriptorSet, 0, NULL);
-		meshes[i]->Render(vulkan, commandBuffer);
+		vulkan->InitViewportAndScissors(drawCmdBuffers[i]);
+		vulkanPipeline->SetActive(drawCmdBuffers[i]);
+		vkCmdBindDescriptorSets(drawCmdBuffers[i]->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->GetPipelineLayout(), 0, 1, &descriptorSet, 0, NULL);
+		meshes[i]->Render(vulkan, drawCmdBuffers[i]);
+
+		drawCmdBuffers[i]->EndRecording();
+		drawCmdBuffers[i]->ExecuteSecondary(commandBuffer);
 	}
 }
 

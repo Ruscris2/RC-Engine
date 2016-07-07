@@ -100,7 +100,7 @@ bool VulkanInterface::Init(HWND hwnd)
 	}
 
 	initCommandBuffer = new VulkanCommandBuffer();
-	if (!initCommandBuffer->Init(vulkanDevice, vulkanCommandPool))
+	if (!initCommandBuffer->Init(vulkanDevice, vulkanCommandPool, true))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create a command buffer! (initCommandBuffer)");
 		return false;
@@ -193,7 +193,7 @@ void VulkanInterface::BeginScene3D(VulkanCommandBuffer * commandBuffer)
 		VulkanTools::SetImageLayout(attachments[i]->GetImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 			NULL, commandBuffer, vulkanDevice, false);
 	
-	deferredRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, deferredFramebuffer);
+	deferredRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, deferredFramebuffer, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 }
 
 void VulkanInterface::EndScene3D(VulkanCommandBuffer * commandBuffer)
@@ -222,7 +222,7 @@ void VulkanInterface::BeginScene2D(VulkanCommandBuffer * commandBuffer, VulkanPi
 	vulkanSwapchain->AcquireNextImage(vulkanDevice, presentCompleteSemaphore);
 	VulkanTools::SetImageLayout(vulkanSwapchain->GetCurrentImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL, initCommandBuffer, vulkanDevice, true);
-	mainRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, vulkanSwapchain->GetCurrentFramebuffer());
+	mainRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, vulkanSwapchain->GetCurrentFramebuffer(), VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void VulkanInterface::EndScene2D(VulkanCommandBuffer * commandBuffer)
@@ -300,6 +300,11 @@ FrameBufferAttachment * VulkanInterface::GetNormalAttachment()
 FrameBufferAttachment * VulkanInterface::GetAlbedoAttachment()
 {
 	return albedoAtt;
+}
+
+VkFramebuffer VulkanInterface::GetDeferredFramebuffer()
+{
+	return deferredFramebuffer;
 }
 
 bool VulkanInterface::InitDepthBuffer()

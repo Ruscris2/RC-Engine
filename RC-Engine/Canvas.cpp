@@ -189,7 +189,7 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 
 	// Copy data to VRAM using command buffer
 	VulkanCommandBuffer * cmdBuffer = new VulkanCommandBuffer();
-	if (!cmdBuffer->Init(vulkanDevice, cmdPool))
+	if (!cmdBuffer->Init(vulkanDevice, cmdPool, true))
 		return false;
 
 	cmdBuffer->BeginRecording();

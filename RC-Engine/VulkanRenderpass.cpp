@@ -56,7 +56,7 @@ void VulkanRenderpass::Unload(VulkanDevice * vulkanDevice)
 	vkDestroyRenderPass(vulkanDevice->GetDevice(), renderPass, VK_NULL_HANDLE);
 }
 
-void VulkanRenderpass::BeginRenderpass(VulkanCommandBuffer * commandBuffer, float r, float g, float b, float a, VkFramebuffer frame)
+void VulkanRenderpass::BeginRenderpass(VulkanCommandBuffer * commandBuffer, float r, float g, float b, float a, VkFramebuffer frame, VkSubpassContents contents)
 {
 	for (int i = 0; i < clearCount; i++)
 	{
@@ -81,7 +81,7 @@ void VulkanRenderpass::BeginRenderpass(VulkanCommandBuffer * commandBuffer, floa
 	rpBegin.clearValueCount = clearCount;
 	rpBegin.pClearValues = clear;
 
-	vkCmdBeginRenderPass(commandBuffer->GetCommandBuffer(), &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(commandBuffer->GetCommandBuffer(), &rpBegin, contents);
 }
 
 void VulkanRenderpass::EndRenderpass(VulkanCommandBuffer * commandBuffer)

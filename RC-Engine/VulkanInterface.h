@@ -65,7 +65,6 @@ class VulkanInterface
 		bool InitDepthBuffer();
 		bool InitColorSampler();
 		bool InitDeferredFramebuffer();
-		void InitViewportAndScissors(VulkanCommandBuffer * commandBuffer);
 	
 #ifdef _DEBUG
 		bool InitVulkanDebugMode();
@@ -80,6 +79,7 @@ class VulkanInterface
 		void EndScene3D(VulkanCommandBuffer * commandBuffer);
 		void BeginScene2D(VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline);
 		void EndScene2D(VulkanCommandBuffer * commandBuffer);
+		void InitViewportAndScissors(VulkanCommandBuffer * commandBuffer);
 		VulkanCommandPool * GetVulkanCommandPool();
 		VulkanDevice * GetVulkanDevice();
 		VulkanRenderpass * GetMainRenderpass();
@@ -90,4 +90,5 @@ class VulkanInterface
 		FrameBufferAttachment * GetPositionAttachment();
 		FrameBufferAttachment * GetNormalAttachment();
 		FrameBufferAttachment * GetAlbedoAttachment();
+		VkFramebuffer GetDeferredFramebuffer();
 };
