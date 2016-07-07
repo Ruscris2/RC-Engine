@@ -13,11 +13,13 @@ class VulkanRenderpass
 {
 	private:
 		VkRenderPass renderPass;
+		VkClearValue * clear;
+		int clearCount, depthClearIndex;
 	public:
 		VulkanRenderpass();
 		~VulkanRenderpass();
 
-		bool Init(VulkanDevice * vulkanDevice, VkAttachmentDescription * attachments, int attachmentCount);
+		bool Init(VulkanDevice * vulkanDevice, VkAttachmentDescription * attachments, int attachmentCount, VkAttachmentReference * attachmentRefs, int attachRefCount, int depthRefIndex);
 		void Unload(VulkanDevice * vulkanDevice);
 		void BeginRenderpass(VulkanCommandBuffer * commandBuffer, float r, float g, float b, float a, VkFramebuffer frame);
 		void EndRenderpass(VulkanCommandBuffer * commandBuffer);

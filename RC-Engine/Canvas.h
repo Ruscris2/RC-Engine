@@ -1,38 +1,37 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: Model.h                                              |
+|                             File: Canvas.h                                             |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 #pragma once
 
 #include "VulkanInterface.h"
-#include "VulkanCommandBuffer.h"
-#include "VulkanPipeline.h"
-#include "Camera.h"
-#include "Texture.h"
 #include "Light.h"
 
-class Model
+class Canvas
 {
 	private:
 		struct Vertex {
 			float x, y, z;
 			float u, v;
-			float nx, ny, nz;
 		};
 		unsigned int vertexCount;
 		unsigned int indexCount;
 
-		float posX, posY, posZ;
-		float rotX, rotY, rotZ;
-
 		struct VertexUniformBuffer
 		{
 			glm::mat4 MVP;
-			glm::mat4 worldMatrix;
+		};
+		struct FragmentUniformBuffer
+		{
+			glm::vec4 ambientColor;
+			glm::vec4 diffuseColor;
+			glm::vec3 lightDirection;
+			int imageIndex;
 		};
 		VertexUniformBuffer vertexUniformBuffer;
+		FragmentUniformBuffer fragmentUniformBuffer;
 
 		VkBuffer vertexBuffer;
 		VkDeviceMemory vertexMemory;
@@ -41,20 +40,21 @@ class Model
 
 		VkDescriptorPool descriptorPool;
 		VkDescriptorSet descriptorSet;
-		
+
 		VkBuffer vsUniformBuffer;
 		VkDeviceMemory vsUniformMemory;
 		VkDescriptorBufferInfo vsUniformBufferInfo;
 		VkMemoryRequirements vsMemReq;
-	private:
-		void UpdateWorldMatrix();
-	public:
-		Model();
-		~Model();
 
-		bool Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, Texture * texture);
+		VkBuffer fsUniformBuffer;
+		VkDeviceMemory fsUniformMemory;
+		VkDescriptorBufferInfo fsUniformBufferInfo;
+		VkMemoryRequirements fsMemReq;
+	public:
+		Canvas();
+		~Canvas();
+
+		bool Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView, VkImageView albedoView);
 		void Unload(VulkanInterface * vulkan);
-		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera);
-		void SetPosition(float x, float y, float z);
-		void SetRotation(float x, float y, float z);
+		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, glm::mat4 orthoMatrix, Light * light, int imageIndex);
 };

@@ -9,6 +9,7 @@
 
 #include "Texture.h"
 #include "LogManager.h"
+#include "VulkanTools.h"
 
 extern LogManager * gLogManager;
 
@@ -26,7 +27,7 @@ Texture::~Texture()
 	textureImage = VK_NULL_HANDLE;
 }
 
-bool Texture::Init(VulkanInterface * vulkan, std::string filename)
+bool Texture::Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::string filename)
 {
 	VkResult result;
 	unsigned int width, height;
@@ -64,26 +65,26 @@ bool Texture::Init(VulkanInterface * vulkan, std::string filename)
 	imageCI.extent.height = height;
 	imageCI.extent.depth = 1;
 
-	result = vkCreateImage(vulkan->GetVulkanDevice()->GetDevice(), &imageCI, VK_NULL_HANDLE, &textureImage);
+	result = vkCreateImage(device->GetDevice(), &imageCI, VK_NULL_HANDLE, &textureImage);
 	if (result != VK_SUCCESS)
 		return false;
 
 	VkMemoryRequirements memReq{};
-	vkGetImageMemoryRequirements(vulkan->GetVulkanDevice()->GetDevice(), textureImage, &memReq);
+	vkGetImageMemoryRequirements(device->GetDevice(), textureImage, &memReq);
 
 	VkMemoryAllocateInfo memAlloc{};
 	memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memAlloc.allocationSize = memReq.size;
 
-	if (!vulkan->GetVulkanDevice()->MemoryTypeFromProperties(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &memAlloc.memoryTypeIndex))
+	if (!device->MemoryTypeFromProperties(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &memAlloc.memoryTypeIndex))
 		return false;
 
 
-	result = vkAllocateMemory(vulkan->GetVulkanDevice()->GetDevice(), &memAlloc, VK_NULL_HANDLE, &textureMemory);
+	result = vkAllocateMemory(device->GetDevice(), &memAlloc, VK_NULL_HANDLE, &textureMemory);
 	if (result != VK_SUCCESS)
 		return false;
 
-	result = vkBindImageMemory(vulkan->GetVulkanDevice()->GetDevice(), textureImage, textureMemory, 0);
+	result = vkBindImageMemory(device->GetDevice(), textureImage, textureMemory, 0);
 	if (result != VK_SUCCESS)
 		return false;
 
@@ -93,15 +94,15 @@ bool Texture::Init(VulkanInterface * vulkan, std::string filename)
 	VkSubresourceLayout subresourceLayout;
 	void * pData;
 
-	vkGetImageSubresourceLayout(vulkan->GetVulkanDevice()->GetDevice(), textureImage, &subresource, &subresourceLayout);
+	vkGetImageSubresourceLayout(device->GetDevice(), textureImage, &subresource, &subresourceLayout);
 
-	result = vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), textureMemory, 0, memReq.size, 0, &pData);
+	result = vkMapMemory(device->GetDevice(), textureMemory, 0, memReq.size, 0, &pData);
 	if (result != VK_SUCCESS)
 		return false;
 
 	memcpy(pData, fileData, fileSize);
 
-	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), textureMemory);
+	vkUnmapMemory(device->GetDevice(), textureMemory);
 
 	VkImageSubresourceRange range{};
 	range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -109,27 +110,8 @@ bool Texture::Init(VulkanInterface * vulkan, std::string filename)
 	range.levelCount = 1;
 	range.layerCount = 1;
 
-	vulkan->SetImageLayout(textureImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, &range);
-
-	// Sampler
-	VkSamplerCreateInfo samplerCI{};
-	samplerCI.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerCI.magFilter = VK_FILTER_LINEAR;
-	samplerCI.minFilter = VK_FILTER_LINEAR;
-	samplerCI.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	samplerCI.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerCI.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerCI.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerCI.mipLodBias = 0.0f;
-	samplerCI.compareOp = VK_COMPARE_OP_NEVER;
-	samplerCI.minLod = 0.0f;
-	samplerCI.maxLod = 0.0f;
-	samplerCI.maxAnisotropy = vulkan->GetVulkanDevice()->GetGPUProperties().limits.maxSamplerAnisotropy;
-	samplerCI.anisotropyEnable = VK_TRUE;
-	samplerCI.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-	result = vkCreateSampler(vulkan->GetVulkanDevice()->GetDevice(), &samplerCI, VK_NULL_HANDLE, &sampler);
-	if (result != VK_SUCCESS)
-		return false;
+	VulkanTools::SetImageLayout(textureImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		&range, cmdBuffer, device, true);
 
 	VkImageViewCreateInfo viewCI{};
 	viewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -145,7 +127,7 @@ bool Texture::Init(VulkanInterface * vulkan, std::string filename)
 	viewCI.subresourceRange.baseArrayLayer = 0;
 	viewCI.subresourceRange.layerCount = 1;
 	viewCI.subresourceRange.levelCount = 1;
-	result = vkCreateImageView(vulkan->GetVulkanDevice()->GetDevice(), &viewCI, VK_NULL_HANDLE, &textureImageView);
+	result = vkCreateImageView(device->GetDevice(), &viewCI, VK_NULL_HANDLE, &textureImageView);
 	if (result != VK_SUCCESS)
 		return false;
 
@@ -156,14 +138,8 @@ bool Texture::Init(VulkanInterface * vulkan, std::string filename)
 void Texture::Unload(VulkanDevice * vulkanDevice)
 {
 	vkDestroyImageView(vulkanDevice->GetDevice(), textureImageView, VK_NULL_HANDLE);
-	vkDestroySampler(vulkanDevice->GetDevice(), sampler, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), textureMemory, VK_NULL_HANDLE);
 	vkDestroyImage(vulkanDevice->GetDevice(), textureImage, VK_NULL_HANDLE);
-}
-
-VkSampler Texture::GetSampler()
-{
-	return sampler;
 }
 
 VkImageView Texture::GetImageView()

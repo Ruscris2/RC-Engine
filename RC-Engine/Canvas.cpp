@@ -1,57 +1,80 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: Model.cpp                                            |
+|                             File: Canvas.cpp                                           |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 
-#include "Model.h"
+#include "Canvas.h"
 #include "StdInc.h"
-#include "LogManager.h"
 
-extern LogManager * gLogManager;
-
-Model::Model()
+Canvas::Canvas()
 {
 	vertexBuffer = VK_NULL_HANDLE;
 	indexBuffer = VK_NULL_HANDLE;
 	descriptorPool = VK_NULL_HANDLE;
 	vsUniformBuffer = VK_NULL_HANDLE;
+	fsUniformBuffer = VK_NULL_HANDLE;
 }
 
-Model::~Model()
+Canvas::~Canvas()
 {
+	fsUniformBuffer = VK_NULL_HANDLE;
 	vsUniformBuffer = VK_NULL_HANDLE;
 	descriptorPool = VK_NULL_HANDLE;
 	indexBuffer = VK_NULL_HANDLE;
 	vertexBuffer = VK_NULL_HANDLE;
 }
 
-bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, Texture * texture)
+bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView, VkImageView albedoView)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
 
 	VkResult result;
-	
-	FILE * file = fopen(filename.c_str(), "rb");
-	if (file == NULL)
-	{
-		gLogManager->AddMessage("ERROR: Model file not found!");
-		return false;
-	}
 
-	fread(&vertexCount, sizeof(unsigned int), 1, file);
-	fread(&indexCount, sizeof(unsigned int), 1, file);
+	vertexCount = 4;
+	indexCount = 6;
 
 	Vertex * vertexData = new Vertex[vertexCount];
 	uint32_t * indexData = new uint32_t[indexCount];
-	
-	fread(vertexData, sizeof(Vertex), vertexCount, file);
-	fread(indexData, sizeof(uint32_t), indexCount, file);
 
-	fclose(file);
-	
+	// Bottom right
+	vertexData[0].x = 1.0f;
+	vertexData[0].y = 1.0f;
+	vertexData[0].z = 0.0f;
+	vertexData[0].u = 1.0f;
+	vertexData[0].v = 1.0f;
+
+	// Bottom left
+	vertexData[1].x = 0.0f;
+	vertexData[1].y = 1.0f;
+	vertexData[1].z = 0.0f;
+	vertexData[1].u = 0.0f;
+	vertexData[1].v = 1.0f;
+
+	// Top left
+	vertexData[2].x = 0.0f;
+	vertexData[2].y = 0.0f;
+	vertexData[2].z = 0.0f;
+	vertexData[2].u = 0.0f;
+	vertexData[2].v = 0.0f;
+
+	// Top right
+	vertexData[3].x = 1.0f;
+	vertexData[3].y = 0.0f;
+	vertexData[3].z = 0.0f;
+	vertexData[3].u = 1.0f;
+	vertexData[3].v = 0.0f;
+
+	indexData[0] = 0;
+	indexData[1] = 1;
+	indexData[2] = 2;
+
+	indexData[3] = 2;
+	indexData[4] = 3;
+	indexData[5] = 0;
+
 	VkMemoryRequirements memReq;
 	VkMemoryAllocateInfo allocInfo{};
 	uint8_t *pData;
@@ -118,7 +141,7 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 	indexBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	indexBufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	indexBufferCI.size = sizeof(uint32_t) * indexCount;
-	
+
 	result = vkCreateBuffer(vulkanDevice->GetDevice(), &indexBufferCI, VK_NULL_HANDLE, &stagingIndexBuffer);
 	if (result != VK_SUCCESS)
 		return false;
@@ -179,7 +202,7 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 
 	cmdBuffer->EndRecording();
 	cmdBuffer->Execute(vulkanDevice, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE);
-	
+
 	SAFE_UNLOAD(cmdBuffer, vulkanDevice, cmdPool);
 
 	vkFreeMemory(vulkanDevice->GetDevice(), stagingVertexMemory, VK_NULL_HANDLE);
@@ -190,10 +213,13 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 	delete[] vertexData;
 	delete[] indexData;
 
-	// Matrix init
-	vertexUniformBuffer.worldMatrix = glm::mat4(1.0f);
+	// Uniform inits
 	vertexUniformBuffer.MVP = glm::mat4();
-	
+	fragmentUniformBuffer.ambientColor = glm::vec4();
+	fragmentUniformBuffer.diffuseColor = glm::vec4();
+	fragmentUniformBuffer.lightDirection = glm::vec3();
+	fragmentUniformBuffer.imageIndex = 4;
+
 	// Vertex shader Uniform buffer
 	VkBufferCreateInfo vsBufferCI{};
 	vsBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -232,15 +258,58 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 	vsUniformBufferInfo.buffer = vsUniformBuffer;
 	vsUniformBufferInfo.offset = 0;
 	vsUniformBufferInfo.range = sizeof(vertexUniformBuffer);
-	
+
+	// Fragment shader Uniform buffer
+	VkBufferCreateInfo fsBufferCI{};
+	fsBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	fsBufferCI.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	fsBufferCI.size = sizeof(fragmentUniformBuffer);
+	fsBufferCI.queueFamilyIndexCount = 0;
+	fsBufferCI.pQueueFamilyIndices = VK_NULL_HANDLE;
+	fsBufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	result = vkCreateBuffer(vulkanDevice->GetDevice(), &fsBufferCI, VK_NULL_HANDLE, &fsUniformBuffer);
+	if (result != VK_SUCCESS)
+		return false;
+
+	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), fsUniformBuffer, &fsMemReq);
+
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = fsMemReq.size;
+	if (!vulkanDevice->MemoryTypeFromProperties(fsMemReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &allocInfo.memoryTypeIndex))
+		return false;
+
+	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &fsUniformMemory);
+	if (result != VK_SUCCESS)
+		return false;
+
+	result = vkMapMemory(vulkanDevice->GetDevice(), fsUniformMemory, 0, fsMemReq.size, 0, (void**)&pData);
+	if (result != VK_SUCCESS)
+		return false;
+
+	memcpy(pData, &fragmentUniformBuffer, sizeof(fragmentUniformBuffer));
+
+	vkUnmapMemory(vulkanDevice->GetDevice(), fsUniformMemory);
+
+	result = vkBindBufferMemory(vulkanDevice->GetDevice(), fsUniformBuffer, fsUniformMemory, 0);
+	if (result != VK_SUCCESS)
+		return false;
+
+	fsUniformBufferInfo.buffer = fsUniformBuffer;
+	fsUniformBufferInfo.offset = 0;
+	fsUniformBufferInfo.range = sizeof(fragmentUniformBuffer);
+
 	// Descriptor pool
-	VkDescriptorPoolSize typeCounts[3];
+	VkDescriptorPoolSize typeCounts[5];
 	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	typeCounts[0].descriptorCount = 1;
 	typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	typeCounts[1].descriptorCount = 1;
-	typeCounts[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	typeCounts[2].descriptorCount = 1;
+	typeCounts[3].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[3].descriptorCount = 1;
+	typeCounts[4].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[4].descriptorCount = 1;
 
 	VkDescriptorPoolCreateInfo descriptorPoolCI{};
 	descriptorPoolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -263,7 +332,7 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 	if (result != VK_SUCCESS)
 		return false;
 
-	VkWriteDescriptorSet write[2];
+	VkWriteDescriptorSet write[5];
 
 	write[0] = {};
 	write[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -275,10 +344,10 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 	write[0].dstArrayElement = 0;
 	write[0].dstBinding = 0;
 
-	VkDescriptorImageInfo textureDesc{};
-	textureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	textureDesc.imageView = texture->GetImageView();
-	textureDesc.sampler = vulkan->GetColorSampler();
+	VkDescriptorImageInfo positionTextureDesc{};
+	positionTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	positionTextureDesc.imageView = positionView;
+	positionTextureDesc.sampler = vulkan->GetColorSampler();
 
 	write[1] = {};
 	write[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -286,20 +355,62 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 	write[1].dstSet = descriptorSet;
 	write[1].descriptorCount = 1;
 	write[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	write[1].pImageInfo = &textureDesc;
+	write[1].pImageInfo = &positionTextureDesc;
 	write[1].dstArrayElement = 0;
 	write[1].dstBinding = 1;
+
+	VkDescriptorImageInfo normalTextureDesc{};
+	normalTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	normalTextureDesc.imageView = normalView;
+	normalTextureDesc.sampler = vulkan->GetColorSampler();
+
+	write[2] = {};
+	write[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write[2].pNext = NULL;
+	write[2].dstSet = descriptorSet;
+	write[2].descriptorCount = 1;
+	write[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	write[2].pImageInfo = &normalTextureDesc;
+	write[2].dstArrayElement = 0;
+	write[2].dstBinding = 2;
+
+	VkDescriptorImageInfo albedoTextureDesc{};
+	albedoTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	albedoTextureDesc.imageView = albedoView;
+	albedoTextureDesc.sampler = vulkan->GetColorSampler();
+
+	write[3] = {};
+	write[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write[3].pNext = NULL;
+	write[3].dstSet = descriptorSet;
+	write[3].descriptorCount = 1;
+	write[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	write[3].pImageInfo = &albedoTextureDesc;
+	write[3].dstArrayElement = 0;
+	write[3].dstBinding = 3;
+
+	write[4] = {};
+	write[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write[4].pNext = NULL;
+	write[4].dstSet = descriptorSet;
+	write[4].descriptorCount = 1;
+	write[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	write[4].pBufferInfo = &fsUniformBufferInfo;
+	write[4].dstArrayElement = 0;
+	write[4].dstBinding = 4;
 
 	vkUpdateDescriptorSets(vulkanDevice->GetDevice(), sizeof(write) / sizeof(write[0]), write, 0, NULL);
 
 	return true;
 }
 
-void Model::Unload(VulkanInterface * vulkan)
+void Canvas::Unload(VulkanInterface * vulkan)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
-	
+
 	vkDestroyDescriptorPool(vulkanDevice->GetDevice(), descriptorPool, VK_NULL_HANDLE);
+	vkFreeMemory(vulkanDevice->GetDevice(), fsUniformMemory, VK_NULL_HANDLE);
+	vkDestroyBuffer(vulkanDevice->GetDevice(), fsUniformBuffer, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), vsUniformMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), vsUniformBuffer, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), indexMemory, VK_NULL_HANDLE);
@@ -308,15 +419,26 @@ void Model::Unload(VulkanInterface * vulkan)
 	vkDestroyBuffer(vulkanDevice->GetDevice(), vertexBuffer, VK_NULL_HANDLE);
 }
 
-void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera)
+void Canvas::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, glm::mat4 orthoMatrix, Light * light, int imageIndex)
 {
-	// Update vertex uniform buffer
-	vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
-
 	uint8_t *pData;
+
+	// Update vertex uniform buffer
+	vertexUniformBuffer.MVP = orthoMatrix;
+	
 	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);
 	memcpy(pData, &vertexUniformBuffer, sizeof(vertexUniformBuffer));
 	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory);
+
+	// Update fragment uniform buffer
+	fragmentUniformBuffer.ambientColor = light->GetAmbientColor();
+	fragmentUniformBuffer.diffuseColor = light->GetDiffuseColor();
+	fragmentUniformBuffer.lightDirection = light->GetLightDirection();
+	fragmentUniformBuffer.imageIndex = imageIndex;
+
+	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), fsUniformMemory, 0, fsMemReq.size, 0, (void**)&pData);
+	memcpy(pData, &fragmentUniformBuffer, sizeof(fragmentUniformBuffer));
+	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), fsUniformMemory);
 
 	// Draw
 	VkDeviceSize offsets[1] = { 0 };
@@ -325,28 +447,4 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 	vkCmdBindDescriptorSets(commandBuffer->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->GetPipelineLayout(), 0, 1, &descriptorSet, 0, NULL);
 
 	vkCmdDrawIndexed(commandBuffer->GetCommandBuffer(), indexCount, 1, 0, 0, 0);
-}
-
-void Model::SetPosition(float x, float y, float z)
-{
-	posX = x;
-	posY = y;
-	posZ = z;
-	UpdateWorldMatrix();
-}
-
-void Model::SetRotation(float x, float y, float z)
-{
-	rotX = x;
-	rotY = y;
-	rotZ = z;
-	UpdateWorldMatrix();
-}
-
-void Model::UpdateWorldMatrix()
-{
-	vertexUniformBuffer.worldMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(posX, posY, posZ));
-	vertexUniformBuffer.worldMatrix = glm::rotate(vertexUniformBuffer.worldMatrix, glm::radians(rotX), glm::vec3(1.0f, 0.0f, 0.0f));
-	vertexUniformBuffer.worldMatrix = glm::rotate(vertexUniformBuffer.worldMatrix, glm::radians(rotY), glm::vec3(0.0f, 1.0f, 0.0f));
-	vertexUniformBuffer.worldMatrix = glm::rotate(vertexUniformBuffer.worldMatrix, glm::radians(rotZ), glm::vec3(0.0f, 0.0f, 1.0f));
 }

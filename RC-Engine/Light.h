@@ -11,24 +11,19 @@
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
 
-struct LightBuffer
-{
-	glm::vec4 ambientColor;
-	glm::vec4 diffuseColor;
-	glm::vec3 lightDirection;
-	float padding;
-};
-
 class Light
 {
 	private:
-		LightBuffer lightBuffer;
+		glm::vec4 ambientColor;
+		glm::vec4 diffuseColor;
+		glm::vec3 lightDirection;
 	public:
 		Light();
 
 		void SetAmbientColor(float r, float g, float b, float a);
 		void SetDiffuseColor(float r, float g, float b, float a);
 		void SetLightDirection(float x, float y, float z);
-		size_t GetLightBufferSize();
-		LightBuffer * GetLightBuffer();
+		glm::vec4 GetAmbientColor();
+		glm::vec4 GetDiffuseColor();
+		glm::vec3 GetLightDirection();
 };

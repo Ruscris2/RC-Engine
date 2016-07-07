@@ -13,30 +13,24 @@ extern Settings * gSettings;
 VulkanRenderpass::VulkanRenderpass()
 {
 	renderPass = VK_NULL_HANDLE;
+	clear = NULL;
 }
 
 VulkanRenderpass::~VulkanRenderpass()
 {
+	delete[] clear;
 	renderPass = VK_NULL_HANDLE;
 }
 
-bool VulkanRenderpass::Init(VulkanDevice * vulkanDevice, VkAttachmentDescription * attachments, int attachmentCount)
+bool VulkanRenderpass::Init(VulkanDevice * vulkanDevice, VkAttachmentDescription * attachments, int attachmentCount, VkAttachmentReference * attachmentRefs, int attachRefCount, int depthRefIndex)
 {
 	VkResult result;
 
-	VkAttachmentReference colorRef{};
-	colorRef.attachment = 0;
-	colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference depthRef{};
-	depthRef.attachment = 1;
-	depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
 	VkSubpassDescription subpass{};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colorRef;
-	subpass.pDepthStencilAttachment = &depthRef;
+	subpass.colorAttachmentCount = attachmentCount - 1;
+	subpass.pColorAttachments = attachmentRefs;
+	subpass.pDepthStencilAttachment = &attachmentRefs[depthRefIndex];
 
 	VkRenderPassCreateInfo renderpassCI{};
 	renderpassCI.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -51,6 +45,9 @@ bool VulkanRenderpass::Init(VulkanDevice * vulkanDevice, VkAttachmentDescription
 	if (result != VK_SUCCESS)
 		return false;
 
+	clear = new VkClearValue[attachmentCount];
+	depthClearIndex = depthRefIndex;
+	clearCount = attachmentCount;
 	return true;
 }
 
@@ -61,13 +58,16 @@ void VulkanRenderpass::Unload(VulkanDevice * vulkanDevice)
 
 void VulkanRenderpass::BeginRenderpass(VulkanCommandBuffer * commandBuffer, float r, float g, float b, float a, VkFramebuffer frame)
 {
-	VkClearValue clear[2];
-	clear[0].color.float32[0] = r;
-	clear[0].color.float32[1] = g;
-	clear[0].color.float32[2] = b;
-	clear[0].color.float32[3] = a;
-	clear[1].depthStencil.depth = 1.0f;
-	clear[1].depthStencil.stencil = 0;
+	for (int i = 0; i < clearCount; i++)
+	{
+		clear[i].color.float32[0] = r;
+		clear[i].color.float32[1] = g;
+		clear[i].color.float32[2] = b;
+		clear[i].color.float32[3] = a;
+	}
+	
+	clear[depthClearIndex].depthStencil.depth = 1.0f;
+	clear[depthClearIndex].depthStencil.stencil = 0;
 
 	VkRenderPassBeginInfo rpBegin{};
 	rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -78,7 +78,7 @@ void VulkanRenderpass::BeginRenderpass(VulkanCommandBuffer * commandBuffer, floa
 	rpBegin.renderArea.offset.y = 0;
 	rpBegin.renderArea.extent.width = gSettings->GetWindowWidth();
 	rpBegin.renderArea.extent.height = gSettings->GetWindowHeight();
-	rpBegin.clearValueCount = 2;
+	rpBegin.clearValueCount = clearCount;
 	rpBegin.pClearValues = clear;
 
 	vkCmdBeginRenderPass(commandBuffer->GetCommandBuffer(), &rpBegin, VK_SUBPASS_CONTENTS_INLINE);

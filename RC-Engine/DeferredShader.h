@@ -1,26 +1,25 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: Texture.h                                            |
+|                             File: DeferredShader.h                                     |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 #pragma once
 
-#include <string>
-
+#include "Shader.h"
+#include "VulkanDevice.h"
 #include "VulkanCommandBuffer.h"
 
-class Texture
+class DeferredShader : public Shader
 {
-	private:
-		VkImage textureImage;
-		VkImageView textureImageView;
-		VkDeviceMemory textureMemory;
-	public:
-		Texture();
-		~Texture();
+private:
+	VkPipelineShaderStageCreateInfo shaderStages[2];
 
-		bool Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::string filename);
-		void Unload(VulkanDevice * vulkanDevice);
-		VkImageView GetImageView();
+public:
+	DeferredShader();
+	~DeferredShader();
+
+	bool Init(VulkanDevice * vulkanDevice);
+	void Unload(VulkanDevice * vulkanDevice);
+	VkPipelineShaderStageCreateInfo * GetShaderStages();
 };

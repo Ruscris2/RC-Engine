@@ -9,11 +9,13 @@
 #include "Camera.h"
 #include "VulkanInterface.h"
 #include "DefaultShader.h"
+#include "DeferredShader.h"
 #include "VulkanPipeline.h"
 #include "VulkanCommandBuffer.h"
 #include "Model.h"
 #include "Texture.h"
 #include "Light.h"
+#include "Canvas.h"
 
 class SceneManager
 {
@@ -21,11 +23,18 @@ class SceneManager
 		Camera * camera;
 		Light * light;
 		DefaultShader * defaultShader;
-		VulkanPipeline * vulkanPipeline;
+		DeferredShader * deferredShader;
+		VulkanPipeline * defaultPipeline;
+		VulkanPipeline * deferredPipeline;
+		VulkanCommandBuffer * deferredCommandBuffer;
 		VulkanCommandBuffer * renderCommandBuffer;
+		Canvas * defaultShaderCanvas;
 		Model * model;
 		Model * model2;
 		Texture * texture;
+	private:
+		bool BuildDefaultPipeline(VulkanInterface * vulkan);
+		bool BuildDeferredPipeline(VulkanInterface * vulkan);
 	public:
 		SceneManager();
 		~SceneManager();

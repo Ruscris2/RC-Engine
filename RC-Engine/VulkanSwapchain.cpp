@@ -165,20 +165,13 @@ void VulkanSwapchain::Unload(VulkanDevice * vulkanDevice)
 	vkDestroySwapchainKHR(vulkanDevice->GetDevice(), swapChain, VK_NULL_HANDLE);
 }
 
-void VulkanSwapchain::AcquireNextImage(VulkanDevice * vulkanDevice)
+void VulkanSwapchain::AcquireNextImage(VulkanDevice * vulkanDevice, VkSemaphore signalSemaphore)
 {
-	VkSemaphoreCreateInfo semaphoreCI{};
-	semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCI, VK_NULL_HANDLE, &presentCompleteSemaphore);
-	vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCI, VK_NULL_HANDLE, &drawCompleteSemaphore);
-
-	vkAcquireNextImageKHR(vulkanDevice->GetDevice(), swapChain, UINT64_MAX, presentCompleteSemaphore, VK_NULL_HANDLE, &currentBuffer);
+	vkAcquireNextImageKHR(vulkanDevice->GetDevice(), swapChain, UINT64_MAX, signalSemaphore, VK_NULL_HANDLE, &currentBuffer);
 }
 
-void VulkanSwapchain::Present(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer)
+void VulkanSwapchain::Present(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer, VkSemaphore waitSemaphore)
 {
-	commandBuffer->Execute(vulkanDevice, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, presentCompleteSemaphore, drawCompleteSemaphore);
-
 	VkPresentInfoKHR present;
 	present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present.pNext = VK_NULL_HANDLE;
@@ -186,12 +179,9 @@ void VulkanSwapchain::Present(VulkanDevice * vulkanDevice, VulkanCommandBuffer *
 	present.pSwapchains = &swapChain;
 	present.pImageIndices = &currentBuffer;
 	present.waitSemaphoreCount = 1;
-	present.pWaitSemaphores = &drawCompleteSemaphore;
+	present.pWaitSemaphores = &waitSemaphore;
 	present.pResults = VK_NULL_HANDLE;
 	vkQueuePresentKHR(vulkanDevice->GetQueue(), &present);
-
-	vkDestroySemaphore(vulkanDevice->GetDevice(), presentCompleteSemaphore, VK_NULL_HANDLE);
-	vkDestroySemaphore(vulkanDevice->GetDevice(), drawCompleteSemaphore, VK_NULL_HANDLE);
 }
 
 VkImage VulkanSwapchain::GetCurrentImage()

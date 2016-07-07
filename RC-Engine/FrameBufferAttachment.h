@@ -1,26 +1,28 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: Texture.h                                            |
+|                             File: FrameBufferAttachment.h                              |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 #pragma once
 
-#include <string>
-
+#include "VulkanDevice.h"
 #include "VulkanCommandBuffer.h"
 
-class Texture
+class FrameBufferAttachment
 {
 	private:
-		VkImage textureImage;
-		VkImageView textureImageView;
-		VkDeviceMemory textureMemory;
+		VkImage image;
+		VkDeviceMemory memory;
+		VkImageView view;
+		VkFormat format;
 	public:
-		Texture();
-		~Texture();
+		FrameBufferAttachment();
+		~FrameBufferAttachment();
 
-		bool Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::string filename);
-		void Unload(VulkanDevice * vulkanDevice);
+		bool Create(VulkanDevice * device, VkFormat format, VkImageUsageFlagBits usage, VulkanCommandBuffer * cmdBuffer);
+		void Unload(VulkanDevice * device);
+		VkFormat GetFormat();
 		VkImageView GetImageView();
+		VkImage GetImage();
 };

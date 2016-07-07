@@ -14,11 +14,6 @@
 class VulkanPipeline
 {
 	private:
-		struct Vertex {
-			float x, y, z;
-			float u, v;
-			float nx, ny, nz;
-		};
 		VkVertexInputBindingDescription vertexBinding;
 		VkDescriptorSetLayout descriptorLayout;
 		VkPipelineLayout pipelineLayout;
@@ -28,7 +23,9 @@ class VulkanPipeline
 		VulkanPipeline();
 		~VulkanPipeline();
 
-		bool Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRenderpass * vulkanRenderpass);
+		bool Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRenderpass * vulkanRenderpass,
+			VkVertexInputAttributeDescription * vertexLayout, uint32_t numVertexLayout, VkDescriptorSetLayoutBinding * layoutBindings,
+			uint32_t numLayoutBindings, size_t strideSize, int numColorAttachments);
 		void Unload(VulkanDevice * vulkanDevice);
 		void SetActive(VulkanCommandBuffer * commandBuffer);
 		VkDescriptorSetLayout * GetDescriptorLayout();

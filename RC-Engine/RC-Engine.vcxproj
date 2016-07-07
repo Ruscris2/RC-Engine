@@ -144,6 +144,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Canvas.cpp" />
+    <ClCompile Include="DeferredShader.cpp" />
+    <ClCompile Include="FrameBufferAttachment.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="LogManager.cpp" />
@@ -162,10 +165,14 @@
     <ClCompile Include="DefaultShader.cpp" />
     <ClCompile Include="VulkanRenderpass.cpp" />
     <ClCompile Include="VulkanSwapchain.cpp" />
+    <ClCompile Include="VulkanTools.cpp" />
     <ClCompile Include="WinWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Canvas.h" />
+    <ClInclude Include="DeferredShader.h" />
+    <ClInclude Include="FrameBufferAttachment.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="Light.h" />
     <ClInclude Include="Model.h" />
@@ -185,6 +192,7 @@
     <ClInclude Include="DefaultShader.h" />
     <ClInclude Include="VulkanRenderpass.h" />
     <ClInclude Include="VulkanSwapchain.h" />
+    <ClInclude Include="VulkanTools.h" />
     <ClInclude Include="WinWindow.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

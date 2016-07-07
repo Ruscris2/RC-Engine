@@ -23,59 +23,21 @@ VulkanPipeline::~VulkanPipeline()
 	pipelineCache = VK_NULL_HANDLE;
 }
 
-bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRenderpass * vulkanRenderpass)
+bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRenderpass * vulkanRenderpass,
+	VkVertexInputAttributeDescription * vertexLayout, uint32_t numVertexLayout, VkDescriptorSetLayoutBinding * layoutBindings,
+	uint32_t numLayoutBindings, size_t strideSize, int numColorAttachments)
 {
 	VkResult result;
 
 	// Vertex layout
 	vertexBinding.binding = 0;
 	vertexBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-	vertexBinding.stride = sizeof(Vertex);
-
-	VkVertexInputAttributeDescription vertexLayout[3];
-
-	vertexLayout[0].binding = 0;
-	vertexLayout[0].location = 0;
-	vertexLayout[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-	vertexLayout[0].offset = 0;
-
-	vertexLayout[1].binding = 0;
-	vertexLayout[1].location = 1;
-	vertexLayout[1].format = VK_FORMAT_R32G32_SFLOAT;
-	vertexLayout[1].offset = sizeof(float) * 3;
-
-	vertexLayout[2].binding = 0;
-	vertexLayout[2].location = 2;
-	vertexLayout[2].format = VK_FORMAT_R32G32B32_SFLOAT;
-	vertexLayout[2].offset = sizeof(float) * 5;
+	vertexBinding.stride = (uint32_t)strideSize;
 
 	// Pipeline layout
-	VkDescriptorSetLayoutBinding layoutBindings[3];
-
-	// Vertex shader uniform buffer
-	layoutBindings[0].binding = 0;
-	layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	layoutBindings[0].descriptorCount = 1;
-	layoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	layoutBindings[0].pImmutableSamplers = VK_NULL_HANDLE;
-
-	// Fragment shader sampler
-	layoutBindings[1].binding = 1;
-	layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layoutBindings[1].descriptorCount = 1;
-	layoutBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	layoutBindings[1].pImmutableSamplers = VK_NULL_HANDLE;
-
-	// Fragment shader uniform buffer
-	layoutBindings[2].binding = 2;
-	layoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	layoutBindings[2].descriptorCount = 1;
-	layoutBindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	layoutBindings[2].pImmutableSamplers = VK_NULL_HANDLE;
-
 	VkDescriptorSetLayoutCreateInfo descriptorLayoutCI{};
 	descriptorLayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptorLayoutCI.bindingCount = sizeof(layoutBindings) / sizeof(layoutBindings[0]);
+	descriptorLayoutCI.bindingCount = numLayoutBindings;
 	descriptorLayoutCI.pBindings = layoutBindings;
 
 	result = vkCreateDescriptorSetLayout(vulkanDevice->GetDevice(), &descriptorLayoutCI, VK_NULL_HANDLE, &descriptorLayout);
@@ -115,7 +77,7 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRe
 	vi.flags = 0;
 	vi.vertexBindingDescriptionCount = 1;
 	vi.pVertexBindingDescriptions = &vertexBinding;
-	vi.vertexAttributeDescriptionCount = sizeof(vertexLayout) / sizeof(vertexLayout[0]);
+	vi.vertexAttributeDescriptionCount = numVertexLayout;
 	vi.pVertexAttributeDescriptions = vertexLayout;
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyCI{};
@@ -143,18 +105,24 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRe
 	cb.flags = 0;
 	cb.pNext = NULL;
 
-	VkPipelineColorBlendAttachmentState att_state[1];
-	att_state[0].colorWriteMask = 0xf;
-	att_state[0].blendEnable = VK_FALSE;
-	att_state[0].alphaBlendOp = VK_BLEND_OP_ADD;
-	att_state[0].colorBlendOp = VK_BLEND_OP_ADD;
-	att_state[0].srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-	att_state[0].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-	att_state[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	att_state[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	std::vector<VkPipelineColorBlendAttachmentState> blendAttachState;
+	blendAttachState.resize(numColorAttachments);
 
-	cb.attachmentCount = 1;
-	cb.pAttachments = att_state;
+	for (unsigned int i = 0; i < blendAttachState.size(); i++)
+	{
+		blendAttachState[i] = {};
+		blendAttachState[i].colorWriteMask = 0xf;
+		blendAttachState[i].blendEnable = VK_FALSE;
+		blendAttachState[i].alphaBlendOp = VK_BLEND_OP_ADD;
+		blendAttachState[i].colorBlendOp = VK_BLEND_OP_ADD;
+		blendAttachState[i].srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+		blendAttachState[i].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+		blendAttachState[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		blendAttachState[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	}
+
+	cb.attachmentCount = (uint32_t)blendAttachState.size();
+	cb.pAttachments = blendAttachState.data();
 	cb.logicOpEnable = VK_FALSE;
 	cb.logicOp = VK_LOGIC_OP_NO_OP;
 	cb.blendConstants[0] = 1.0f;

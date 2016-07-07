@@ -1,26 +1,15 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: Texture.h                                            |
+|                             File: VulkanTools.h                                        |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 #pragma once
 
-#include <string>
-
 #include "VulkanCommandBuffer.h"
 
-class Texture
+namespace VulkanTools
 {
-	private:
-		VkImage textureImage;
-		VkImageView textureImageView;
-		VkDeviceMemory textureMemory;
-	public:
-		Texture();
-		~Texture();
-
-		bool Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::string filename);
-		void Unload(VulkanDevice * vulkanDevice);
-		VkImageView GetImageView();
-};
+	void SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout,
+		VkImageSubresourceRange * range, VulkanCommandBuffer * cmdBuffer, VulkanDevice * device, bool beginAndExecCmdBuffer);
+}

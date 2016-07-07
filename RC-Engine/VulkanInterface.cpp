@@ -9,6 +9,7 @@
 #include "LogManager.h"
 #include "Settings.h"
 #include "StdInc.h"
+#include "VulkanTools.h"
 
 extern LogManager * gLogManager;
 extern Settings * gSettings;
@@ -23,6 +24,12 @@ VulkanInterface::VulkanInterface()
 	initCommandBuffer = NULL;
 	vulkanSwapchain = NULL;
 	mainRenderPass = NULL;
+	deferredRenderPass = NULL;
+
+	positionAtt = NULL;
+	normalAtt = NULL;
+	albedoAtt = NULL;
+	depthAtt = NULL;
 }
 
 VulkanInterface::~VulkanInterface()
@@ -30,6 +37,17 @@ VulkanInterface::~VulkanInterface()
 #ifdef _DEBUG
 		UnloadVulkanDebugMode();
 #endif
+	vkDestroySemaphore(vulkanDevice->GetDevice(), drawCompleteSemaphore, VK_NULL_HANDLE);
+	vkDestroySemaphore(vulkanDevice->GetDevice(), presentCompleteSemaphore, VK_NULL_HANDLE);
+
+	vkDestroyFramebuffer(vulkanDevice->GetDevice(), deferredFramebuffer, VK_NULL_HANDLE);
+	SAFE_UNLOAD(deferredRenderPass, vulkanDevice);
+	SAFE_UNLOAD(depthAtt, vulkanDevice);
+	SAFE_UNLOAD(albedoAtt, vulkanDevice);
+	SAFE_UNLOAD(normalAtt, vulkanDevice);
+	SAFE_UNLOAD(positionAtt, vulkanDevice);
+	
+	vkDestroySampler(vulkanDevice->GetDevice(), colorSampler, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), depthImage.mem, VK_NULL_HANDLE); depthImage.mem = VK_NULL_HANDLE;
 	vkDestroyImage(vulkanDevice->GetDevice(), depthImage.image, VK_NULL_HANDLE); depthImage.image = VK_NULL_HANDLE;
 	vkDestroyImageView(vulkanDevice->GetDevice(), depthImage.view, VK_NULL_HANDLE); depthImage.view = VK_NULL_HANDLE;
@@ -115,8 +133,15 @@ bool VulkanInterface::Init(HWND hwnd)
 	attachmentDesc[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	attachmentDesc[1].flags = 0;
 
+	VkAttachmentReference attachmentRefs[2];
+	attachmentRefs[0].attachment = 0;
+	attachmentRefs[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	attachmentRefs[1].attachment = 1;
+	attachmentRefs[1].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
 	mainRenderPass = new VulkanRenderpass();
-	if (!mainRenderPass->Init(vulkanDevice, attachmentDesc, 2))
+	if (!mainRenderPass->Init(vulkanDevice, attachmentDesc, 2, attachmentRefs, 2, 1))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init main render pass!");
 		return false;
@@ -129,24 +154,78 @@ bool VulkanInterface::Init(HWND hwnd)
 		return false;
 	}
 
+	if (!InitDeferredFramebuffer())
+	{
+		gLogManager->AddMessage("ERROR: Failed to init deferred framebuffer!");
+		return false;
+	}
+
+	if (!InitColorSampler())
+	{
+		gLogManager->AddMessage("ERROR: Failed to init color sampler!");
+		return false;
+	}
+
 	float fov = glm::radians(45.0f);
 	float aspectRatio = (float)gSettings->GetWindowWidth() / gSettings->GetWindowHeight();
 	projectionMatrix = glm::perspective(fov, aspectRatio, 0.1f, 100.0f);
+	orthoMatrix = glm::ortho(0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f);
+
+	VkSemaphoreCreateInfo semaphoreCI{};
+	semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCI, VK_NULL_HANDLE, &presentCompleteSemaphore);
+	vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCI, VK_NULL_HANDLE, &drawCompleteSemaphore);
 
 	return true;
 }
 
-void VulkanInterface::BeginScene(VulkanCommandBuffer * commandBuffer)
+void VulkanInterface::BeginScene3D(VulkanCommandBuffer * commandBuffer)
 {
 	commandBuffer->BeginRecording();
 	InitViewportAndScissors(commandBuffer);
 
-	vulkanSwapchain->AcquireNextImage(vulkanDevice);
-	SetImageLayout(vulkanSwapchain->GetCurrentImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
-	mainRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 0.0f, vulkanSwapchain->GetCurrentFramebuffer());
+	std::vector<FrameBufferAttachment*> attachments;
+	attachments.push_back(positionAtt);
+	attachments.push_back(normalAtt);
+	attachments.push_back(albedoAtt);
+
+	for (unsigned int i = 0; i < attachments.size(); i++)
+		VulkanTools::SetImageLayout(attachments[i]->GetImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			NULL, commandBuffer, vulkanDevice, false);
+	
+	deferredRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, deferredFramebuffer);
 }
 
-void VulkanInterface::EndScene(VulkanCommandBuffer * commandBuffer)
+void VulkanInterface::EndScene3D(VulkanCommandBuffer * commandBuffer)
+{
+	deferredRenderPass->EndRenderpass(commandBuffer);
+
+	std::vector<FrameBufferAttachment*> attachments;
+	attachments.push_back(positionAtt);
+	attachments.push_back(normalAtt);
+	attachments.push_back(albedoAtt);
+
+	for (unsigned int i = 0; i < attachments.size(); i++)
+		VulkanTools::SetImageLayout(attachments[i]->GetImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			NULL, commandBuffer, vulkanDevice, false);
+	
+	commandBuffer->EndRecording();
+
+	commandBuffer->Execute(vulkanDevice, NULL, NULL, NULL);
+}
+
+void VulkanInterface::BeginScene2D(VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline)
+{
+	commandBuffer->BeginRecording();
+	InitViewportAndScissors(commandBuffer);
+
+	vulkanSwapchain->AcquireNextImage(vulkanDevice, presentCompleteSemaphore);
+	VulkanTools::SetImageLayout(vulkanSwapchain->GetCurrentImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL, initCommandBuffer, vulkanDevice, true);
+	mainRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, vulkanSwapchain->GetCurrentFramebuffer());
+}
+
+void VulkanInterface::EndScene2D(VulkanCommandBuffer * commandBuffer)
 {
 	mainRenderPass->EndRenderpass(commandBuffer);
 
@@ -168,7 +247,9 @@ void VulkanInterface::EndScene(VulkanCommandBuffer * commandBuffer)
 	vkCmdPipelineBarrier(commandBuffer->GetCommandBuffer(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &prePresentBarrier);
 
 	commandBuffer->EndRecording();
-	vulkanSwapchain->Present(vulkanDevice, commandBuffer);
+
+	commandBuffer->Execute(vulkanDevice, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, presentCompleteSemaphore, drawCompleteSemaphore);
+	vulkanSwapchain->Present(vulkanDevice, commandBuffer, drawCompleteSemaphore);
 }
 
 VulkanCommandPool * VulkanInterface::GetVulkanCommandPool()
@@ -181,9 +262,14 @@ VulkanDevice * VulkanInterface::GetVulkanDevice()
 	return vulkanDevice;
 }
 
-VulkanRenderpass * VulkanInterface::GetVulkanRenderpass()
+VulkanRenderpass * VulkanInterface::GetMainRenderpass()
 {
 	return mainRenderPass;
+}
+
+VulkanRenderpass * VulkanInterface::GetDeferredRenderpass()
+{
+	return deferredRenderPass;
 }
 
 glm::mat4 VulkanInterface::GetProjectionMatrix()
@@ -191,27 +277,63 @@ glm::mat4 VulkanInterface::GetProjectionMatrix()
 	return projectionMatrix;
 }
 
+glm::mat4 VulkanInterface::GetOrthoMatrix()
+{
+	return orthoMatrix;
+}
+
+VkSampler VulkanInterface::GetColorSampler()
+{
+	return colorSampler;
+}
+
+FrameBufferAttachment * VulkanInterface::GetPositionAttachment()
+{
+	return positionAtt;
+}
+
+FrameBufferAttachment * VulkanInterface::GetNormalAttachment()
+{
+	return normalAtt;
+}
+
+FrameBufferAttachment * VulkanInterface::GetAlbedoAttachment()
+{
+	return albedoAtt;
+}
+
 bool VulkanInterface::InitDepthBuffer()
 {
 	VkResult result;
 	VkImageCreateInfo imageCI{};
-	depthImage.format = VK_FORMAT_D16_UNORM;
 
+	std::vector<VkFormat> depthFormats;
+	depthFormats.push_back(VK_FORMAT_D32_SFLOAT_S8_UINT);
+	depthFormats.push_back(VK_FORMAT_D24_UNORM_S8_UINT);
+	depthFormats.push_back(VK_FORMAT_D16_UNORM_S8_UINT);
+	
 	VkFormatProperties properties;
-	vkGetPhysicalDeviceFormatProperties(vulkanDevice->GetGPU(), depthImage.format, &properties);
-	if (properties.linearTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-		imageCI.tiling = VK_IMAGE_TILING_LINEAR;
-	else if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-		imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
-	else
+	for (unsigned int i = 0; i < depthFormats.size(); i++)
 	{
-		gLogManager->AddMessage("ERROR: Depth format unsupported!");
+		vkGetPhysicalDeviceFormatProperties(vulkanDevice->GetGPU(), depthFormats[i], &properties);
+		if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+		{
+			depthImage.format = depthFormats[i];
+			break;
+		}
+	}
+
+	vkGetPhysicalDeviceFormatProperties(vulkanDevice->GetGPU(), depthImage.format, &properties);
+	if (!(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))
+	{
+		gLogManager->AddMessage("ERROR: Couldn't find a depth image format!");
 		return false;
 	}
 
 	imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageCI.imageType = VK_IMAGE_TYPE_2D;
 	imageCI.format = depthImage.format;
+	imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageCI.extent.width = gSettings->GetWindowWidth();
 	imageCI.extent.height = gSettings->GetWindowHeight();
 	imageCI.extent.depth = 1;
@@ -236,7 +358,7 @@ bool VulkanInterface::InitDepthBuffer()
 	viewCI.components.g = VK_COMPONENT_SWIZZLE_G;
 	viewCI.components.b = VK_COMPONENT_SWIZZLE_B;
 	viewCI.components.a = VK_COMPONENT_SWIZZLE_A;
-	viewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	viewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 	viewCI.subresourceRange.baseMipLevel = 0;
 	viewCI.subresourceRange.levelCount = 1;
 	viewCI.subresourceRange.baseArrayLayer = 0;
@@ -262,10 +384,137 @@ bool VulkanInterface::InitDepthBuffer()
 	if (result != VK_SUCCESS)
 		return false;
 
-	SetImageLayout(depthImage.image, viewCI.subresourceRange.aspectMask, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, NULL);
+	VulkanTools::SetImageLayout(depthImage.image, viewCI.subresourceRange.aspectMask, VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, NULL, initCommandBuffer, vulkanDevice, true);
 	
 	viewCI.image = depthImage.image;
 	result = vkCreateImageView(vulkanDevice->GetDevice(), &viewCI, VK_NULL_HANDLE, &depthImage.view);
+	if (result != VK_SUCCESS)
+		return false;
+
+	return true;
+}
+
+bool VulkanInterface::InitDeferredFramebuffer()
+{
+	VkResult result;
+
+	positionAtt = new FrameBufferAttachment();
+	if (!positionAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
+	{
+		gLogManager->AddMessage("ERROR: Failed to create position framebuffer attachment!");
+		return false;
+	}
+
+	normalAtt = new FrameBufferAttachment();
+	if (!normalAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
+	{
+		gLogManager->AddMessage("ERROR: Failed to create normal framebuffer attachment!");
+		return false;
+	}
+
+	albedoAtt = new FrameBufferAttachment();
+	if (!albedoAtt->Create(vulkanDevice, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
+	{
+		gLogManager->AddMessage("ERROR: Failed to create albedo framebuffer attachment!");
+		return false;
+	}
+
+	depthAtt = new FrameBufferAttachment();
+	if (!depthAtt->Create(vulkanDevice, depthImage.format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, initCommandBuffer))
+	{
+		gLogManager->AddMessage("ERROR: Failed to create depth framebuffer attachment!");
+		return false;
+	}
+
+	std::vector<VkAttachmentDescription> attachmentDescs;
+	std::vector<VkAttachmentReference> attachmentRefs;
+	attachmentDescs.resize(4);
+	attachmentRefs.resize(4);
+
+	for (unsigned int i = 0; i < attachmentDescs.size(); i++)
+	{
+		attachmentDescs[i] = {};
+		attachmentDescs[i].samples = VK_SAMPLE_COUNT_1_BIT;
+		attachmentDescs[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		attachmentDescs[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		attachmentDescs[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		attachmentDescs[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		attachmentDescs[i].flags = 0;
+		attachmentDescs[i].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		attachmentDescs[i].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	}
+
+	// Overwrite layout for depth
+	attachmentDescs[3].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	attachmentDescs[3].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	attachmentDescs[0].format = positionAtt->GetFormat();
+	attachmentDescs[1].format = normalAtt->GetFormat();
+	attachmentDescs[2].format = albedoAtt->GetFormat();
+	attachmentDescs[3].format = depthAtt->GetFormat();
+
+	for (unsigned int i = 0; i < attachmentRefs.size(); i++)
+	{
+		attachmentRefs[i].attachment = i;
+		attachmentRefs[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	}
+
+	// Overwrite reference for depth
+	attachmentRefs[3].attachment = 3;
+	attachmentRefs[3].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	deferredRenderPass = new VulkanRenderpass();
+	if (!deferredRenderPass->Init(vulkanDevice, (VkAttachmentDescription*)attachmentDescs.data(), 4, (VkAttachmentReference*)attachmentRefs.data(), 4, 3))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init deferred renderpass!");
+		return false;
+	}
+
+	std::vector<VkImageView> viewAttachments;
+	viewAttachments.resize(4);
+
+	viewAttachments[0] = positionAtt->GetImageView();
+	viewAttachments[1] = normalAtt->GetImageView();
+	viewAttachments[2] = albedoAtt->GetImageView();
+	viewAttachments[3] = depthAtt->GetImageView();
+
+	VkFramebufferCreateInfo fbCI{};
+	fbCI.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	fbCI.renderPass = deferredRenderPass->GetRenderpass();
+	fbCI.pAttachments = viewAttachments.data();
+	fbCI.attachmentCount = (uint32_t)viewAttachments.size();
+	fbCI.width = gSettings->GetWindowWidth();
+	fbCI.height = gSettings->GetWindowHeight();
+	fbCI.layers = 1;
+
+	result = vkCreateFramebuffer(vulkanDevice->GetDevice(), &fbCI, VK_NULL_HANDLE, &deferredFramebuffer);
+	if (result != VK_SUCCESS)
+		return false;
+
+	return true;
+}
+
+bool VulkanInterface::InitColorSampler()
+{
+	VkResult result;
+
+	VkSamplerCreateInfo samplerCI{};
+	samplerCI.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerCI.magFilter = VK_FILTER_LINEAR;
+	samplerCI.minFilter = VK_FILTER_LINEAR;
+	samplerCI.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerCI.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerCI.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerCI.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerCI.mipLodBias = 0.0f;
+	samplerCI.compareOp = VK_COMPARE_OP_NEVER;
+	samplerCI.minLod = 0.0f;
+	samplerCI.maxLod = 0.0f;
+	samplerCI.maxAnisotropy = vulkanDevice->GetGPUProperties().limits.maxSamplerAnisotropy;
+	samplerCI.anisotropyEnable = VK_TRUE;
+	samplerCI.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+	result = vkCreateSampler(vulkanDevice->GetDevice(), &samplerCI, VK_NULL_HANDLE, &colorSampler);
 	if (result != VK_SUCCESS)
 		return false;
 
@@ -287,55 +536,6 @@ void VulkanInterface::InitViewportAndScissors(VulkanCommandBuffer * commandBuffe
 	scissor.offset.x = 0;
 	scissor.offset.y = 0;
 	vkCmdSetScissor(commandBuffer->GetCommandBuffer(), 0, 1, &scissor);
-}
-
-void VulkanInterface::SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange * range)
-{
-	initCommandBuffer->BeginRecording();
-
-	VkImageMemoryBarrier imageMemBarrier{};
-	imageMemBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	imageMemBarrier.oldLayout = oldImageLayout;
-	imageMemBarrier.newLayout = newImageLayout;
-	imageMemBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	imageMemBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	imageMemBarrier.image = image;
-	
-	if (range == NULL)
-	{
-		imageMemBarrier.subresourceRange.aspectMask = aspectMask;
-		imageMemBarrier.subresourceRange.baseMipLevel = 0;
-		imageMemBarrier.subresourceRange.levelCount = 1;
-		imageMemBarrier.subresourceRange.baseArrayLayer = 0;
-		imageMemBarrier.subresourceRange.layerCount = 1;
-	}
-	else
-		imageMemBarrier.subresourceRange = *range;
-
-	if (oldImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-		imageMemBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	if (newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-		imageMemBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	if (newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-		imageMemBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	if (oldImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-		imageMemBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
-		imageMemBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
-	if (newImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-		imageMemBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	if (newImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-		imageMemBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	if (newImageLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-		imageMemBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-	VkPipelineStageFlags srcStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-	VkPipelineStageFlags destStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-
-	vkCmdPipelineBarrier(initCommandBuffer->GetCommandBuffer(), srcStages, destStages, 0, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageMemBarrier);
-
-	initCommandBuffer->EndRecording();
-	initCommandBuffer->Execute(vulkanDevice, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, NULL, NULL);
 }
 
 #ifdef _DEBUG

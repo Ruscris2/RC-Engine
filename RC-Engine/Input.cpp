@@ -22,6 +22,10 @@ Input::Input()
 	keyStateValues[KEYBOARD_KEY_S] = 0x53;
 	keyStateValues[KEYBOARD_KEY_D] = 0x44;
 	keyStateValues[MOUSE_LEFTBUTTON] = 0x01;
+	keyStateValues[KEYBOARD_KEY_1] = 0x31;
+	keyStateValues[KEYBOARD_KEY_2] = 0x32;
+	keyStateValues[KEYBOARD_KEY_3] = 0x33;
+	keyStateValues[KEYBOARD_KEY_4] = 0x34;
 
 	prevFrameState = new bool[KEY_STATE_COUNT];
 	currentFrameState = new bool[KEY_STATE_COUNT];

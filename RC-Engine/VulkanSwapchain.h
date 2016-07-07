@@ -21,7 +21,6 @@ class VulkanSwapchain
 		VkSwapchainKHR swapChain;
 		std::vector<SwapChainBuffer> swapChainBuffers;
 		uint32_t currentBuffer = 0;
-		VkSemaphore presentCompleteSemaphore, drawCompleteSemaphore;
 		VkFramebuffer * frameBuffers;
 	public:
 		VulkanSwapchain();
@@ -29,8 +28,8 @@ class VulkanSwapchain
 
 		bool Init(VulkanDevice * vulkanDevice, VkImageView depthImageView, VulkanRenderpass * vulkanRenderpass);
 		void Unload(VulkanDevice * vulkanDevice);
-		void AcquireNextImage(VulkanDevice * vulkanDevice);
-		void Present(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer);
+		void AcquireNextImage(VulkanDevice * vulkanDevice, VkSemaphore signalSemaphore);
+		void Present(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer, VkSemaphore waitSemaphore);
 		VkImage GetCurrentImage();
 		VkFramebuffer GetCurrentFramebuffer();
 };

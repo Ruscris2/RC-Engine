@@ -19,6 +19,8 @@
 #include "VulkanCommandBuffer.h"
 #include "VulkanSwapchain.h"
 #include "VulkanRenderpass.h"
+#include "FrameBufferAttachment.h"
+#include "VulkanPipeline.h"
 
 class VulkanInterface
 {
@@ -37,17 +39,32 @@ class VulkanInterface
 		VulkanCommandBuffer * initCommandBuffer;
 		VulkanSwapchain * vulkanSwapchain;
 		VulkanRenderpass * mainRenderPass;
+		VulkanRenderpass * deferredRenderPass;
 
 		VkViewport viewport;
 		VkRect2D scissor;
 
+		VkSampler colorSampler;
+		VkFramebuffer deferredFramebuffer;
+
+		FrameBufferAttachment * positionAtt;
+		FrameBufferAttachment * normalAtt;
+		FrameBufferAttachment * albedoAtt;
+		FrameBufferAttachment * depthAtt;
+
 		glm::mat4 projectionMatrix;
+		glm::mat4 orthoMatrix;
+
+		VkSemaphore presentCompleteSemaphore;
+		VkSemaphore drawCompleteSemaphore;
 
 #ifdef _DEBUG
 		VkDebugReportCallbackEXT debugReport;
 #endif
 	private:
 		bool InitDepthBuffer();
+		bool InitColorSampler();
+		bool InitDeferredFramebuffer();
 		void InitViewportAndScissors(VulkanCommandBuffer * commandBuffer);
 	
 #ifdef _DEBUG
@@ -59,11 +76,18 @@ class VulkanInterface
 		~VulkanInterface();
 
 		bool Init(HWND hwnd);
-		void BeginScene(VulkanCommandBuffer * commandBuffer);
-		void EndScene(VulkanCommandBuffer * commandBuffer);
-		void SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange * range);
+		void BeginScene3D(VulkanCommandBuffer * commandBuffer);
+		void EndScene3D(VulkanCommandBuffer * commandBuffer);
+		void BeginScene2D(VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline);
+		void EndScene2D(VulkanCommandBuffer * commandBuffer);
 		VulkanCommandPool * GetVulkanCommandPool();
 		VulkanDevice * GetVulkanDevice();
-		VulkanRenderpass * GetVulkanRenderpass();
+		VulkanRenderpass * GetMainRenderpass();
+		VulkanRenderpass * GetDeferredRenderpass();
 		glm::mat4 GetProjectionMatrix();
+		glm::mat4 GetOrthoMatrix();
+		VkSampler GetColorSampler();
+		FrameBufferAttachment * GetPositionAttachment();
+		FrameBufferAttachment * GetNormalAttachment();
+		FrameBufferAttachment * GetAlbedoAttachment();
 };

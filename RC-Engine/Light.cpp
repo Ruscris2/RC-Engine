@@ -9,33 +9,37 @@
 
 Light::Light()
 {
-	lightBuffer.ambientColor = glm::vec4(0.25f, 0.25f, 0.25f, 1.0f);
-	lightBuffer.diffuseColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-	lightBuffer.lightDirection = glm::vec3(0.0f, 0.0f, 1.0f);
-	lightBuffer.padding = 0.0f;
+	ambientColor = glm::vec4(0.25f, 0.25f, 0.25f, 1.0f);
+	diffuseColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	lightDirection = glm::vec3(0.0f, 0.0f, 1.0f);
 }
 
 void Light::SetAmbientColor(float r, float g, float b, float a)
 {
-	lightBuffer.ambientColor = glm::vec4(r, g, b, a);
+	ambientColor = glm::vec4(r, g, b, a);
 }
 
 void Light::SetDiffuseColor(float r, float g, float b, float a)
 {
-	lightBuffer.diffuseColor = glm::vec4(r, g, b, a);
+	diffuseColor = glm::vec4(r, g, b, a);
 }
 
 void Light::SetLightDirection(float x, float y, float z)
 {
-	lightBuffer.lightDirection = glm::vec3(x, y, z);
+	lightDirection = glm::vec3(x, y, z);
 }
 
-size_t Light::GetLightBufferSize()
+glm::vec4 Light::GetAmbientColor()
 {
-	return sizeof(lightBuffer);
+	return ambientColor;
 }
 
-LightBuffer * Light::GetLightBuffer()
+glm::vec4 Light::GetDiffuseColor()
 {
-	return &lightBuffer;
+	return diffuseColor;
+}
+
+glm::vec3 Light::GetLightDirection()
+{
+	return lightDirection;
 }
