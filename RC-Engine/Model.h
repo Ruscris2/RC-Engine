@@ -6,9 +6,8 @@
 ==========================================================================================*/
 #pragma once
 
-#include "VulkanInterface.h"
-#include "VulkanCommandBuffer.h"
 #include "VulkanPipeline.h"
+#include "Mesh.h"
 #include "Camera.h"
 #include "Texture.h"
 #include "Light.h"
@@ -16,13 +15,8 @@
 class Model
 {
 	private:
-		struct Vertex {
-			float x, y, z;
-			float u, v;
-			float nx, ny, nz;
-		};
-		unsigned int vertexCount;
-		unsigned int indexCount;
+		std::vector<Mesh*> meshes;
+		std::vector<Texture*> diffuseTextures;
 
 		float posX, posY, posZ;
 		float rotX, rotY, rotZ;
@@ -34,13 +28,9 @@ class Model
 		};
 		VertexUniformBuffer vertexUniformBuffer;
 
-		VkBuffer vertexBuffer;
-		VkDeviceMemory vertexMemory;
-		VkBuffer indexBuffer;
-		VkDeviceMemory indexMemory;
-
 		VkDescriptorPool descriptorPool;
 		VkDescriptorSet descriptorSet;
+		VkWriteDescriptorSet descriptorWrite[2];
 		
 		VkBuffer vsUniformBuffer;
 		VkDeviceMemory vsUniformMemory;
@@ -52,7 +42,7 @@ class Model
 		Model();
 		~Model();
 
-		bool Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, Texture * texture);
+		bool Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VulkanCommandBuffer * cmdBuffer);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera);
 		void SetPosition(float x, float y, float z);

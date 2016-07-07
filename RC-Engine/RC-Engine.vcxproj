@@ -152,6 +152,7 @@
     <ClCompile Include="LogManager.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Model.cpp" />
+    <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="Texture.cpp" />
@@ -176,6 +177,7 @@
     <ClInclude Include="Input.h" />
     <ClInclude Include="Light.h" />
     <ClInclude Include="Model.h" />
+    <ClInclude Include="Mesh.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Texture.h" />

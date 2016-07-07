@@ -13,7 +13,6 @@
 #include "VulkanPipeline.h"
 #include "VulkanCommandBuffer.h"
 #include "Model.h"
-#include "Texture.h"
 #include "Light.h"
 #include "Canvas.h"
 
@@ -31,7 +30,6 @@ class SceneManager
 		Canvas * defaultShaderCanvas;
 		Model * model;
 		Model * model2;
-		Texture * texture;
 	private:
 		bool BuildDefaultPipeline(VulkanInterface * vulkan);
 		bool BuildDeferredPipeline(VulkanInterface * vulkan);

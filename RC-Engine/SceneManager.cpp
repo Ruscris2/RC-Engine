@@ -89,15 +89,8 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
-	texture = new Texture();
-	if (!texture->Init(vulkan->GetVulkanDevice(), renderCommandBuffer, "data/textures/test.rct"))
-	{
-		gLogManager->AddMessage("ERROR: Couldn't init texture!");
-		return false;
-	}
-
 	model = new Model();
-	if (!model->Init("data/models/teapot.rcm", vulkan, deferredPipeline, texture))
+	if (!model->Init("data/models/teapot.rcm", vulkan, deferredPipeline, renderCommandBuffer))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init model!");
 		return false;
@@ -105,7 +98,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	model->SetPosition(-2.0f, 0.0f, 0.0f);
 
 	model2 = new Model();
-	if (!model2->Init("data/models/teapot.rcm", vulkan, deferredPipeline, texture))
+	if (!model2->Init("data/models/teapot.rcm", vulkan, deferredPipeline, renderCommandBuffer))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init model2!");
 		return false;
@@ -118,7 +111,6 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
-	SAFE_UNLOAD(texture, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(defaultShaderCanvas, vulkan);
 	SAFE_UNLOAD(deferredPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(defaultPipeline, vulkan->GetVulkanDevice());
