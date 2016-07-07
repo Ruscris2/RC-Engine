@@ -80,6 +80,11 @@ glm::mat4 Camera::GetViewMatrix()
 	return viewMatrix;
 }
 
+glm::vec3 Camera::GetPosition()
+{
+	return position;
+}
+
 void Camera::Update()
 {
 	viewMatrix = glm::lookAt(position, lookAt, up);

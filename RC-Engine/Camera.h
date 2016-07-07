@@ -26,4 +26,5 @@ class Camera
 		void Init();
 		void HandleInput();
 		glm::mat4 GetViewMatrix();
+		glm::vec3 GetPosition();
 };

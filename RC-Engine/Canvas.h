@@ -8,6 +8,7 @@
 
 #include "VulkanInterface.h"
 #include "Light.h"
+#include "Camera.h"
 
 class Canvas
 {
@@ -27,7 +28,10 @@ class Canvas
 		{
 			glm::vec4 ambientColor;
 			glm::vec4 diffuseColor;
+			glm::vec4 specularColor;
 			glm::vec3 lightDirection;
+			float specularPower;
+			glm::vec3 cameraPosition;
 			int imageIndex;
 		};
 		VertexUniformBuffer vertexUniformBuffer;
@@ -56,5 +60,5 @@ class Canvas
 
 		bool Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView, VkImageView albedoView);
 		void Unload(VulkanInterface * vulkan);
-		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, glm::mat4 orthoMatrix, Light * light, int imageIndex);
+		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera);
 };

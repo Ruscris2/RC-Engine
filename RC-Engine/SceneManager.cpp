@@ -40,6 +40,11 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	camera->Init();
 	
 	light = new Light();
+	light->SetAmbientColor(0.2f, 0.2f, 0.2f, 1.0f);
+	light->SetDiffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
+	light->SetSpecularColor(1.0f, 1.0f, 1.0f, 1.0f);
+	light->SetLightDirection(-0.5f, -0.5f, 1.0f);
+	light->SetSpecularPower(1.0f);
 
 	deferredCommandBuffer = new VulkanCommandBuffer();
 	if (!deferredCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
@@ -90,7 +95,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	}
 
 	model = new Model();
-	if (!model->Init("data/models/test.rcm", vulkan, deferredPipeline, renderCommandBuffer))
+	if (!model->Init("data/models/teapot.rcm", vulkan, deferredPipeline, renderCommandBuffer))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init model!");
 		return false;
@@ -147,7 +152,7 @@ void SceneManager::Render(VulkanInterface * vulkan)
 	vulkan->BeginScene2D(renderCommandBuffer, defaultPipeline);
 
 	defaultPipeline->SetActive(renderCommandBuffer);
-	defaultShaderCanvas->Render(vulkan, renderCommandBuffer, defaultPipeline, vulkan->GetOrthoMatrix(), light, imageIndex);
+	defaultShaderCanvas->Render(vulkan, renderCommandBuffer, defaultPipeline, vulkan->GetOrthoMatrix(), light, imageIndex, camera);
 
 	vulkan->EndScene2D(renderCommandBuffer);
 }

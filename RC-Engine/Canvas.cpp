@@ -217,7 +217,10 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	vertexUniformBuffer.MVP = glm::mat4();
 	fragmentUniformBuffer.ambientColor = glm::vec4();
 	fragmentUniformBuffer.diffuseColor = glm::vec4();
+	fragmentUniformBuffer.specularColor = glm::vec4();
 	fragmentUniformBuffer.lightDirection = glm::vec3();
+	fragmentUniformBuffer.specularPower = 0.0f;
+	fragmentUniformBuffer.cameraPosition = glm::vec3();
 	fragmentUniformBuffer.imageIndex = 4;
 
 	// Vertex shader Uniform buffer
@@ -419,7 +422,7 @@ void Canvas::Unload(VulkanInterface * vulkan)
 	vkDestroyBuffer(vulkanDevice->GetDevice(), vertexBuffer, VK_NULL_HANDLE);
 }
 
-void Canvas::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, glm::mat4 orthoMatrix, Light * light, int imageIndex)
+void Canvas::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera)
 {
 	uint8_t *pData;
 
@@ -433,7 +436,10 @@ void Canvas::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 	// Update fragment uniform buffer
 	fragmentUniformBuffer.ambientColor = light->GetAmbientColor();
 	fragmentUniformBuffer.diffuseColor = light->GetDiffuseColor();
+	fragmentUniformBuffer.specularColor = light->GetSpecularColor();
 	fragmentUniformBuffer.lightDirection = light->GetLightDirection();
+	fragmentUniformBuffer.specularPower = light->GetSpecularPower();
+	fragmentUniformBuffer.cameraPosition = camera->GetPosition();
 	fragmentUniformBuffer.imageIndex = imageIndex;
 
 	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), fsUniformMemory, 0, fsMemReq.size, 0, (void**)&pData);

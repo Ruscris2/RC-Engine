@@ -11,7 +11,10 @@ layout (binding = 4) uniform UBO
 {
 	vec4 ambientColor;
 	vec4 diffuseColor;
+	vec4 specularColor;
 	vec3 lightDirection;
+	float specularPower;
+	vec3 cameraPosition;
 	int imageIndex;
 } ubo;
 
@@ -26,11 +29,17 @@ void main()
 	vec4 albedo = texture(samplerAlbedo, texCoord);
 	
 	if(ubo.imageIndex == 4)
-	{		
+	{	
+		vec3 viewDir = normalize(ubo.cameraPosition - fragPos);
 		vec3 fragColor = albedo.rgb * ubo.ambientColor.rgb;
 		vec3 lightDir = -ubo.lightDirection;
+		
 		vec3 diff = max(dot(normal, lightDir), 0.0f) * albedo.rgb * ubo.diffuseColor.rgb;
-		fragColor += diff;
+		
+		vec3 halfVec = normalize(lightDir + viewDir);
+		vec3 spec = ubo.specularColor.rgb * pow(max(dot(normal, halfVec), 0.0), 32) * ubo.specularPower;
+		
+		fragColor += diff + spec;
 		outColor = vec4(fragColor, 1.0f);
 	}
 	else if(ubo.imageIndex == 3)
