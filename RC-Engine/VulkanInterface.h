@@ -50,7 +50,7 @@ class VulkanInterface
 		FrameBufferAttachment * positionAtt;
 		FrameBufferAttachment * normalAtt;
 		FrameBufferAttachment * albedoAtt;
-		FrameBufferAttachment * specularAtt;
+		FrameBufferAttachment * materialAtt;
 		FrameBufferAttachment * depthAtt;
 
 		glm::mat4 projectionMatrix;
@@ -91,6 +91,6 @@ class VulkanInterface
 		FrameBufferAttachment * GetPositionAttachment();
 		FrameBufferAttachment * GetNormalAttachment();
 		FrameBufferAttachment * GetAlbedoAttachment();
-		FrameBufferAttachment * GetSpecularAttachment();
+		FrameBufferAttachment * GetMaterialAttachment();
 		VkFramebuffer GetDeferredFramebuffer();
 };

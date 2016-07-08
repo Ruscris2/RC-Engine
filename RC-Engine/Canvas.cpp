@@ -26,7 +26,8 @@ Canvas::~Canvas()
 	vertexBuffer = VK_NULL_HANDLE;
 }
 
-bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView, VkImageView albedoView, VkImageView specularView)
+bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView,
+	VkImageView albedoView, VkImageView materialView)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
@@ -394,10 +395,10 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	write[3].dstArrayElement = 0;
 	write[3].dstBinding = 3;
 
-	VkDescriptorImageInfo specularTextureDesc{};
-	specularTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	specularTextureDesc.imageView = specularView;
-	specularTextureDesc.sampler = vulkan->GetColorSampler();
+	VkDescriptorImageInfo materialTextureDesc{};
+	materialTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	materialTextureDesc.imageView = materialView;
+	materialTextureDesc.sampler = vulkan->GetColorSampler();
 
 	write[4] = {};
 	write[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -405,7 +406,7 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	write[4].dstSet = descriptorSet;
 	write[4].descriptorCount = 1;
 	write[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	write[4].pImageInfo = &specularTextureDesc;
+	write[4].pImageInfo = &materialTextureDesc;
 	write[4].dstArrayElement = 0;
 	write[4].dstBinding = 4;
 

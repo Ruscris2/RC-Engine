@@ -59,7 +59,7 @@ class Canvas
 		~Canvas();
 
 		bool Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView,
-			VkImageView albedoView, VkImageView specularView);
+			VkImageView albedoView, VkImageView materialView);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera);
 };

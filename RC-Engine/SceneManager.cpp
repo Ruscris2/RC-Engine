@@ -90,7 +90,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 
 	defaultShaderCanvas = new Canvas();
 	if (!defaultShaderCanvas->Init(vulkan, defaultPipeline, vulkan->GetPositionAttachment()->GetImageView(), vulkan->GetNormalAttachment()->GetImageView(),
-		vulkan->GetAlbedoAttachment()->GetImageView(), vulkan->GetSpecularAttachment()->GetImageView()))
+		vulkan->GetAlbedoAttachment()->GetImageView(), vulkan->GetMaterialAttachment()->GetImageView()))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init default shader canvas!");
 		return false;

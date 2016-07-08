@@ -131,6 +131,7 @@ bool Texture::Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::
 	if (result != VK_SUCCESS)
 		return false;
 
+	delete[] fileData;
 	return true;
 }
 

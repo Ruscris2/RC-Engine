@@ -29,7 +29,7 @@ VulkanInterface::VulkanInterface()
 	positionAtt = NULL;
 	normalAtt = NULL;
 	albedoAtt = NULL;
-	specularAtt = NULL;
+	materialAtt = NULL;
 	depthAtt = NULL;
 }
 
@@ -44,7 +44,7 @@ VulkanInterface::~VulkanInterface()
 	vkDestroyFramebuffer(vulkanDevice->GetDevice(), deferredFramebuffer, VK_NULL_HANDLE);
 	SAFE_UNLOAD(deferredRenderPass, vulkanDevice);
 	SAFE_UNLOAD(depthAtt, vulkanDevice);
-	SAFE_UNLOAD(specularAtt, vulkanDevice);
+	SAFE_UNLOAD(materialAtt, vulkanDevice);
 	SAFE_UNLOAD(albedoAtt, vulkanDevice);
 	SAFE_UNLOAD(normalAtt, vulkanDevice);
 	SAFE_UNLOAD(positionAtt, vulkanDevice);
@@ -190,7 +190,7 @@ void VulkanInterface::BeginScene3D(VulkanCommandBuffer * commandBuffer)
 	attachments.push_back(positionAtt);
 	attachments.push_back(normalAtt);
 	attachments.push_back(albedoAtt);
-	attachments.push_back(specularAtt);
+	attachments.push_back(materialAtt);
 
 	for (unsigned int i = 0; i < attachments.size(); i++)
 		VulkanTools::SetImageLayout(attachments[i]->GetImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -207,7 +207,7 @@ void VulkanInterface::EndScene3D(VulkanCommandBuffer * commandBuffer)
 	attachments.push_back(positionAtt);
 	attachments.push_back(normalAtt);
 	attachments.push_back(albedoAtt);
-	attachments.push_back(specularAtt);
+	attachments.push_back(materialAtt);
 
 	for (unsigned int i = 0; i < attachments.size(); i++)
 		VulkanTools::SetImageLayout(attachments[i]->GetImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -306,9 +306,9 @@ FrameBufferAttachment * VulkanInterface::GetAlbedoAttachment()
 	return albedoAtt;
 }
 
-FrameBufferAttachment * VulkanInterface::GetSpecularAttachment()
+FrameBufferAttachment * VulkanInterface::GetMaterialAttachment()
 {
-	return specularAtt;
+	return materialAtt;
 }
 
 VkFramebuffer VulkanInterface::GetDeferredFramebuffer()
@@ -434,10 +434,10 @@ bool VulkanInterface::InitDeferredFramebuffer()
 		return false;
 	}
 
-	specularAtt = new FrameBufferAttachment();
-	if (!specularAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
+	materialAtt = new FrameBufferAttachment();
+	if (!materialAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
 	{
-		gLogManager->AddMessage("ERROR: Failed to create specular framebuffer attachment!");
+		gLogManager->AddMessage("ERROR: Failed to create material framebuffer attachment!");
 		return false;
 	}
 
@@ -473,7 +473,7 @@ bool VulkanInterface::InitDeferredFramebuffer()
 	attachmentDescs[0].format = positionAtt->GetFormat();
 	attachmentDescs[1].format = normalAtt->GetFormat();
 	attachmentDescs[2].format = albedoAtt->GetFormat();
-	attachmentDescs[3].format = specularAtt->GetFormat();
+	attachmentDescs[3].format = materialAtt->GetFormat();
 	attachmentDescs[4].format = depthAtt->GetFormat();
 
 	for (unsigned int i = 0; i < attachmentRefs.size(); i++)
@@ -499,7 +499,7 @@ bool VulkanInterface::InitDeferredFramebuffer()
 	viewAttachments[0] = positionAtt->GetImageView();
 	viewAttachments[1] = normalAtt->GetImageView();
 	viewAttachments[2] = albedoAtt->GetImageView();
-	viewAttachments[3] = specularAtt->GetImageView();
+	viewAttachments[3] = materialAtt->GetImageView();
 	viewAttachments[4] = depthAtt->GetImageView();
 
 	VkFramebufferCreateInfo fbCI{};
