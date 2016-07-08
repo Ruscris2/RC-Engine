@@ -29,6 +29,7 @@ VulkanInterface::VulkanInterface()
 	positionAtt = NULL;
 	normalAtt = NULL;
 	albedoAtt = NULL;
+	specularAtt = NULL;
 	depthAtt = NULL;
 }
 
@@ -43,6 +44,7 @@ VulkanInterface::~VulkanInterface()
 	vkDestroyFramebuffer(vulkanDevice->GetDevice(), deferredFramebuffer, VK_NULL_HANDLE);
 	SAFE_UNLOAD(deferredRenderPass, vulkanDevice);
 	SAFE_UNLOAD(depthAtt, vulkanDevice);
+	SAFE_UNLOAD(specularAtt, vulkanDevice);
 	SAFE_UNLOAD(albedoAtt, vulkanDevice);
 	SAFE_UNLOAD(normalAtt, vulkanDevice);
 	SAFE_UNLOAD(positionAtt, vulkanDevice);
@@ -188,6 +190,7 @@ void VulkanInterface::BeginScene3D(VulkanCommandBuffer * commandBuffer)
 	attachments.push_back(positionAtt);
 	attachments.push_back(normalAtt);
 	attachments.push_back(albedoAtt);
+	attachments.push_back(specularAtt);
 
 	for (unsigned int i = 0; i < attachments.size(); i++)
 		VulkanTools::SetImageLayout(attachments[i]->GetImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -204,6 +207,7 @@ void VulkanInterface::EndScene3D(VulkanCommandBuffer * commandBuffer)
 	attachments.push_back(positionAtt);
 	attachments.push_back(normalAtt);
 	attachments.push_back(albedoAtt);
+	attachments.push_back(specularAtt);
 
 	for (unsigned int i = 0; i < attachments.size(); i++)
 		VulkanTools::SetImageLayout(attachments[i]->GetImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -300,6 +304,11 @@ FrameBufferAttachment * VulkanInterface::GetNormalAttachment()
 FrameBufferAttachment * VulkanInterface::GetAlbedoAttachment()
 {
 	return albedoAtt;
+}
+
+FrameBufferAttachment * VulkanInterface::GetSpecularAttachment()
+{
+	return specularAtt;
 }
 
 VkFramebuffer VulkanInterface::GetDeferredFramebuffer()
@@ -425,6 +434,13 @@ bool VulkanInterface::InitDeferredFramebuffer()
 		return false;
 	}
 
+	specularAtt = new FrameBufferAttachment();
+	if (!specularAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
+	{
+		gLogManager->AddMessage("ERROR: Failed to create specular framebuffer attachment!");
+		return false;
+	}
+
 	depthAtt = new FrameBufferAttachment();
 	if (!depthAtt->Create(vulkanDevice, depthImage.format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, initCommandBuffer))
 	{
@@ -434,8 +450,8 @@ bool VulkanInterface::InitDeferredFramebuffer()
 
 	std::vector<VkAttachmentDescription> attachmentDescs;
 	std::vector<VkAttachmentReference> attachmentRefs;
-	attachmentDescs.resize(4);
-	attachmentRefs.resize(4);
+	attachmentDescs.resize(5);
+	attachmentRefs.resize(5);
 
 	for (unsigned int i = 0; i < attachmentDescs.size(); i++)
 	{
@@ -451,13 +467,14 @@ bool VulkanInterface::InitDeferredFramebuffer()
 	}
 
 	// Overwrite layout for depth
-	attachmentDescs[3].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	attachmentDescs[3].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	attachmentDescs[4].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	attachmentDescs[4].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	attachmentDescs[0].format = positionAtt->GetFormat();
 	attachmentDescs[1].format = normalAtt->GetFormat();
 	attachmentDescs[2].format = albedoAtt->GetFormat();
-	attachmentDescs[3].format = depthAtt->GetFormat();
+	attachmentDescs[3].format = specularAtt->GetFormat();
+	attachmentDescs[4].format = depthAtt->GetFormat();
 
 	for (unsigned int i = 0; i < attachmentRefs.size(); i++)
 	{
@@ -466,23 +483,24 @@ bool VulkanInterface::InitDeferredFramebuffer()
 	}
 
 	// Overwrite reference for depth
-	attachmentRefs[3].attachment = 3;
-	attachmentRefs[3].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	attachmentRefs[4].attachment = 4;
+	attachmentRefs[4].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	deferredRenderPass = new VulkanRenderpass();
-	if (!deferredRenderPass->Init(vulkanDevice, (VkAttachmentDescription*)attachmentDescs.data(), 4, (VkAttachmentReference*)attachmentRefs.data(), 4, 3))
+	if (!deferredRenderPass->Init(vulkanDevice, (VkAttachmentDescription*)attachmentDescs.data(), 5, (VkAttachmentReference*)attachmentRefs.data(), 5, 4))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init deferred renderpass!");
 		return false;
 	}
 
 	std::vector<VkImageView> viewAttachments;
-	viewAttachments.resize(4);
+	viewAttachments.resize(5);
 
 	viewAttachments[0] = positionAtt->GetImageView();
 	viewAttachments[1] = normalAtt->GetImageView();
 	viewAttachments[2] = albedoAtt->GetImageView();
-	viewAttachments[3] = depthAtt->GetImageView();
+	viewAttachments[3] = specularAtt->GetImageView();
+	viewAttachments[4] = depthAtt->GetImageView();
 
 	VkFramebufferCreateInfo fbCI{};
 	fbCI.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;

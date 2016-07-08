@@ -26,6 +26,7 @@ Input::Input()
 	keyStateValues[KEYBOARD_KEY_2] = 0x32;
 	keyStateValues[KEYBOARD_KEY_3] = 0x33;
 	keyStateValues[KEYBOARD_KEY_4] = 0x34;
+	keyStateValues[KEYBOARD_KEY_5] = 0x35;
 
 	prevFrameState = new bool[KEY_STATE_COUNT];
 	currentFrameState = new bool[KEY_STATE_COUNT];

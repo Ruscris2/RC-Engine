@@ -9,9 +9,11 @@
 #include "StdInc.h"
 #include "LogManager.h"
 #include "Input.h"
+#include "Timer.h"
 
 extern LogManager * gLogManager;
 extern Input * gInput;
+extern Timer * gTimer;
 
 SceneManager::SceneManager()
 {
@@ -44,7 +46,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	light->SetDiffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
 	light->SetSpecularColor(1.0f, 1.0f, 1.0f, 1.0f);
 	light->SetLightDirection(-0.5f, -0.5f, 1.0f);
-	light->SetSpecularPower(1.0f);
+	light->SetSpecularPower(2.0f);
 
 	deferredCommandBuffer = new VulkanCommandBuffer();
 	if (!deferredCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
@@ -88,14 +90,14 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 
 	defaultShaderCanvas = new Canvas();
 	if (!defaultShaderCanvas->Init(vulkan, defaultPipeline, vulkan->GetPositionAttachment()->GetImageView(), vulkan->GetNormalAttachment()->GetImageView(),
-		vulkan->GetAlbedoAttachment()->GetImageView()))
+		vulkan->GetAlbedoAttachment()->GetImageView(), vulkan->GetSpecularAttachment()->GetImageView()))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init default shader canvas!");
 		return false;
 	}
 
 	model = new Model();
-	if (!model->Init("data/models/teapot.rcm", vulkan, deferredPipeline, renderCommandBuffer))
+	if (!model->Init("data/models/two_toruses.rcm", vulkan, deferredPipeline, renderCommandBuffer))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init model!");
 		return false;
@@ -127,10 +129,16 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 	SAFE_UNLOAD(deferredCommandBuffer, vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
 }
 
-int imageIndex = 4;
+int imageIndex = 5;
+float angle = 0.0f;
 void SceneManager::Render(VulkanInterface * vulkan)
 {
+	angle += 0.001f * gTimer->GetDelta();
+	if (angle > 90.0f)
+		angle = 0.0f;
+		
 	camera->HandleInput();
+	light->SetLightDirection(glm::sin(angle), -0.5f, 1.0f);
 
 	// Debug deferred shading
 	if (gInput->WasKeyPressed(KEYBOARD_KEY_1))
@@ -141,6 +149,8 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		imageIndex = 3;
 	if (gInput->WasKeyPressed(KEYBOARD_KEY_4))
 		imageIndex = 4;
+	if (gInput->WasKeyPressed(KEYBOARD_KEY_5))
+		imageIndex = 5;
 
 	vulkan->BeginScene3D(deferredCommandBuffer);
 
@@ -171,9 +181,9 @@ bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	vertexLayoutDefault[1].format = VK_FORMAT_R32G32_SFLOAT;
 	vertexLayoutDefault[1].offset = sizeof(float) * 3;
 
-	VkDescriptorSetLayoutBinding layoutBindingsDefault[5];
+	VkDescriptorSetLayoutBinding layoutBindingsDefault[6];
 
-	// Vertex shader uniform buffer
+	// Layout bindings
 	layoutBindingsDefault[0].binding = 0;
 	layoutBindingsDefault[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	layoutBindingsDefault[0].descriptorCount = 1;
@@ -199,10 +209,16 @@ bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	layoutBindingsDefault[3].pImmutableSamplers = VK_NULL_HANDLE;
 
 	layoutBindingsDefault[4].binding = 4;
-	layoutBindingsDefault[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsDefault[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	layoutBindingsDefault[4].descriptorCount = 1;
 	layoutBindingsDefault[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	layoutBindingsDefault[4].pImmutableSamplers = VK_NULL_HANDLE;
+
+	layoutBindingsDefault[5].binding = 5;
+	layoutBindingsDefault[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsDefault[5].descriptorCount = 1;
+	layoutBindingsDefault[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsDefault[5].pImmutableSamplers = VK_NULL_HANDLE;
 
 	struct DefaultVertex {
 		float x, y, z;
@@ -211,7 +227,7 @@ bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 
 	defaultPipeline = new VulkanPipeline();
 	if (!defaultPipeline->Init(vulkan->GetVulkanDevice(), defaultShader, vulkan->GetMainRenderpass(), vertexLayoutDefault, 2,
-		layoutBindingsDefault, 5, sizeof(DefaultVertex), 1))
+		layoutBindingsDefault, 6, sizeof(DefaultVertex), 1))
 		return false;
 
 	return true;
@@ -236,21 +252,32 @@ bool SceneManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	vertexLayoutDeferred[2].format = VK_FORMAT_R32G32B32_SFLOAT;
 	vertexLayoutDeferred[2].offset = sizeof(float) * 5;
 
-	VkDescriptorSetLayoutBinding layoutBindingsDeferred[2];
+	VkDescriptorSetLayoutBinding layoutBindingsDeferred[4];
 
-	// Vertex shader uniform buffer
+	// Layout bindings
 	layoutBindingsDeferred[0].binding = 0;
 	layoutBindingsDeferred[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	layoutBindingsDeferred[0].descriptorCount = 1;
 	layoutBindingsDeferred[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	layoutBindingsDeferred[0].pImmutableSamplers = VK_NULL_HANDLE;
 
-	// Fragment shader sampler
 	layoutBindingsDeferred[1].binding = 1;
 	layoutBindingsDeferred[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	layoutBindingsDeferred[1].descriptorCount = 1;
 	layoutBindingsDeferred[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	layoutBindingsDeferred[1].pImmutableSamplers = VK_NULL_HANDLE;
+
+	layoutBindingsDeferred[2].binding = 2;
+	layoutBindingsDeferred[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindingsDeferred[2].descriptorCount = 1;
+	layoutBindingsDeferred[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsDeferred[2].pImmutableSamplers = VK_NULL_HANDLE;
+
+	layoutBindingsDeferred[3].binding = 3;
+	layoutBindingsDeferred[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsDeferred[3].descriptorCount = 1;
+	layoutBindingsDeferred[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsDeferred[3].pImmutableSamplers = VK_NULL_HANDLE;
 
 	struct DeferredVertex {
 		float x, y, z;
@@ -260,7 +287,7 @@ bool SceneManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 
 	deferredPipeline = new VulkanPipeline();
 	if (!deferredPipeline->Init(vulkan->GetVulkanDevice(), deferredShader, vulkan->GetDeferredRenderpass(), vertexLayoutDeferred, 3,
-		layoutBindingsDeferred, 2, sizeof(DeferredVertex), 3))
+		layoutBindingsDeferred, 4, sizeof(DeferredVertex), 4))
 		return false;
 
 	return true;

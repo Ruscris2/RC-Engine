@@ -30,9 +30,9 @@ Texture::~Texture()
 bool Texture::Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::string filename)
 {
 	VkResult result;
-	unsigned int width, height;
-	unsigned int fileSize;
 	unsigned char * fileData;
+	unsigned int fileSize;
+	unsigned int width, height;
 
 	FILE * file = fopen(filename.c_str(), "rb");
 	if (file == NULL)
@@ -131,7 +131,6 @@ bool Texture::Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::
 	if (result != VK_SUCCESS)
 		return false;
 
-	delete[] fileData;
 	return true;
 }
 

@@ -11,12 +11,14 @@
 #include "Camera.h"
 #include "Texture.h"
 #include "Light.h"
+#include "Material.h"
 
 class Model
 {
 	private:
 		std::vector<Mesh*> meshes;
-		std::vector<Texture*> diffuseTextures;
+		std::vector<Texture*> textures;
+		std::vector<Material*> materials;
 		std::vector<VulkanCommandBuffer*> drawCmdBuffers;
 
 		float posX, posY, posZ;
@@ -31,7 +33,7 @@ class Model
 
 		VkDescriptorPool descriptorPool;
 		VkDescriptorSet descriptorSet;
-		VkWriteDescriptorSet descriptorWrite[2];
+		VkWriteDescriptorSet descriptorWrite[4];
 		
 		VkBuffer vsUniformBuffer;
 		VkDeviceMemory vsUniformMemory;

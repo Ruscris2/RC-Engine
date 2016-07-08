@@ -7,6 +7,7 @@
 #pragma once
 
 #include "VulkanInterface.h"
+#include "Material.h"
 
 class Mesh
 {
@@ -20,10 +21,24 @@ class Mesh
 		unsigned int vertexCount;
 		unsigned int indexCount;
 
+		struct MaterialUniformBuffer
+		{
+			float materialShininess;
+			glm::vec3 padding;
+		};
+		MaterialUniformBuffer materialUniformBuffer;
+
 		VkBuffer vertexBuffer;
 		VkDeviceMemory vertexMemory;
 		VkBuffer indexBuffer;
 		VkDeviceMemory indexMemory;
+
+		VkBuffer fsUniformBuffer;
+		VkDeviceMemory fsUniformMemory;
+		VkDescriptorBufferInfo fsUniformBufferInfo;
+		VkMemoryRequirements fsMemReq;
+
+		Material * material;
 	public:
 		Mesh();
 		~Mesh();
@@ -31,4 +46,8 @@ class Mesh
 		bool Init(VulkanInterface * vulkan, FILE * modelFile);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer);
+		void UpdateUniformBuffer(VulkanInterface * vulkan);
+		void SetMaterial(Material * material);
+		VkDescriptorBufferInfo * GetMaterialUniformBufferInfo();
+		Material * GetMaterial();
 };

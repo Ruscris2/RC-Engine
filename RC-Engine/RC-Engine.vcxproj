@@ -151,6 +151,7 @@
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="LogManager.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Material.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="SceneManager.cpp" />
@@ -176,6 +177,7 @@
     <ClInclude Include="FrameBufferAttachment.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="Light.h" />
+    <ClInclude Include="Material.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="SceneManager.h" />

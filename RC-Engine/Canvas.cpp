@@ -26,7 +26,7 @@ Canvas::~Canvas()
 	vertexBuffer = VK_NULL_HANDLE;
 }
 
-bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView, VkImageView albedoView)
+bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView, VkImageView albedoView, VkImageView specularView)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
@@ -221,7 +221,7 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	fragmentUniformBuffer.lightDirection = glm::vec3();
 	fragmentUniformBuffer.specularPower = 0.0f;
 	fragmentUniformBuffer.cameraPosition = glm::vec3();
-	fragmentUniformBuffer.imageIndex = 4;
+	fragmentUniformBuffer.imageIndex = 5;
 
 	// Vertex shader Uniform buffer
 	VkBufferCreateInfo vsBufferCI{};
@@ -302,7 +302,7 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	fsUniformBufferInfo.range = sizeof(fragmentUniformBuffer);
 
 	// Descriptor pool
-	VkDescriptorPoolSize typeCounts[5];
+	VkDescriptorPoolSize typeCounts[6];
 	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	typeCounts[0].descriptorCount = 1;
 	typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -311,8 +311,10 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	typeCounts[2].descriptorCount = 1;
 	typeCounts[3].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	typeCounts[3].descriptorCount = 1;
-	typeCounts[4].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[4].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	typeCounts[4].descriptorCount = 1;
+	typeCounts[5].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[5].descriptorCount = 1;
 
 	VkDescriptorPoolCreateInfo descriptorPoolCI{};
 	descriptorPoolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -335,7 +337,7 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	if (result != VK_SUCCESS)
 		return false;
 
-	VkWriteDescriptorSet write[5];
+	VkWriteDescriptorSet write[6];
 
 	write[0] = {};
 	write[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -392,15 +394,30 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	write[3].dstArrayElement = 0;
 	write[3].dstBinding = 3;
 
+	VkDescriptorImageInfo specularTextureDesc{};
+	specularTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	specularTextureDesc.imageView = specularView;
+	specularTextureDesc.sampler = vulkan->GetColorSampler();
+
 	write[4] = {};
 	write[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write[4].pNext = NULL;
 	write[4].dstSet = descriptorSet;
 	write[4].descriptorCount = 1;
-	write[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	write[4].pBufferInfo = &fsUniformBufferInfo;
+	write[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	write[4].pImageInfo = &specularTextureDesc;
 	write[4].dstArrayElement = 0;
 	write[4].dstBinding = 4;
+
+	write[5] = {};
+	write[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write[5].pNext = NULL;
+	write[5].dstSet = descriptorSet;
+	write[5].descriptorCount = 1;
+	write[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	write[5].pBufferInfo = &fsUniformBufferInfo;
+	write[5].dstArrayElement = 0;
+	write[5].dstBinding = 5;
 
 	vkUpdateDescriptorSets(vulkanDevice->GetDevice(), sizeof(write) / sizeof(write[0]), write, 0, NULL);
 

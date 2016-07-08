@@ -172,6 +172,49 @@ bool Mesh::Init(VulkanInterface * vulkan, FILE * modelFile)
 
 	delete[] vertexData;
 	delete[] indexData;
+
+	// Material uniform buffer
+	materialUniformBuffer.materialShininess = 0.0f;
+	materialUniformBuffer.padding = glm::vec3();
+
+	// Fragment shader uniform buffer
+	VkBufferCreateInfo fsBufferCI{};
+	fsBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	fsBufferCI.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	fsBufferCI.size = sizeof(materialUniformBuffer);
+	fsBufferCI.queueFamilyIndexCount = 0;
+	fsBufferCI.pQueueFamilyIndices = VK_NULL_HANDLE;
+	fsBufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	result = vkCreateBuffer(vulkanDevice->GetDevice(), &fsBufferCI, VK_NULL_HANDLE, &fsUniformBuffer);
+	if (result != VK_SUCCESS)
+		return false;
+
+	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), fsUniformBuffer, &fsMemReq);
+
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = fsMemReq.size;
+	if (!vulkanDevice->MemoryTypeFromProperties(fsMemReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &allocInfo.memoryTypeIndex))
+		return false;
+
+	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &fsUniformMemory);
+	if (result != VK_SUCCESS)
+		return false;
+
+	result = vkMapMemory(vulkanDevice->GetDevice(), fsUniformMemory, 0, fsMemReq.size, 0, (void**)&pData);
+	if (result != VK_SUCCESS)
+		return false;
+
+	memcpy(pData, &materialUniformBuffer, sizeof(materialUniformBuffer));
+
+	vkUnmapMemory(vulkanDevice->GetDevice(), fsUniformMemory);
+
+	result = vkBindBufferMemory(vulkanDevice->GetDevice(), fsUniformBuffer, fsUniformMemory, 0);
+	if (result != VK_SUCCESS)
+		return false;
+
+	fsUniformBufferInfo.buffer = fsUniformBuffer;
+	fsUniformBufferInfo.offset = 0;
+	fsUniformBufferInfo.range = sizeof(materialUniformBuffer);
 	return true;
 }
 
@@ -179,6 +222,8 @@ void Mesh::Unload(VulkanInterface * vulkan)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 
+	vkFreeMemory(vulkanDevice->GetDevice(), fsUniformMemory, VK_NULL_HANDLE);
+	vkDestroyBuffer(vulkanDevice->GetDevice(), fsUniformBuffer, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), indexMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), indexBuffer, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), vertexMemory, VK_NULL_HANDLE);
@@ -192,4 +237,31 @@ void Mesh::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer)
 	vkCmdBindIndexBuffer(commandBuffer->GetCommandBuffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 	vkCmdDrawIndexed(commandBuffer->GetCommandBuffer(), indexCount, 1, 0, 0, 0);
+}
+
+void Mesh::UpdateUniformBuffer(VulkanInterface * vulkan)
+{
+	materialUniformBuffer.materialShininess = material->GetSpecularShininess();
+	materialUniformBuffer.padding = glm::vec3();
+
+	uint8_t *pData;
+
+	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), fsUniformMemory, 0, fsMemReq.size, 0, (void**)&pData);
+	memcpy(pData, &materialUniformBuffer, sizeof(materialUniformBuffer));
+	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), fsUniformMemory);
+}
+
+void Mesh::SetMaterial(Material * material)
+{
+	this->material = material;
+}
+
+VkDescriptorBufferInfo * Mesh::GetMaterialUniformBufferInfo()
+{
+	return &fsUniformBufferInfo;
+}
+
+Material * Mesh::GetMaterial()
+{
+	return material;
 }
