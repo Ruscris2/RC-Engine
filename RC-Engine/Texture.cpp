@@ -37,7 +37,7 @@ bool Texture::Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::
 	FILE * file = fopen(filename.c_str(), "rb");
 	if (file == NULL)
 	{
-		gLogManager->AddMessage("ERROR: Texture file not found!");
+		gLogManager->AddMessage("ERROR: Texture file not found! (" + filename + ")");
 		return false;
 	}
 

@@ -22,12 +22,14 @@ SceneManager::SceneManager()
 	deferredCommandBuffer = NULL;
 	renderCommandBuffer = NULL;
 	defaultShader = NULL;
+	skinnedShader = NULL;
 	deferredShader = NULL;
 	defaultPipeline = NULL;
+	skinnedPipeline = NULL;
 	deferredPipeline = NULL;
 	defaultShaderCanvas = NULL;
 	model = NULL;
-	model2 = NULL;
+	male = NULL;
 }
 
 SceneManager::~SceneManager()
@@ -42,11 +44,11 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	camera->Init();
 	
 	light = new Light();
-	light->SetAmbientColor(0.2f, 0.2f, 0.2f, 1.0f);
-	light->SetDiffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
+	light->SetAmbientColor(0.25f, 0.25f, 0.25f, 1.0f);
+	light->SetDiffuseColor(0.8f, 0.8f, 0.8f, 0.8f);
 	light->SetSpecularColor(1.0f, 1.0f, 1.0f, 1.0f);
 	light->SetLightDirection(-0.5f, -0.5f, 1.0f);
-	light->SetSpecularPower(2.0f);
+	light->SetSpecularPower(0.5f);
 
 	deferredCommandBuffer = new VulkanCommandBuffer();
 	if (!deferredCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
@@ -65,7 +67,14 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	defaultShader = new DefaultShader();
 	if (!defaultShader->Init(vulkan->GetVulkanDevice()))
 	{
-		gLogManager->AddMessage("ERROR: Failed to init shader!");
+		gLogManager->AddMessage("ERROR: Failed to init default shader!");
+		return false;
+	}
+
+	skinnedShader = new SkinnedShader();
+	if (!skinnedShader->Init(vulkan->GetVulkanDevice()))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init skinned shader!");
 		return false;
 	}
 
@@ -79,6 +88,12 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	if (!BuildDefaultPipeline(vulkan))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init default pipeline!");
+		return false;
+	}
+
+	if (!BuildSkinnedPipeline(vulkan))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init skinned pipeline!");
 		return false;
 	}
 
@@ -97,22 +112,27 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	}
 
 	model = new Model();
-	if (!model->Init("data/models/two_toruses.rcm", vulkan, deferredPipeline, renderCommandBuffer))
+	if (!model->Init("data/models/teapot.rcm", vulkan, deferredPipeline, renderCommandBuffer))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init model!");
 		return false;
 	}
-	model->SetPosition(-2.0f, 0.0f, 0.0f);
+	model->SetPosition(2.0f, 0.0f, 0.0f);
+	model->SetRotation(0.0f, 135.0f, -30.0f);
 
-	model2 = new Model();
-	if (!model2->Init("data/models/teapot.rcm", vulkan, deferredPipeline, renderCommandBuffer))
+	male = new SkinnedModel();
+	if (!male->Init("data/models/male.rcs", vulkan, skinnedPipeline, renderCommandBuffer))
 	{
-		gLogManager->AddMessage("ERROR: Failed to init model2!");
+		gLogManager->AddMessage("ERROR: Failed to init male model!");
 		return false;
 	}
-	model2->SetPosition(2.0f, 0.0f, 0.0f);
-	model2->SetRotation(0.0f, 135.0f, -30.0f);
+	male->SetPosition(-2.0f, 0.0f, 0.0f);
 
+	testAnim = new Animation();
+	if (!testAnim->Init("data/anims/testanim.fbx"))
+		return false;
+
+	male->SetAnimation(testAnim);
 	return true;
 }
 
@@ -120,10 +140,12 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 {
 	SAFE_UNLOAD(defaultShaderCanvas, vulkan);
 	SAFE_UNLOAD(deferredPipeline, vulkan->GetVulkanDevice());
+	SAFE_UNLOAD(skinnedPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(defaultPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(deferredShader, vulkan->GetVulkanDevice());
+	SAFE_UNLOAD(skinnedShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(defaultShader, vulkan->GetVulkanDevice());
-	SAFE_UNLOAD(model2, vulkan);
+	SAFE_UNLOAD(male, vulkan);
 	SAFE_UNLOAD(model, vulkan);
 	SAFE_UNLOAD(renderCommandBuffer, vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
 	SAFE_UNLOAD(deferredCommandBuffer, vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
@@ -131,8 +153,12 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 
 int imageIndex = 5;
 float angle = 0.0f;
+float animSpeed = 0.0f;
 void SceneManager::Render(VulkanInterface * vulkan)
 {
+	animSpeed += gTimer->GetDelta() * 0.001f;
+
+	testAnim->Update(animSpeed);
 	angle += 0.001f * gTimer->GetDelta();
 	if (angle > 90.0f)
 		angle = 0.0f;
@@ -155,7 +181,7 @@ void SceneManager::Render(VulkanInterface * vulkan)
 	vulkan->BeginScene3D(deferredCommandBuffer);
 
 	model->Render(vulkan, deferredCommandBuffer, deferredPipeline, camera);
-	model2->Render(vulkan, deferredCommandBuffer, deferredPipeline, camera);
+	male->Render(vulkan, deferredCommandBuffer, skinnedPipeline, camera);
 
 	vulkan->EndScene3D(deferredCommandBuffer);
 	
@@ -228,6 +254,83 @@ bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	defaultPipeline = new VulkanPipeline();
 	if (!defaultPipeline->Init(vulkan->GetVulkanDevice(), defaultShader, vulkan->GetMainRenderpass(), vertexLayoutDefault, 2,
 		layoutBindingsDefault, 6, sizeof(DefaultVertex), 1))
+		return false;
+
+	return true;
+}
+
+bool SceneManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
+{
+	VkVertexInputAttributeDescription vertexLayoutSkinned[5];
+
+	// Position
+	vertexLayoutSkinned[0].binding = 0;
+	vertexLayoutSkinned[0].location = 0;
+	vertexLayoutSkinned[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexLayoutSkinned[0].offset = 0;
+
+	// Texture coords
+	vertexLayoutSkinned[1].binding = 0;
+	vertexLayoutSkinned[1].location = 1;
+	vertexLayoutSkinned[1].format = VK_FORMAT_R32G32_SFLOAT;
+	vertexLayoutSkinned[1].offset = sizeof(float) * 3;
+
+	// Normals
+	vertexLayoutSkinned[2].binding = 0;
+	vertexLayoutSkinned[2].location = 2;
+	vertexLayoutSkinned[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexLayoutSkinned[2].offset = sizeof(float) * 5;
+
+	// Bone weights
+	vertexLayoutSkinned[3].binding = 0;
+	vertexLayoutSkinned[3].location = 3;
+	vertexLayoutSkinned[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	vertexLayoutSkinned[3].offset = sizeof(float) * 8;
+
+	// Bone IDs
+	vertexLayoutSkinned[4].binding = 0;
+	vertexLayoutSkinned[4].location = 4;
+	vertexLayoutSkinned[4].format = VK_FORMAT_R32G32B32A32_SINT;
+	vertexLayoutSkinned[4].offset = sizeof(float) * 12;
+
+	VkDescriptorSetLayoutBinding layoutBindingsSkinned[4];
+
+	// Layout bindings
+	layoutBindingsSkinned[0].binding = 0;
+	layoutBindingsSkinned[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsSkinned[0].descriptorCount = 1;
+	layoutBindingsSkinned[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	layoutBindingsSkinned[0].pImmutableSamplers = VK_NULL_HANDLE;
+
+	layoutBindingsSkinned[1].binding = 1;
+	layoutBindingsSkinned[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindingsSkinned[1].descriptorCount = 1;
+	layoutBindingsSkinned[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsSkinned[1].pImmutableSamplers = VK_NULL_HANDLE;
+
+	layoutBindingsSkinned[2].binding = 2;
+	layoutBindingsSkinned[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindingsSkinned[2].descriptorCount = 1;
+	layoutBindingsSkinned[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsSkinned[2].pImmutableSamplers = VK_NULL_HANDLE;
+
+	layoutBindingsSkinned[3].binding = 3;
+	layoutBindingsSkinned[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsSkinned[3].descriptorCount = 1;
+	layoutBindingsSkinned[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsSkinned[3].pImmutableSamplers = VK_NULL_HANDLE;
+
+	struct SkinnedVertex {
+		float x, y, z;
+		float u, v;
+		float nx, ny, nz;
+		float boneWeights[4];
+		uint32_t boneIDs[4];
+	};
+
+	skinnedPipeline = new VulkanPipeline();
+	if (!skinnedPipeline->Init(vulkan->GetVulkanDevice(), skinnedShader, vulkan->GetDeferredRenderpass(), vertexLayoutSkinned, 5,
+		layoutBindingsSkinned, 4, sizeof(SkinnedVertex), 4))
 		return false;
 
 	return true;

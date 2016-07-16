@@ -9,12 +9,15 @@
 #include "Camera.h"
 #include "VulkanInterface.h"
 #include "DefaultShader.h"
+#include "SkinnedShader.h"
 #include "DeferredShader.h"
 #include "VulkanPipeline.h"
 #include "VulkanCommandBuffer.h"
 #include "Model.h"
+#include "SkinnedModel.h"
 #include "Light.h"
 #include "Canvas.h"
+#include "Animation.h"
 
 class SceneManager
 {
@@ -22,16 +25,20 @@ class SceneManager
 		Camera * camera;
 		Light * light;
 		DefaultShader * defaultShader;
+		SkinnedShader * skinnedShader;
 		DeferredShader * deferredShader;
 		VulkanPipeline * defaultPipeline;
+		VulkanPipeline * skinnedPipeline;
 		VulkanPipeline * deferredPipeline;
 		VulkanCommandBuffer * deferredCommandBuffer;
 		VulkanCommandBuffer * renderCommandBuffer;
 		Canvas * defaultShaderCanvas;
 		Model * model;
-		Model * model2;
+		SkinnedModel * male;
+		Animation * testAnim;
 	private:
 		bool BuildDefaultPipeline(VulkanInterface * vulkan);
+		bool BuildSkinnedPipeline(VulkanInterface * vulkan);
 		bool BuildDeferredPipeline(VulkanInterface * vulkan);
 	public:
 		SceneManager();

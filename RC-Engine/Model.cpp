@@ -88,7 +88,7 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 		Material * material = new Material();
 		material->SetDiffuseTexture(diffuse);
 		material->SetSpecularTexture(specular);
-		material->SetSpecularShininess(32.0f);
+		material->SetSpecularShininess(128.0f);
 
 		materials.push_back(material);
 		meshes[i]->SetMaterial(material);

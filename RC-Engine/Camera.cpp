@@ -25,7 +25,7 @@ void Camera::Init()
 
 void Camera::HandleInput()
 {
-	float speed = 0.006f;
+	float speed = 0.006f * 7.0f;
 	float sensitivity = 0.2f;
 
 	bool update = false;
