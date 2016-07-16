@@ -14,8 +14,6 @@
 extern LogManager * gLogManager;
 extern Settings * gSettings;
 
-bool minimalisticDebugInfo = true;
-
 VulkanInterface::VulkanInterface()
 {
 	vulkanInstance = NULL;
@@ -35,7 +33,7 @@ VulkanInterface::VulkanInterface()
 
 VulkanInterface::~VulkanInterface()
 {
-#ifdef _DEBUG
+#if VULKAN_DEBUG_MODE_ENABLED
 		UnloadVulkanDebugMode();
 #endif
 	vkDestroySemaphore(vulkanDevice->GetDevice(), drawCompleteSemaphore, VK_NULL_HANDLE);
@@ -65,7 +63,7 @@ VulkanInterface::~VulkanInterface()
 bool VulkanInterface::Init(HWND hwnd)
 {
 	vulkanInstance = new VulkanInstance();
-	#ifdef _DEBUG
+	#if VULKAN_DEBUG_MODE_ENABLED
 	vulkanInstance->AddInstanceLayer("VK_LAYER_LUNARG_standard_validation");
 	vulkanInstance->AddInstanceExtension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 	#endif
@@ -78,7 +76,7 @@ bool VulkanInterface::Init(HWND hwnd)
 		return false;
 	}
 
-	#ifdef _DEBUG
+	#if VULKAN_DEBUG_MODE_ENABLED
 	if (!InitVulkanDebugMode())
 	{
 		gLogManager->AddMessage("ERROR: Failed to init vulkan debug mode!");
@@ -561,7 +559,7 @@ void VulkanInterface::InitViewportAndScissors(VulkanCommandBuffer * commandBuffe
 	vkCmdSetScissor(commandBuffer->GetCommandBuffer(), 0, 1, &scissor);
 }
 
-#ifdef _DEBUG
+#if VULKAN_DEBUG_MODE_ENABLED
 	PFN_vkCreateDebugReportCallbackEXT fvkCreateDebugReportCallbackEXT;
 	PFN_vkDestroyDebugReportCallbackEXT fvkDestroyDebugReportCallbackEXT;
 
@@ -569,11 +567,9 @@ void VulkanInterface::InitViewportAndScissors(VulkanCommandBuffer * commandBuffe
 		int32_t msgCode, const char * layer_prefix, const char * msg, void * userData)
 	{
 		std::string outputMsg;
-		if (flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) outputMsg = "[INFO] ";
 		if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) outputMsg = "[WARNING] ";
-		if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) outputMsg = "[PERF WARNING] ";
-		if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) outputMsg = "[ERROR] ";
-		if (flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) outputMsg = "[DEBUG] ";
+		else if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) outputMsg = "[PERF WARNING] ";
+		else if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) outputMsg = "[ERROR] ";
 
 		outputMsg += msg;
 		gLogManager->AddMessage(outputMsg);
@@ -593,15 +589,8 @@ void VulkanInterface::InitViewportAndScissors(VulkanCommandBuffer * commandBuffe
 
 		VkDebugReportCallbackCreateInfoEXT debugCI{};
 		debugCI.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
-		if (minimalisticDebugInfo == true)
-		{
-			debugCI.flags = VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT | VK_DEBUG_REPORT_ERROR_BIT_EXT;
-		}
-		else
-		{
-			debugCI.flags = VK_DEBUG_REPORT_INFORMATION_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT |
-				VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_DEBUG_BIT_EXT;
-		}
+
+		debugCI.flags = VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT | VK_DEBUG_REPORT_ERROR_BIT_EXT;
 		debugCI.pfnCallback = VulkanDebugCallback;
 
 		fvkCreateDebugReportCallbackEXT(vulkanInstance->GetInstance(), &debugCI, VK_NULL_HANDLE, &debugReport);

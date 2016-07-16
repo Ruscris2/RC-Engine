@@ -6,6 +6,8 @@
 ==========================================================================================*/
 #pragma once
 
+#define VULKAN_DEBUG_MODE_ENABLED false
+
 #define VK_USE_PLATFORM_WIN32_KHR
 
 #define GLM_FORCE_RADIANS
@@ -59,7 +61,7 @@ class VulkanInterface
 		VkSemaphore presentCompleteSemaphore;
 		VkSemaphore drawCompleteSemaphore;
 
-#ifdef _DEBUG
+#if VULKAN_DEBUG_MODE_ENABLED
 		VkDebugReportCallbackEXT debugReport;
 #endif
 	private:
@@ -67,7 +69,7 @@ class VulkanInterface
 		bool InitColorSampler();
 		bool InitDeferredFramebuffer();
 	
-#ifdef _DEBUG
+#if VULKAN_DEBUG_MODE_ENABLED
 		bool InitVulkanDebugMode();
 		void UnloadVulkanDebugMode();
 #endif

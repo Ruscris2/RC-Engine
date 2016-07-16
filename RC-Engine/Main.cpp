@@ -67,20 +67,20 @@ int main()
 	}
 	gLogManager->AddMessage("SUCCESS: Vulkan interface initialized!");
 
-	// Scene manager
-	SceneManager * sceneManager = new SceneManager();
-	if (!sceneManager->Init(vulkan))
-	{
-		gLogManager->AddMessage("ERROR: Failed to init scene manager!");
-		THROW_ERROR();
-	}
-
 	// Timer
 	gTimer = new Timer();
 	if (!gTimer->Init())
 	{
 		gLogManager->AddMessage("ERROR: Failed to init timer!");
 		return false;
+	}
+
+	// Scene manager
+	SceneManager * sceneManager = new SceneManager();
+	if (!sceneManager->Init(vulkan))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init scene manager!");
+		THROW_ERROR();
 	}
 
 	// Main loop
@@ -114,7 +114,7 @@ int main()
 	SAFE_DELETE(window);
 	SAFE_DELETE(gSettings);
 	SAFE_DELETE(gLogManager);
-	
+
 	return 0;
 }
 

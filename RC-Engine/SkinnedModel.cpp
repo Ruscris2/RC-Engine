@@ -5,8 +5,6 @@
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 
-#include <gtc/type_ptr.hpp>
-
 #include "SkinnedModel.h"
 #include "StdInc.h"
 #include "LogManager.h"
@@ -230,9 +228,8 @@ void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * comman
 
 	if (currentAnim != NULL)
 	{
-		std::vector<aiMatrix4x4> boneTransforms = currentAnim->GetBoneTransforms();
-		for (size_t i = 0; i < boneTransforms.size(); i++)
-			vertexUniformBuffer.bones[i] = glm::transpose(glm::make_mat4(&boneTransforms[i].a1));
+		std::vector<glm::mat4> boneTransforms = currentAnim->GetBoneTransforms();
+		memcpy(vertexUniformBuffer.bones, boneTransforms.data(), sizeof(glm::mat4) * boneTransforms.size());
 	}
 
 	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);

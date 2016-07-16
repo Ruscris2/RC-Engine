@@ -10,6 +10,7 @@
 #include "LogManager.h"
 #include "Input.h"
 #include "Timer.h"
+#include "StdInc.h"
 
 extern LogManager * gLogManager;
 extern Input * gInput;
@@ -34,12 +35,20 @@ SceneManager::SceneManager()
 
 SceneManager::~SceneManager()
 {
+	animationListMutex.lock();
+	for (unsigned int i = 0; i < animationList.size(); i++)
+		SAFE_DELETE(animationList[i]);
+	animationListMutex.unlock();
+
 	SAFE_DELETE(light);
 	SAFE_DELETE(camera);
 }
 
 bool SceneManager::Init(VulkanInterface * vulkan)
 {
+	runThreads = true;
+	animThread = std::thread(&SceneManager::UpdateAnimsThreadFunc, this);
+	
 	camera = new Camera();
 	camera->Init();
 	
@@ -131,13 +140,22 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	testAnim = new Animation();
 	if (!testAnim->Init("data/anims/testanim.fbx"))
 		return false;
+	testAnim->SetAnimationSpeed(0.001f);
+
+	animationListMutex.lock();
+	animationList.push_back(testAnim);
+	animationListMutex.unlock();
 
 	male->SetAnimation(testAnim);
+
 	return true;
 }
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
+	runThreads = false;
+	animThread.join();
+
 	SAFE_UNLOAD(defaultShaderCanvas, vulkan);
 	SAFE_UNLOAD(deferredPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(skinnedPipeline, vulkan->GetVulkanDevice());
@@ -153,12 +171,9 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 
 int imageIndex = 5;
 float angle = 0.0f;
-float animSpeed = 0.0f;
+
 void SceneManager::Render(VulkanInterface * vulkan)
 {
-	animSpeed += gTimer->GetDelta() * 0.001f;
-
-	testAnim->Update(animSpeed);
 	angle += 0.001f * gTimer->GetDelta();
 	if (angle > 90.0f)
 		angle = 0.0f;
@@ -394,4 +409,29 @@ bool SceneManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 		return false;
 
 	return true;
+}
+
+void SceneManager::UpdateAnimsThreadFunc()
+{
+	Timer * timer = new Timer();
+	if (!timer->Init())
+	{
+		gLogManager->AddMessage("ERROR: Failed to init anim thread timer!");
+		THROW_ERROR();
+	}
+
+	while (runThreads)
+	{
+		timer->Update();
+		
+		animationListMutex.lock();
+		for (unsigned int i = 0; i < animationList.size(); i++)
+		{
+			if (animationList[i] != NULL && animationList[i]->IsLoaded())
+				animationList[i]->Update(timer->GetDelta());
+		}
+		animationListMutex.unlock();
+	}
+
+	SAFE_DELETE(timer);
 }

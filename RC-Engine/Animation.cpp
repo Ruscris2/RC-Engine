@@ -12,6 +12,7 @@ extern LogManager * gLogManager;
 
 Animation::Animation()
 {
+	loaded = false;
 	scene = NULL;
 }
 
@@ -22,6 +23,9 @@ Animation::~Animation()
 
 bool Animation::Init(std::string filename)
 {
+	runTime = 0;
+	speed = 0.001f;
+
 	scene = importer.ReadFile(filename, aiProcess_MakeLeftHanded | aiProcess_FlipWindingOrder);
 
 	if (!scene)
@@ -54,29 +58,49 @@ bool Animation::Init(std::string filename)
 	}
 
 	boneTransforms.resize(numBones);
-
+	boneTransformsGLM.resize(numBones);
 
 	globalInverseTransform = scene->mRootNode->mTransformation;
 	globalInverseTransform.Inverse();
+
+	loaded = true;
 	return true;
+}
+
+void Animation::SetAnimationSpeed(float speed)
+{
+	this->speed = speed;
+}
+
+bool Animation::IsLoaded()
+{
+	return loaded;
 }
 
 void Animation::Update(float time)
 {
+	runTime += time * speed;
+
 	float ticksPerSecond = (float)(scene->mAnimations[0]->mTicksPerSecond != 0 ? scene->mAnimations[0]->mTicksPerSecond : 25.0f);
-	float timeInTicks = time * ticksPerSecond;
+	float timeInTicks = runTime * ticksPerSecond;
 	float animationTime = fmod(timeInTicks, (float)scene->mAnimations[0]->mDuration);
 
 	aiMatrix4x4 identity = aiMatrix4x4();
 	ReadNodeHierarchy(animationTime, scene->mRootNode, identity);
 
 	for (uint32_t i = 0; i < boneTransforms.size(); i++)
+	{
 		boneTransforms[i] = bones[i].finalTransformation;
+		boneTransformsGLM[i] = glm::transpose(glm::make_mat4(&boneTransforms[i].a1));
+	}
+
+	if (runTime > scene->mAnimations[0]->mDuration * ticksPerSecond)
+		runTime = 0.0f;
 }
 
-std::vector<aiMatrix4x4>& Animation::GetBoneTransforms()
+std::vector<glm::mat4>& Animation::GetBoneTransforms()
 {
-	return boneTransforms;
+	return boneTransformsGLM;
 }
 
 void Animation::ReadNodeHierarchy(float animTime, const aiNode * node, const aiMatrix4x4 & parentTransform)

@@ -17,8 +17,7 @@ WinWindow::WinWindow()
 
 WinWindow::~WinWindow()
 {
-	if (hwnd != NULL)
-		DestroyWindow(hwnd);
+
 }
 
 bool WinWindow::Create(std::string windowName, int windowWidth, int windowHeight, int windowPosX, int windowPosY, WNDPROC windowProc)
