@@ -26,6 +26,9 @@ class SkinnedModel
 		float rotX, rotY, rotZ;
 		
 		Animation * currentAnim;
+		unsigned int numBones;
+		std::vector <aiMatrix4x4> boneOffsets;
+		std::map <std::string, uint32_t> boneMapping;
 
 		struct VertexUniformBuffer
 		{

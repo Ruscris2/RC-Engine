@@ -23,33 +23,20 @@
 class Animation
 {
 	private:
-		struct BoneInfo
-		{
-			aiMatrix4x4 offset;
-			aiMatrix4x4 finalTransformation;
-
-			BoneInfo()
-			{
-				offset = aiMatrix4x4();
-				finalTransformation = aiMatrix4x4();
-			}
-		};
-
 		Assimp::Importer importer;
 		const aiScene * scene;
-		std::vector<BoneInfo> bones;
 		uint32_t numBones;
 		aiMatrix4x4 globalInverseTransform;
 		std::vector<aiMatrix4x4> boneTransforms;
 		std::vector<glm::mat4> boneTransformsGLM;
-		std::map<std::string, uint32_t> boneMapping;
 
 		float runTime;
 		float speed;
 
 		bool loaded;
 	private:
-		void ReadNodeHierarchy(float animTime, const aiNode* node, const aiMatrix4x4& parentTransform);
+		void ReadNodeHierarchy(float animTime, const aiNode* node, const aiMatrix4x4& parentTransform,
+			std::vector<aiMatrix4x4>& boneOffsets, std::map<std::string, uint32_t>& boneMapping);
 		const aiNodeAnim * FindNodeAnim(std::string nodeName);
 		aiMatrix4x4 InterpolateTranslation(float time, const aiNodeAnim* nodeAnim);
 		aiMatrix4x4 InterpolateRotation(float time, const aiNodeAnim* nodeAnim);
@@ -58,9 +45,9 @@ class Animation
 		Animation();
 		~Animation();
 
-		bool Init(std::string filename);
+		bool Init(std::string filename, uint32_t numBones);
 		void SetAnimationSpeed(float speed);
 		bool IsLoaded();
-		void Update(float time);
+		void Update(float time, std::vector<aiMatrix4x4>& boneOffsets, std::map<std::string, uint32_t>& boneMapping);
 		std::vector<glm::mat4>& GetBoneTransforms();
 };

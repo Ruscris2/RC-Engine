@@ -6,10 +6,6 @@
 ==========================================================================================*/
 #pragma once
 
-#include <thread>
-#include <atomic>
-#include <mutex>
-
 #include "Camera.h"
 #include "VulkanInterface.h"
 #include "DefaultShader.h"
@@ -39,16 +35,9 @@ class SceneManager
 		Canvas * defaultShaderCanvas;
 		Model * model;
 		SkinnedModel * male;
-		Animation * testAnim;
+		Animation * idleAnim;
 
-		std::mutex animationListMutex;
-		std::vector<Animation*> animationList;
-
-		std::atomic<bool> runThreads;
-		std::thread animThread;
 	private:
-		void UpdateAnimsThreadFunc();
-
 		bool BuildDefaultPipeline(VulkanInterface * vulkan);
 		bool BuildSkinnedPipeline(VulkanInterface * vulkan);
 		bool BuildDeferredPipeline(VulkanInterface * vulkan);

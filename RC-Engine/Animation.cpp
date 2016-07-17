@@ -21,8 +21,10 @@ Animation::~Animation()
 	scene = NULL;
 }
 
-bool Animation::Init(std::string filename)
+bool Animation::Init(std::string filename, uint32_t numBones)
 {
+	this->numBones = numBones;
+
 	runTime = 0;
 	speed = 0.001f;
 
@@ -33,28 +35,6 @@ bool Animation::Init(std::string filename)
 		gLogManager->AddMessage("ERROR: Reading animation file! ASSIMP INFO: ");
 		gLogManager->AddMessage(importer.GetErrorString());
 		return false;
-	}
-
-	numBones = 0;
-
-	for (uint32_t i = 0; i < scene->mNumMeshes; i++)
-	{
-		aiMesh * mesh = scene->mMeshes[i];
-
-		for (uint32_t j = 0; j < mesh->mNumBones; j++)
-		{
-			std::string boneName(mesh->mBones[j]->mName.data);
-
-			if (boneMapping.find(boneName) == boneMapping.end())
-			{
-				BoneInfo bone;
-				bone.offset = mesh->mBones[j]->mOffsetMatrix;
-				bones.push_back(bone);
-
-				boneMapping[boneName] = numBones;
-				numBones++;
-			}
-		}
 	}
 
 	boneTransforms.resize(numBones);
@@ -77,7 +57,7 @@ bool Animation::IsLoaded()
 	return loaded;
 }
 
-void Animation::Update(float time)
+void Animation::Update(float time, std::vector<aiMatrix4x4>& boneOffsets, std::map<std::string, uint32_t>& boneMapping)
 {
 	runTime += time * speed;
 
@@ -86,13 +66,10 @@ void Animation::Update(float time)
 	float animationTime = fmod(timeInTicks, (float)scene->mAnimations[0]->mDuration);
 
 	aiMatrix4x4 identity = aiMatrix4x4();
-	ReadNodeHierarchy(animationTime, scene->mRootNode, identity);
+	ReadNodeHierarchy(animationTime, scene->mRootNode, identity, boneOffsets, boneMapping);
 
 	for (uint32_t i = 0; i < boneTransforms.size(); i++)
-	{
-		boneTransforms[i] = bones[i].finalTransformation;
 		boneTransformsGLM[i] = glm::transpose(glm::make_mat4(&boneTransforms[i].a1));
-	}
 
 	if (runTime > scene->mAnimations[0]->mDuration * ticksPerSecond)
 		runTime = 0.0f;
@@ -103,7 +80,8 @@ std::vector<glm::mat4>& Animation::GetBoneTransforms()
 	return boneTransformsGLM;
 }
 
-void Animation::ReadNodeHierarchy(float animTime, const aiNode * node, const aiMatrix4x4 & parentTransform)
+void Animation::ReadNodeHierarchy(float animTime, const aiNode * node, const aiMatrix4x4 & parentTransform,
+	std::vector<aiMatrix4x4>& boneOffsets, std::map<std::string, uint32_t>& boneMapping)
 {
 	std::string nodeName(node->mName.data);
 
@@ -124,11 +102,11 @@ void Animation::ReadNodeHierarchy(float animTime, const aiNode * node, const aiM
 	if (boneMapping.find(nodeName) != boneMapping.end())
 	{
 		uint32_t boneIndex = boneMapping[nodeName];
-		bones[boneIndex].finalTransformation = globalInverseTransform * globalTransform * bones[boneIndex].offset;
+		boneTransforms[boneIndex] = globalInverseTransform * globalTransform * boneOffsets[boneIndex];
 	}
-
+	
 	for (uint32_t i = 0; i < node->mNumChildren; i++)
-		ReadNodeHierarchy(animTime, node->mChildren[i], globalTransform);
+		ReadNodeHierarchy(animTime, node->mChildren[i], globalTransform, boneOffsets, boneMapping);
 }
 
 const aiNodeAnim * Animation::FindNodeAnim(std::string nodeName)

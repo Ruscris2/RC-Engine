@@ -35,20 +35,13 @@ SceneManager::SceneManager()
 
 SceneManager::~SceneManager()
 {
-	animationListMutex.lock();
-	for (unsigned int i = 0; i < animationList.size(); i++)
-		SAFE_DELETE(animationList[i]);
-	animationListMutex.unlock();
-
+	SAFE_DELETE(idleAnim);
 	SAFE_DELETE(light);
 	SAFE_DELETE(camera);
 }
 
 bool SceneManager::Init(VulkanInterface * vulkan)
 {
-	runThreads = true;
-	animThread = std::thread(&SceneManager::UpdateAnimsThreadFunc, this);
-	
 	camera = new Camera();
 	camera->Init();
 	
@@ -137,25 +130,18 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	}
 	male->SetPosition(-2.0f, 0.0f, 0.0f);
 
-	testAnim = new Animation();
-	if (!testAnim->Init("data/anims/testanim.fbx"))
+	idleAnim = new Animation();
+	if (!idleAnim->Init("data/anims/idle.fbx", 54))
 		return false;
-	testAnim->SetAnimationSpeed(0.001f);
+	idleAnim->SetAnimationSpeed(0.0005f);
 
-	animationListMutex.lock();
-	animationList.push_back(testAnim);
-	animationListMutex.unlock();
-
-	male->SetAnimation(testAnim);
+	male->SetAnimation(idleAnim);
 
 	return true;
 }
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
-	runThreads = false;
-	animThread.join();
-
 	SAFE_UNLOAD(defaultShaderCanvas, vulkan);
 	SAFE_UNLOAD(deferredPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(skinnedPipeline, vulkan->GetVulkanDevice());
@@ -409,29 +395,4 @@ bool SceneManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 		return false;
 
 	return true;
-}
-
-void SceneManager::UpdateAnimsThreadFunc()
-{
-	Timer * timer = new Timer();
-	if (!timer->Init())
-	{
-		gLogManager->AddMessage("ERROR: Failed to init anim thread timer!");
-		THROW_ERROR();
-	}
-
-	while (runThreads)
-	{
-		timer->Update();
-		
-		animationListMutex.lock();
-		for (unsigned int i = 0; i < animationList.size(); i++)
-		{
-			if (animationList[i] != NULL && animationList[i]->IsLoaded())
-				animationList[i]->Update(timer->GetDelta());
-		}
-		animationListMutex.unlock();
-	}
-
-	SAFE_DELETE(timer);
 }

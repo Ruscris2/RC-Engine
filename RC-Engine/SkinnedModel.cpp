@@ -8,8 +8,10 @@
 #include "SkinnedModel.h"
 #include "StdInc.h"
 #include "LogManager.h"
+#include "Timer.h"
 
 extern LogManager * gLogManager;
+extern Timer * gTimer;
 
 SkinnedModel::SkinnedModel()
 {
@@ -103,6 +105,29 @@ bool SkinnedModel::Init(std::string filename, VulkanInterface * vulkan, VulkanPi
 			return false;
 		}
 		drawCmdBuffers.push_back(drawCmdBuffer);
+	}
+
+	// Read bone offsets
+	fread(&numBones, sizeof(unsigned int), 1, file);
+	boneOffsets.resize(numBones);
+	fread(boneOffsets.data(), sizeof(aiMatrix4x4), numBones, file);
+
+	// Read bone mappings
+	for (unsigned int i = 0; i < numBones; i++)
+	{
+		unsigned int strSize;
+		char * str;
+		std::string boneName;
+		uint32_t id;
+
+		fread(&strSize, sizeof(unsigned int), 1, file);
+		str = new char[strSize+1];
+		fread(str, sizeof(char), strSize, file);
+		fread(&id, sizeof(uint32_t), 1, file);
+
+		str[strSize] = 0;
+		boneName = str;
+		boneMapping[boneName] = id;
 	}
 
 	fclose(file);
@@ -221,6 +246,8 @@ void SkinnedModel::Unload(VulkanInterface * vulkan)
 
 void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera)
 {
+	currentAnim->Update(gTimer->GetDelta(), boneOffsets, boneMapping);
+
 	uint8_t *pData;
 
 	// Update vertex uniform buffer
