@@ -47,9 +47,9 @@ bool WinWindow::Create(std::string windowName, int windowWidth, int windowHeight
 	rect.top = 0;
 	rect.right = windowWidth;
 	rect.bottom = windowHeight;
-	AdjustWindowRectEx(&rect, WS_CAPTION | WS_SYSMENU, false, WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
+	AdjustWindowRectEx(&rect, WS_POPUP, false, WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
 
-	hwnd = CreateWindowEx(NULL, windowName.c_str(), windowName.c_str(), WS_CAPTION | WS_SYSMENU, windowPosX, windowPosY, rect.right - rect.left,
+	hwnd = CreateWindowEx(NULL, windowName.c_str(), windowName.c_str(), WS_POPUP, windowPosX, windowPosY, rect.right - rect.left,
 		rect.bottom - rect.top, NULL, NULL, GetModuleHandle(NULL), NULL);
 
 	if (hwnd == NULL)

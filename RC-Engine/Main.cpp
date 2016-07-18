@@ -57,6 +57,11 @@ int main()
 	
 	// Input
 	gInput = new Input();
+	if (!gInput->Init(window->GetHWND()))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init input interface!");
+		return false;
+	}
 
 	//Vulkan interface
 	VulkanInterface * vulkan = new VulkanInterface();
@@ -124,6 +129,46 @@ LRESULT CALLBACK WinWindowProc(HWND hwnd, UINT umsg, WPARAM wparam, LPARAM lpara
 	{
 		case WM_CLOSE:
 			gProgramRunning = false;
+		break;
+		case WM_INPUT:
+		{
+			UINT dwSize;
+			GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
+			LPBYTE lpb = new BYTE[dwSize];
+
+			GetRawInputData((HRAWINPUT)lparam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER));
+
+			RAWINPUT * raw = (RAWINPUT*)lpb;
+
+			if (raw->header.dwType == RIM_TYPEMOUSE)
+				gInput->InputHandler_SetCursorRelatives((int)raw->data.mouse.lLastX, (int)raw->data.mouse.lLastY);
+			else if(raw->header.dwType = RIM_TYPEKEYBOARD)
+			{
+				if (raw->data.keyboard.Flags == RI_KEY_BREAK)
+					gInput->InputHandler_SetKeyUp(raw->data.keyboard.VKey);
+				if (raw->data.keyboard.Flags == RI_KEY_MAKE)
+					gInput->InputHandler_SetKeyDown(raw->data.keyboard.VKey);
+			}
+		}
+		break;
+		case WM_SETFOCUS:
+		{
+			RECT rect;
+			GetClientRect(hwnd, &rect);
+			POINT p1 = { rect.left, rect.top };
+			POINT p2 = { rect.right, rect.bottom };
+			ClientToScreen(hwnd, &p1);
+			ClientToScreen(hwnd, &p2);
+			SetRect(&rect, p1.x, p1.y, p2.x, p2.y);
+			ClipCursor(&rect);
+			ShowCursor(FALSE);
+		}
+		break;
+		case WM_KILLFOCUS:
+		{
+			ClipCursor(NULL);
+			ShowCursor(TRUE);
+		}
 		break;
 	}
 

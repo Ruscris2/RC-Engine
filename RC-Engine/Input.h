@@ -6,6 +6,7 @@
 ==========================================================================================*/
 #pragma once
 
+#include <Windows.h>
 #include <vector>
 
 enum KEY_STATES
@@ -16,7 +17,6 @@ enum KEY_STATES
 	KEYBOARD_KEY_A,
 	KEYBOARD_KEY_S,
 	KEYBOARD_KEY_D,
-	MOUSE_LEFTBUTTON,
 	KEYBOARD_KEY_1,
 	KEYBOARD_KEY_2,
 	KEYBOARD_KEY_3,
@@ -28,15 +28,20 @@ enum KEY_STATES
 class Input
 {
 	private:
-		int prevCursorX, prevCursorY;
 		int cursorRelativeX, cursorRelativeY;
 		std::vector<int> keyStateValues;
-		bool * prevFrameState;
-		bool * currentFrameState;
+		bool wasKeyPressed[256];
+		bool keyboardState[256];
+		bool inputHandler_cursorRelatives_updated;
+		bool inputHandler_setKeyUp_updated;
 	public:
 		Input();
 		~Input();
 
+		bool Init(HWND hwnd);
+		void InputHandler_SetCursorRelatives(int x, int y);
+		void InputHandler_SetKeyDown(short vKey);
+		void InputHandler_SetKeyUp(short vKey);
 		bool IsKeyPressed(int key);
 		bool WasKeyPressed(int key);
 		void Update();

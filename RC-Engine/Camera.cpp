@@ -30,8 +30,8 @@ void Camera::HandleInput()
 
 	bool update = false;
 
-	if (gInput->IsKeyPressed(MOUSE_LEFTBUTTON))
-	{
+	//if (gInput->IsKeyPressed(MOUSE_LEFTBUTTON))
+	//{
 		if (gInput->GetCursorRelativeX() != 0)
 		{
 			update = true;
@@ -42,7 +42,7 @@ void Camera::HandleInput()
 			update = true;
 			pitch -= gInput->GetCursorRelativeY() * sensitivity;
 		}
-	}
+//	}
 
 	direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
 	direction.y = sin(glm::radians(pitch));
