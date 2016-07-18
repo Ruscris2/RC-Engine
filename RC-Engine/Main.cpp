@@ -92,10 +92,31 @@ int main()
 	MSG msg;
 	while (gProgramRunning)
 	{
-		if (PeekMessage(&msg, window->GetHWND(), 0, 0, PM_REMOVE))
+		while (PeekMessage(&msg, window->GetHWND(), 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
+			
+			if(msg.message == WM_INPUT)
+			{
+				UINT dwSize;
+				GetRawInputData((HRAWINPUT)msg.lParam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
+				LPBYTE lpb = new BYTE[dwSize];
+
+				GetRawInputData((HRAWINPUT)msg.lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER));
+
+				RAWINPUT * raw = (RAWINPUT*)lpb;
+
+				if (raw->header.dwType == RIM_TYPEMOUSE)
+					gInput->InputHandler_SetCursorRelatives((int)raw->data.mouse.lLastX, (int)raw->data.mouse.lLastY);
+				else if (raw->header.dwType = RIM_TYPEKEYBOARD)
+				{
+					if (raw->data.keyboard.Flags == RI_KEY_BREAK)
+						gInput->InputHandler_SetKeyUp(raw->data.keyboard.VKey);
+					if (raw->data.keyboard.Flags == RI_KEY_MAKE)
+						gInput->InputHandler_SetKeyDown(raw->data.keyboard.VKey);
+				}
+			}
 		}
 		gTimer->Update();
 		gInput->Update();
@@ -129,27 +150,6 @@ LRESULT CALLBACK WinWindowProc(HWND hwnd, UINT umsg, WPARAM wparam, LPARAM lpara
 	{
 		case WM_CLOSE:
 			gProgramRunning = false;
-		break;
-		case WM_INPUT:
-		{
-			UINT dwSize;
-			GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
-			LPBYTE lpb = new BYTE[dwSize];
-
-			GetRawInputData((HRAWINPUT)lparam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER));
-
-			RAWINPUT * raw = (RAWINPUT*)lpb;
-
-			if (raw->header.dwType == RIM_TYPEMOUSE)
-				gInput->InputHandler_SetCursorRelatives((int)raw->data.mouse.lLastX, (int)raw->data.mouse.lLastY);
-			else if(raw->header.dwType = RIM_TYPEKEYBOARD)
-			{
-				if (raw->data.keyboard.Flags == RI_KEY_BREAK)
-					gInput->InputHandler_SetKeyUp(raw->data.keyboard.VKey);
-				if (raw->data.keyboard.Flags == RI_KEY_MAKE)
-					gInput->InputHandler_SetKeyDown(raw->data.keyboard.VKey);
-			}
-		}
 		break;
 		case WM_SETFOCUS:
 		{
