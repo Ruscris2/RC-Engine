@@ -8,8 +8,9 @@ layout (binding = 2) uniform sampler2D specularSampler;
 
 layout (binding = 3) uniform UBO
 {
+	float materialSpecStrength;
 	float materialShininess;
-	vec3 padding;
+	vec2 padding;
 } ubo;
 
 layout (location = 0) in vec3 worldPos;
@@ -29,4 +30,5 @@ void main()
 	outSpecular = texture(specularSampler, texCoord);
 	
 	outSpecular.g = ubo.materialShininess;
+	outSpecular.b = ubo.materialSpecStrength;
 }

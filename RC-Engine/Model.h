@@ -50,4 +50,6 @@ class Model
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera);
 		void SetPosition(float x, float y, float z);
 		void SetRotation(float x, float y, float z);
+		unsigned int GetMeshCount();
+		Material * GetMaterial(int materialId);
 };

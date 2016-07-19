@@ -220,9 +220,9 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	fragmentUniformBuffer.diffuseColor = glm::vec4();
 	fragmentUniformBuffer.specularColor = glm::vec4();
 	fragmentUniformBuffer.lightDirection = glm::vec3();
-	fragmentUniformBuffer.specularPower = 0.0f;
-	fragmentUniformBuffer.cameraPosition = glm::vec3();
 	fragmentUniformBuffer.imageIndex = 5;
+	fragmentUniformBuffer.cameraPosition = glm::vec3();
+	fragmentUniformBuffer.padding = 0.0f;
 
 	// Vertex shader Uniform buffer
 	VkBufferCreateInfo vsBufferCI{};
@@ -456,9 +456,9 @@ void Canvas::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 	fragmentUniformBuffer.diffuseColor = light->GetDiffuseColor();
 	fragmentUniformBuffer.specularColor = light->GetSpecularColor();
 	fragmentUniformBuffer.lightDirection = light->GetLightDirection();
-	fragmentUniformBuffer.specularPower = light->GetSpecularPower();
-	fragmentUniformBuffer.cameraPosition = camera->GetPosition();
 	fragmentUniformBuffer.imageIndex = imageIndex;
+	fragmentUniformBuffer.cameraPosition = camera->GetPosition();
+	fragmentUniformBuffer.padding = 0.0f;
 
 	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), fsUniformMemory, 0, fsMemReq.size, 0, (void**)&pData);
 	memcpy(pData, &fragmentUniformBuffer, sizeof(fragmentUniformBuffer));

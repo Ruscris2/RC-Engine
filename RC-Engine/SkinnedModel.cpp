@@ -5,6 +5,8 @@
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 
+#include <fstream>
+
 #include "SkinnedModel.h"
 #include "StdInc.h"
 #include "LogManager.h"
@@ -33,10 +35,22 @@ bool SkinnedModel::Init(std::string filename, VulkanInterface * vulkan, VulkanPi
 
 	VkResult result;
 
+	// Open .rcs file
 	FILE * file = fopen(filename.c_str(), "rb");
 	if (file == NULL)
 	{
-		gLogManager->AddMessage("ERROR: Model file not found!");
+		gLogManager->AddMessage("ERROR: Model file not found! (" + filename + ")");
+		return false;
+	}
+
+	// Open .mat file
+	size_t pos = filename.rfind('.');
+	filename.replace(pos, 4, ".mat");
+
+	std::ifstream matFile(filename.c_str());
+	if (!matFile.is_open())
+	{
+		gLogManager->AddMessage("ERROR: Model .mat file not found! (" + filename + ")");
 		return false;
 	}
 
@@ -92,7 +106,13 @@ bool SkinnedModel::Init(std::string filename, VulkanInterface * vulkan, VulkanPi
 		Material * material = new Material();
 		material->SetDiffuseTexture(diffuse);
 		material->SetSpecularTexture(specular);
-		material->SetSpecularShininess(0.0f);
+
+		std::string matName;
+		float specularStrength, specularShininess;
+		matFile >> matName >> specularShininess >> specularStrength;
+		
+		material->SetSpecularShininess(specularShininess);
+		material->SetSpecularStrength(specularStrength);
 
 		materials.push_back(material);
 		meshes[i]->SetMaterial(material);
@@ -106,6 +126,8 @@ bool SkinnedModel::Init(std::string filename, VulkanInterface * vulkan, VulkanPi
 		}
 		drawCmdBuffers.push_back(drawCmdBuffer);
 	}
+
+	matFile.close();
 
 	// Read bone offsets
 	fread(&numBones, sizeof(unsigned int), 1, file);

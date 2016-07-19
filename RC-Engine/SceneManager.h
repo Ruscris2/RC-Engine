@@ -33,12 +33,13 @@ class SceneManager
 		VulkanCommandBuffer * deferredCommandBuffer;
 		VulkanCommandBuffer * renderCommandBuffer;
 		Canvas * defaultShaderCanvas;
-		Model * model;
 		SkinnedModel * male;
 		Animation * idleAnim;
 		Animation * walkAnim;
+		std::vector<Model*> modelList;
 
 	private:
+		bool LoadMapFile(std::string filename, VulkanInterface * vulkan);
 		bool BuildDefaultPipeline(VulkanInterface * vulkan);
 		bool BuildSkinnedPipeline(VulkanInterface * vulkan);
 		bool BuildDeferredPipeline(VulkanInterface * vulkan);

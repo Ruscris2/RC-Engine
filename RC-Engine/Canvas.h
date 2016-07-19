@@ -30,9 +30,9 @@ class Canvas
 			glm::vec4 diffuseColor;
 			glm::vec4 specularColor;
 			glm::vec3 lightDirection;
-			float specularPower;
-			glm::vec3 cameraPosition;
 			int imageIndex;
+			glm::vec3 cameraPosition;
+			float padding;
 		};
 		VertexUniformBuffer vertexUniformBuffer;
 		FragmentUniformBuffer fragmentUniformBuffer;

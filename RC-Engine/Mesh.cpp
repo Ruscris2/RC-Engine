@@ -174,8 +174,9 @@ bool Mesh::Init(VulkanInterface * vulkan, FILE * modelFile)
 	delete[] indexData;
 
 	// Material uniform buffer
+	materialUniformBuffer.materialSpecStrength = 0.0f;
 	materialUniformBuffer.materialShininess = 0.0f;
-	materialUniformBuffer.padding = glm::vec3();
+	materialUniformBuffer.padding = glm::vec2();
 
 	// Fragment shader uniform buffer
 	VkBufferCreateInfo fsBufferCI{};
@@ -241,8 +242,9 @@ void Mesh::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer)
 
 void Mesh::UpdateUniformBuffer(VulkanInterface * vulkan)
 {
+	materialUniformBuffer.materialSpecStrength = material->GetSpecularStrength();
 	materialUniformBuffer.materialShininess = material->GetSpecularShininess();
-	materialUniformBuffer.padding = glm::vec3();
+	materialUniformBuffer.padding = glm::vec2();
 
 	uint8_t *pData;
 

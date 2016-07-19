@@ -5,6 +5,8 @@
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 
+#include <fstream>
+
 #include "Model.h"
 #include "StdInc.h"
 #include "LogManager.h"
@@ -29,6 +31,7 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 
 	VkResult result;
 	
+	// Open .rcm file
 	FILE * file = fopen(filename.c_str(), "rb");
 	if (file == NULL)
 	{
@@ -36,6 +39,17 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 		return false;
 	}
 	
+	// Open .mat file
+	size_t pos = filename.rfind('.');
+	filename.replace(pos, 4, ".mat");
+
+	std::ifstream matFile(filename.c_str());
+	if (!matFile.is_open())
+	{
+		gLogManager->AddMessage("ERROR: Model .mat file not found! (" + filename + ")");
+		return false;
+	}
+
 	unsigned int meshCount;
 	fread(&meshCount, sizeof(unsigned int), 1, file);
 	
@@ -88,7 +102,13 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 		Material * material = new Material();
 		material->SetDiffuseTexture(diffuse);
 		material->SetSpecularTexture(specular);
-		material->SetSpecularShininess(32.0f);
+		
+		std::string matName;
+		float specularStrength, specularShininess;
+		matFile >> matName >> specularShininess >> specularStrength;
+
+		material->SetSpecularShininess(specularShininess);
+		material->SetSpecularStrength(specularStrength);
 
 		materials.push_back(material);
 		meshes[i]->SetMaterial(material);
@@ -302,6 +322,16 @@ void Model::SetRotation(float x, float y, float z)
 	rotY = y;
 	rotZ = z;
 	UpdateWorldMatrix();
+}
+
+unsigned int Model::GetMeshCount()
+{
+	return (unsigned int)meshes.size();
+}
+
+Material * Model::GetMaterial(int materialId)
+{
+	return materials[materialId];
 }
 
 void Model::UpdateWorldMatrix()

@@ -14,14 +14,17 @@ class Material
 		Texture * diffuseTexture;
 		Texture * specularTexture;
 		float specularShininess;
+		float specularStrength;
 	public:
 		Material();
 		~Material();
 
 		void SetDiffuseTexture(Texture * texture);
 		void SetSpecularTexture(Texture * texture);
+		void SetSpecularStrength(float value);
 		void SetSpecularShininess(float value);
 		Texture * GetDiffuseTexture();
 		Texture * GetSpecularTexture();
 		float GetSpecularShininess();
+		float GetSpecularStrength();
 };

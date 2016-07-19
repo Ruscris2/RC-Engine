@@ -23,8 +23,9 @@ class Mesh
 
 		struct MaterialUniformBuffer
 		{
+			float materialSpecStrength;
 			float materialShininess;
-			glm::vec3 padding;
+			glm::vec2 padding;
 		};
 		MaterialUniformBuffer materialUniformBuffer;
 

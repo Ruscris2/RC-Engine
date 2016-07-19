@@ -10,7 +10,8 @@ Material::Material()
 {
 	diffuseTexture = NULL;
 	specularTexture = NULL;
-	specularShininess = 32;
+	specularShininess = 32.0f;
+	specularStrength = 1.0f;
 }
 
 Material::~Material()
@@ -27,6 +28,11 @@ void Material::SetDiffuseTexture(Texture * texture)
 void Material::SetSpecularTexture(Texture * texture)
 {
 	specularTexture = texture;
+}
+
+void Material::SetSpecularStrength(float value)
+{
+	specularStrength = value;
 }
 
 void Material::SetSpecularShininess(float value)
@@ -47,4 +53,9 @@ Texture * Material::GetSpecularTexture()
 float Material::GetSpecularShininess()
 {
 	return specularShininess;
+}
+
+float Material::GetSpecularStrength()
+{
+	return specularStrength;
 }

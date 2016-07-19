@@ -5,6 +5,8 @@
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 
+#include <fstream>
+
 #include "SceneManager.h"
 #include "StdInc.h"
 #include "LogManager.h"
@@ -29,8 +31,6 @@ SceneManager::SceneManager()
 	skinnedPipeline = NULL;
 	deferredPipeline = NULL;
 	defaultShaderCanvas = NULL;
-	model = NULL;
-	male = NULL;
 	idleAnim = NULL;
 	walkAnim = NULL;
 }
@@ -51,10 +51,10 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	light = new Light();
 	light->SetAmbientColor(0.3f, 0.3f, 0.3f, 1.0f);
 	light->SetDiffuseColor(0.6f, 0.6f, 0.6f, 1.0f);
-	light->SetSpecularColor(1.0f, 0.0f, 1.0f, 1.0f);
+	light->SetSpecularColor(1.0f, 1.0f, 1.0f, 1.0f);
 	light->SetLightDirection(-0.5f, -0.5f, 1.0f);
-	light->SetSpecularPower(5.0f);
 
+	// Init command buffers
 	deferredCommandBuffer = new VulkanCommandBuffer();
 	if (!deferredCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
 	{
@@ -69,6 +69,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
+	// Init shaders
 	defaultShader = new DefaultShader();
 	if (!defaultShader->Init(vulkan->GetVulkanDevice()))
 	{
@@ -90,6 +91,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
+	// Build pipelines
 	if (!BuildDefaultPipeline(vulkan))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init default pipeline!");
@@ -108,6 +110,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
+	// Init screen quad
 	defaultShaderCanvas = new Canvas();
 	if (!defaultShaderCanvas->Init(vulkan, defaultPipeline, vulkan->GetPositionAttachment()->GetImageView(), vulkan->GetNormalAttachment()->GetImageView(),
 		vulkan->GetAlbedoAttachment()->GetImageView(), vulkan->GetMaterialAttachment()->GetImageView()))
@@ -116,13 +119,9 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
-	model = new Model();
-	if (!model->Init("data/models/teapot.rcm", vulkan, deferredPipeline, renderCommandBuffer))
-	{
-		gLogManager->AddMessage("ERROR: Failed to init model!");
+	// Load map files
+	if (!LoadMapFile("data/testmap.map", vulkan))
 		return false;
-	}
-	model->SetPosition(2.0f, 0.0f, 0.0f);
 
 	male = new SkinnedModel();
 	if (!male->Init("data/models/male.rcs", vulkan, skinnedPipeline, renderCommandBuffer))
@@ -130,7 +129,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		gLogManager->AddMessage("ERROR: Failed to init male model!");
 		return false;
 	}
-	male->SetPosition(-2.0f, 0.0f, 0.0f);
+	male->SetPosition(0.0f, 0.0f, 0.0f);
 
 	idleAnim = new Animation();
 	if (!idleAnim->Init("data/anims/idle.fbx", 52))
@@ -149,6 +148,9 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
+	for (unsigned int i = 0; i < modelList.size(); i++)
+		SAFE_UNLOAD(modelList[i], vulkan);
+
 	SAFE_UNLOAD(defaultShaderCanvas, vulkan);
 	SAFE_UNLOAD(deferredPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(skinnedPipeline, vulkan->GetVulkanDevice());
@@ -156,8 +158,6 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 	SAFE_UNLOAD(deferredShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(skinnedShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(defaultShader, vulkan->GetVulkanDevice());
-	SAFE_UNLOAD(male, vulkan);
-	SAFE_UNLOAD(model, vulkan);
 	SAFE_UNLOAD(renderCommandBuffer, vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
 	SAFE_UNLOAD(deferredCommandBuffer, vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
 }
@@ -188,7 +188,9 @@ void SceneManager::Render(VulkanInterface * vulkan)
 
 	vulkan->BeginScene3D(deferredCommandBuffer);
 
-	model->Render(vulkan, deferredCommandBuffer, deferredPipeline, camera);
+	for (unsigned int i = 0; i < modelList.size(); i++)
+		modelList[i]->Render(vulkan, deferredCommandBuffer, deferredPipeline, camera);
+	
 	male->Render(vulkan, deferredCommandBuffer, skinnedPipeline, camera);
 
 	vulkan->EndScene3D(deferredCommandBuffer);
@@ -199,6 +201,45 @@ void SceneManager::Render(VulkanInterface * vulkan)
 	defaultShaderCanvas->Render(vulkan, renderCommandBuffer, defaultPipeline, vulkan->GetOrthoMatrix(), light, imageIndex, camera);
 
 	vulkan->EndScene2D(renderCommandBuffer);
+}
+
+bool SceneManager::LoadMapFile(std::string filename, VulkanInterface * vulkan)
+{
+	std::ifstream file(filename);
+	if (!file.is_open())
+	{
+		gLogManager->AddMessage("ERROR: Couldn't find map file: " + filename);
+		return false;
+	}
+
+	while (!file.eof())
+	{
+		std::string modelPath;
+		std::string modelName;
+		float posX, posY, posZ;
+		float rotX, rotY, rotZ;
+
+		file >> modelName >> posX >> posY >> posZ >> rotX >> rotY >> rotZ;
+
+		modelName.append(".rcm");
+
+		modelPath = "data/models/" + modelName;
+
+		Model * model = new Model();
+		if (!model->Init(modelPath, vulkan, deferredPipeline, renderCommandBuffer))
+		{
+			gLogManager->AddMessage("ERROR: Failed to init model: " + modelName);
+			return false;
+		}
+
+		model->SetPosition(posX, posY, posZ);
+		model->SetRotation(rotX, rotY, rotZ);
+
+		modelList.push_back(model);
+	}
+
+	file.close();
+	return true;
 }
 
 bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)

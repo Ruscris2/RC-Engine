@@ -14,9 +14,9 @@ layout (binding = 5) uniform UBO
 	vec4 diffuseColor;
 	vec4 specularColor;
 	vec3 lightDirection;
-	float specularPower;
-	vec3 cameraPosition;
 	int imageIndex;
+	vec3 cameraPosition;
+	float padding;
 } ubo;
 
 layout (location = 0) in vec2 texCoord;
@@ -39,7 +39,7 @@ void main()
 		vec3 diff = max(dot(normal, lightDir), 0.0f) * albedo.rgb * ubo.diffuseColor.rgb;
 		
 		vec3 halfVec = normalize(lightDir + viewDir);
-		vec3 spec = ubo.specularColor.rgb * pow(max(dot(normal, halfVec), 0.0), specular.g) * ubo.specularPower * specular.r;
+		vec3 spec = ubo.specularColor.rgb * pow(max(dot(normal, halfVec), 0.0), specular.g) * specular.b * specular.r;
 		if(specular.g  == 0.0f)
 			spec = vec3(0.0f, 0.0f, 0.0f);
 		
