@@ -31,10 +31,13 @@ SceneManager::SceneManager()
 	defaultShaderCanvas = NULL;
 	model = NULL;
 	male = NULL;
+	idleAnim = NULL;
+	walkAnim = NULL;
 }
 
 SceneManager::~SceneManager()
 {
+	SAFE_DELETE(walkAnim);
 	SAFE_DELETE(idleAnim);
 	SAFE_DELETE(light);
 	SAFE_DELETE(camera);
@@ -46,11 +49,11 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	camera->Init();
 	
 	light = new Light();
-	light->SetAmbientColor(0.25f, 0.25f, 0.25f, 1.0f);
-	light->SetDiffuseColor(0.8f, 0.8f, 0.8f, 0.8f);
-	light->SetSpecularColor(1.0f, 1.0f, 1.0f, 1.0f);
+	light->SetAmbientColor(0.3f, 0.3f, 0.3f, 1.0f);
+	light->SetDiffuseColor(0.6f, 0.6f, 0.6f, 1.0f);
+	light->SetSpecularColor(1.0f, 0.0f, 1.0f, 1.0f);
 	light->SetLightDirection(-0.5f, -0.5f, 1.0f);
-	light->SetSpecularPower(0.5f);
+	light->SetSpecularPower(5.0f);
 
 	deferredCommandBuffer = new VulkanCommandBuffer();
 	if (!deferredCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
@@ -120,7 +123,6 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 	model->SetPosition(2.0f, 0.0f, 0.0f);
-	model->SetRotation(0.0f, 135.0f, -30.0f);
 
 	male = new SkinnedModel();
 	if (!male->Init("data/models/male.rcs", vulkan, skinnedPipeline, renderCommandBuffer))
@@ -131,11 +133,16 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	male->SetPosition(-2.0f, 0.0f, 0.0f);
 
 	idleAnim = new Animation();
-	if (!idleAnim->Init("data/anims/idle.fbx", 54))
+	if (!idleAnim->Init("data/anims/idle.fbx", 52))
 		return false;
-	idleAnim->SetAnimationSpeed(0.0005f);
+	idleAnim->SetAnimationSpeed(0.001f);
 
-	male->SetAnimation(idleAnim);
+	walkAnim = new Animation();
+	if (!walkAnim->Init("data/anims/walk.fbx", 52))
+		return false;
+	walkAnim->SetAnimationSpeed(0.001f);
+
+	male->SetAnimation(walkAnim);
 
 	return true;
 }

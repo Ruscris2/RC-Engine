@@ -25,24 +25,24 @@ void Camera::Init()
 
 void Camera::HandleInput()
 {
-	float speed = 0.006f * 7.0f;
+	float speed = 0.006f;
 	float sensitivity = 0.2f;
 
 	bool update = false;
 
-	//if (gInput->IsKeyPressed(MOUSE_LEFTBUTTON))
-	//{
-		if (gInput->GetCursorRelativeX() != 0)
-		{
-			update = true;
-			yaw -= gInput->GetCursorRelativeX() * sensitivity;
-		}
-		if (gInput->GetCursorRelativeY() != 0)
-		{
-			update = true;
-			pitch -= gInput->GetCursorRelativeY() * sensitivity;
-		}
-//	}
+	if (gInput->IsKeyPressed(KEYBOARD_KEY_SHIFT))
+		speed *= 5.0f;
+
+	if (gInput->GetCursorRelativeX() != 0)
+	{
+		update = true;
+		yaw -= gInput->GetCursorRelativeX() * sensitivity;
+	}
+	if (gInput->GetCursorRelativeY() != 0)
+	{
+		update = true;
+		pitch -= gInput->GetCursorRelativeY() * sensitivity;
+	}
 
 	direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
 	direction.y = sin(glm::radians(pitch));

@@ -14,6 +14,7 @@ Settings::Settings()
 {
 	windowWidth = 800;
 	windowHeight = 600;
+	fullscreen = false;
 }
 
 bool Settings::ReadSettings()
@@ -41,6 +42,8 @@ bool Settings::ReadSettings()
 			file >> windowWidth;
 		else if (identifier == "height")
 			file >> windowHeight;
+		else if (identifier == "fullscreen")
+			file >> (bool)fullscreen;
 		else
 		{
 			Settings();
@@ -58,5 +61,10 @@ int Settings::GetWindowWidth()
 int Settings::GetWindowHeight()
 {
 	return windowHeight;
+}
+
+bool Settings::GetFullscreenMode()
+{
+	return fullscreen;
 }
 

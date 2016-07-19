@@ -36,6 +36,7 @@ class SceneManager
 		Model * model;
 		SkinnedModel * male;
 		Animation * idleAnim;
+		Animation * walkAnim;
 
 	private:
 		bool BuildDefaultPipeline(VulkanInterface * vulkan);

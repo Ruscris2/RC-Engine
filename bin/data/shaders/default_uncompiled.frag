@@ -33,7 +33,7 @@ void main()
 	if(ubo.imageIndex == 5)
 	{	
 		vec3 viewDir = normalize(ubo.cameraPosition - fragPos);
-		vec3 fragColor = albedo.rgb * ubo.ambientColor.rgb;
+		vec3 fragColor = clamp(albedo.rgb * ubo.ambientColor.rgb, 0.0, 1.0);
 		vec3 lightDir = -ubo.lightDirection;
 		
 		vec3 diff = max(dot(normal, lightDir), 0.0f) * albedo.rgb * ubo.diffuseColor.rgb;
@@ -43,7 +43,7 @@ void main()
 		if(specular.g  == 0.0f)
 			spec = vec3(0.0f, 0.0f, 0.0f);
 		
-		fragColor += diff + spec;
+		fragColor += clamp(diff + spec, 0.0, 1.0);
 		outColor = vec4(fragColor, 1.0f);
 	}
 	else if(ubo.imageIndex == 4)

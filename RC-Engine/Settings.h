@@ -12,6 +12,7 @@ class Settings
 {
 	private:
 		int windowWidth, windowHeight;
+		bool fullscreen;
 	public:
 		Settings();
 
@@ -19,4 +20,5 @@ class Settings
 
 		int GetWindowWidth();
 		int GetWindowHeight();
+		bool GetFullscreenMode();
 };

@@ -127,7 +127,7 @@ int main()
 		if (gInput->WasKeyPressed(KEYBOARD_KEY_F))
 		{
 			char msg[16];
-			sprintf(msg, "FPS: %d", gTimer->GetFPS());
+			sprintf(msg, "FPS: %d FRAME TIME: %f", gTimer->GetFPS(), gTimer->GetDelta());
 			gLogManager->AddMessage(msg);
 		}
 	}
@@ -162,12 +162,34 @@ LRESULT CALLBACK WinWindowProc(HWND hwnd, UINT umsg, WPARAM wparam, LPARAM lpara
 			SetRect(&rect, p1.x, p1.y, p2.x, p2.y);
 			ClipCursor(&rect);
 			ShowCursor(FALSE);
+
+			if (gSettings->GetFullscreenMode())
+			{
+				DEVMODE dm;
+				dm.dmSize = sizeof(DEVMODE);
+				dm.dmDriverExtra = 0;
+
+				EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &dm);
+
+				dm.dmPelsWidth = gSettings->GetWindowWidth();
+				dm.dmPelsHeight = gSettings->GetWindowHeight();
+
+				ChangeDisplaySettings(&dm, CDS_FULLSCREEN);
+
+				SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE);
+			}
 		}
 		break;
 		case WM_KILLFOCUS:
 		{
 			ClipCursor(NULL);
 			ShowCursor(TRUE);
+
+			if (gSettings->GetFullscreenMode())
+			{
+				ChangeDisplaySettings(NULL, 0);
+				ShowWindow(hwnd, SW_MINIMIZE);
+			}
 		}
 		break;
 	}
