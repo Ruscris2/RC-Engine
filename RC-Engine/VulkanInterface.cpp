@@ -516,7 +516,7 @@ bool VulkanInterface::InitColorSampler()
 	samplerCI.mipLodBias = 0.0f;
 	samplerCI.compareOp = VK_COMPARE_OP_NEVER;
 	samplerCI.minLod = 0.0f;
-	samplerCI.maxLod = 0.0f;
+	samplerCI.maxLod = 8.0f;
 	samplerCI.maxAnisotropy = vulkanDevice->GetGPUProperties().limits.maxSamplerAnisotropy;
 	samplerCI.anisotropyEnable = VK_TRUE;
 	samplerCI.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;

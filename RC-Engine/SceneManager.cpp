@@ -202,14 +202,14 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		imageIndex = 4;
 	if (gInput->WasKeyPressed(KEYBOARD_KEY_5))
 		imageIndex = 5;
-
+	
 	vulkan->BeginScene3D(deferredCommandBuffer);
 
 	for (unsigned int i = 0; i < modelList.size(); i++)
 		modelList[i]->Render(vulkan, deferredCommandBuffer, deferredPipeline, camera);
 	
 	male->Render(vulkan, deferredCommandBuffer, skinnedPipeline, camera);
-
+	
 	vulkan->EndScene3D(deferredCommandBuffer);
 	
 	for (size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)

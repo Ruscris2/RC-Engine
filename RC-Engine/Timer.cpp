@@ -9,6 +9,7 @@
 
 bool Timer::Init()
 {
+	benchmarkResult = 0.0f;
 	fpsCounter = fps = 1;
 	fpsStartTime = timeGetTime();
 
@@ -51,4 +52,24 @@ int Timer::GetFPS()
 float Timer::GetDelta()
 {
 	return delta;
+}
+
+void Timer::BenchmarkCodeStart()
+{
+	QueryPerformanceCounter((LARGE_INTEGER*)&benchmarkStartTime);
+}
+
+void Timer::BenchmarkCodeEnd()
+{
+	INT64 currentTime;
+	float timeDifference;
+
+	QueryPerformanceCounter((LARGE_INTEGER*)&currentTime);
+	timeDifference = (float)(currentTime - benchmarkStartTime);
+	benchmarkResult = timeDifference / ticksPerMs;
+}
+
+float Timer::GetBenchmarkResult()
+{
+	return benchmarkResult;
 }

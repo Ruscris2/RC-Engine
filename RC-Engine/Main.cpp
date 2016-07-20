@@ -126,8 +126,8 @@ int main()
 			gProgramRunning = false;
 		if (gInput->WasKeyPressed(KEYBOARD_KEY_F))
 		{
-			char msg[16];
-			sprintf(msg, "FPS: %d FRAME TIME: %f", gTimer->GetFPS(), gTimer->GetDelta());
+			char msg[64];
+			sprintf(msg, "FPS: %d FRAME TIME: %f BENCH TIME: %f", gTimer->GetFPS(), gTimer->GetDelta(), gTimer->GetBenchmarkResult());
 			gLogManager->AddMessage(msg);
 		}
 
