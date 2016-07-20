@@ -130,7 +130,10 @@ int main()
 			sprintf(msg, "FPS: %d FRAME TIME: %f", gTimer->GetFPS(), gTimer->GetDelta());
 			gLogManager->AddMessage(msg);
 		}
+
 	}
+
+	vkDeviceWaitIdle(vulkan->GetVulkanDevice()->GetDevice());
 
 	gLogManager->AddMessage("Unloading...");
 	SAFE_DELETE(gTimer);

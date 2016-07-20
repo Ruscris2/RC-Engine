@@ -22,7 +22,8 @@ VulkanRenderpass::~VulkanRenderpass()
 	renderPass = VK_NULL_HANDLE;
 }
 
-bool VulkanRenderpass::Init(VulkanDevice * vulkanDevice, VkAttachmentDescription * attachments, int attachmentCount, VkAttachmentReference * attachmentRefs, int attachRefCount, int depthRefIndex)
+bool VulkanRenderpass::Init(VulkanDevice * vulkanDevice, VkAttachmentDescription * attachments, int attachmentCount,
+	VkAttachmentReference * attachmentRefs, int attachRefCount, int depthRefIndex, VkSubpassDependency * dependencies, int dependeciesCount)
 {
 	VkResult result;
 
@@ -38,8 +39,8 @@ bool VulkanRenderpass::Init(VulkanDevice * vulkanDevice, VkAttachmentDescription
 	renderpassCI.pAttachments = attachments;
 	renderpassCI.subpassCount = 1;
 	renderpassCI.pSubpasses = &subpass;
-	renderpassCI.dependencyCount = 0;
-	renderpassCI.pDependencies = VK_NULL_HANDLE;
+	renderpassCI.dependencyCount = dependeciesCount;
+	renderpassCI.pDependencies = dependencies;
 
 	result = vkCreateRenderPass(vulkanDevice->GetDevice(), &renderpassCI, VK_NULL_HANDLE, &renderPass);
 	if (result != VK_SUCCESS)

@@ -54,11 +54,12 @@ class VulkanInterface
 		FrameBufferAttachment * albedoAtt;
 		FrameBufferAttachment * materialAtt;
 		FrameBufferAttachment * depthAtt;
+		std::vector<FrameBufferAttachment*> attachmentsPtr;
 
 		glm::mat4 projectionMatrix;
 		glm::mat4 orthoMatrix;
 
-		VkSemaphore presentCompleteSemaphore;
+		VkSemaphore imageReadySemaphore;
 		VkSemaphore drawCompleteSemaphore;
 
 #if VULKAN_DEBUG_MODE_ENABLED
@@ -80,13 +81,15 @@ class VulkanInterface
 		bool Init(HWND hwnd);
 		void BeginScene3D(VulkanCommandBuffer * commandBuffer);
 		void EndScene3D(VulkanCommandBuffer * commandBuffer);
-		void BeginScene2D(VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline);
+		void BeginScene2D(VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline, int frameId);
 		void EndScene2D(VulkanCommandBuffer * commandBuffer);
+		void Present(std::vector<VulkanCommandBuffer*>& renderCommandBuffers);
 		void InitViewportAndScissors(VulkanCommandBuffer * commandBuffer);
 		VulkanCommandPool * GetVulkanCommandPool();
 		VulkanDevice * GetVulkanDevice();
 		VulkanRenderpass * GetMainRenderpass();
 		VulkanRenderpass * GetDeferredRenderpass();
+		VulkanSwapchain * GetVulkanSwapchain();
 		glm::mat4 GetProjectionMatrix();
 		glm::mat4 GetOrthoMatrix();
 		VkSampler GetColorSampler();

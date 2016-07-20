@@ -30,10 +30,6 @@ class Model
 			glm::mat4 worldMatrix;
 		};
 		VertexUniformBuffer vertexUniformBuffer;
-
-		VkDescriptorPool descriptorPool;
-		VkDescriptorSet descriptorSet;
-		VkWriteDescriptorSet descriptorWrite[4];
 		
 		VkBuffer vsUniformBuffer;
 		VkDeviceMemory vsUniformMemory;

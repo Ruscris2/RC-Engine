@@ -75,6 +75,19 @@ void Camera::HandleInput()
 		Update();
 }
 
+void Camera::SetPosition(float x, float y, float z)
+{
+	position = glm::vec3(x, y, z);
+	Update();
+}
+
+void Camera::SetDirection(float x, float y, float z)
+{
+	direction = glm::vec3(x, y, z);
+	lookAt = position + direction;
+	Update();
+}
+
 glm::mat4 Camera::GetViewMatrix()
 {
 	return viewMatrix;

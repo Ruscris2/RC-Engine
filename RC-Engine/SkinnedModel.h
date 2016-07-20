@@ -38,10 +38,6 @@ class SkinnedModel
 		};
 		VertexUniformBuffer vertexUniformBuffer;
 
-		VkDescriptorPool descriptorPool;
-		VkDescriptorSet descriptorSet;
-		VkWriteDescriptorSet descriptorWrite[4];
-
 		VkBuffer vsUniformBuffer;
 		VkDeviceMemory vsUniformMemory;
 		VkDescriptorBufferInfo vsUniformBufferInfo;

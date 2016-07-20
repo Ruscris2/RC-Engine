@@ -19,7 +19,8 @@ class VulkanRenderpass
 		VulkanRenderpass();
 		~VulkanRenderpass();
 
-		bool Init(VulkanDevice * vulkanDevice, VkAttachmentDescription * attachments, int attachmentCount, VkAttachmentReference * attachmentRefs, int attachRefCount, int depthRefIndex);
+		bool Init(VulkanDevice * vulkanDevice, VkAttachmentDescription * attachments, int attachmentCount, VkAttachmentReference * attachmentRefs,
+			int attachRefCount, int depthRefIndex, VkSubpassDependency * dependencies, int dependeciesCount);
 		void Unload(VulkanDevice * vulkanDevice);
 		void BeginRenderpass(VulkanCommandBuffer * commandBuffer, float r, float g, float b, float a, VkFramebuffer frame, VkSubpassContents contents);
 		void EndRenderpass(VulkanCommandBuffer * commandBuffer);

@@ -29,7 +29,9 @@ class VulkanSwapchain
 		bool Init(VulkanDevice * vulkanDevice, VkImageView depthImageView, VulkanRenderpass * vulkanRenderpass);
 		void Unload(VulkanDevice * vulkanDevice);
 		void AcquireNextImage(VulkanDevice * vulkanDevice, VkSemaphore signalSemaphore);
-		void Present(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer, VkSemaphore waitSemaphore);
+		void Present(VulkanDevice * vulkanDevice, VkSemaphore waitSemaphore);
 		VkImage GetCurrentImage();
-		VkFramebuffer GetCurrentFramebuffer();
+		uint32_t GetCurrentBufferId();
+		VkFramebuffer GetFramebuffer(int id);
+		size_t GetSwapchainBufferCount();
 };

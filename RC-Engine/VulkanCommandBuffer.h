@@ -24,7 +24,7 @@ class VulkanCommandBuffer
 		void BeginRecording();
 		void BeginRecordingSecondary(VkRenderPass renderPass, VkFramebuffer framebuffer);
 		void EndRecording();
-		void Execute(VulkanDevice * device, VkPipelineStageFlags flags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore);
+		void Execute(VulkanDevice * device, VkPipelineStageFlags flags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, bool waitFence);
 		void ExecuteSecondary(VulkanCommandBuffer * primaryCmdBuffer);
 		VkCommandBuffer GetCommandBuffer();
 };

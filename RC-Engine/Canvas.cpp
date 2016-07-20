@@ -202,7 +202,7 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	vkCmdCopyBuffer(cmdBuffer->GetCommandBuffer(), stagingIndexBuffer, indexBuffer, 1, &copyRegion);
 
 	cmdBuffer->EndRecording();
-	cmdBuffer->Execute(vulkanDevice, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE);
+	cmdBuffer->Execute(vulkanDevice, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, true);
 
 	SAFE_UNLOAD(cmdBuffer, vulkanDevice, cmdPool);
 

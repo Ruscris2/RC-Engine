@@ -30,8 +30,9 @@ class SceneManager
 		VulkanPipeline * defaultPipeline;
 		VulkanPipeline * skinnedPipeline;
 		VulkanPipeline * deferredPipeline;
+		VulkanCommandBuffer * initCommandBuffer;
 		VulkanCommandBuffer * deferredCommandBuffer;
-		VulkanCommandBuffer * renderCommandBuffer;
+		std::vector<VulkanCommandBuffer*> renderCommandBuffers;
 		Canvas * defaultShaderCanvas;
 		SkinnedModel * male;
 		Animation * idleAnim;

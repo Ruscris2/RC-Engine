@@ -25,6 +25,8 @@ class Camera
 	public:
 		void Init();
 		void HandleInput();
+		void SetPosition(float x, float y, float z);
+		void SetDirection(float x, float y, float z);
 		glm::mat4 GetViewMatrix();
 		glm::vec3 GetPosition();
 };

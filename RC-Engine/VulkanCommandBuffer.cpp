@@ -94,7 +94,7 @@ void VulkanCommandBuffer::EndRecording()
 	vkEndCommandBuffer(commandBuffer);
 }
 
-void VulkanCommandBuffer::Execute(VulkanDevice * device, VkPipelineStageFlags flags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore)
+void VulkanCommandBuffer::Execute(VulkanDevice * device, VkPipelineStageFlags flags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, bool waitFence)
 {
 	if (primary)
 	{
@@ -117,12 +117,16 @@ void VulkanCommandBuffer::Execute(VulkanDevice * device, VkPipelineStageFlags fl
 		submitInfo.signalSemaphoreCount = signalSemaphoreCount;
 		submitInfo.pSignalSemaphores = &signalSemaphore;
 
-		vkQueueSubmit(device->GetQueue(), 1, &submitInfo, fence);
+		if (waitFence)
+		{
+			vkQueueSubmit(device->GetQueue(), 1, &submitInfo, fence);
 
-		vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
-		vkResetFences(device->GetDevice(), 1, &fence);
+			vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
+			vkResetFences(device->GetDevice(), 1, &fence);
+		}
+		else
+			vkQueueSubmit(device->GetQueue(), 1, &submitInfo, VK_NULL_HANDLE);
 
-		vkResetCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 	}
 	else
 		gLogManager->AddMessage("WARNING: Used Execute on secondary command buffer!");

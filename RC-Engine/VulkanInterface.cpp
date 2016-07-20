@@ -37,7 +37,7 @@ VulkanInterface::~VulkanInterface()
 		UnloadVulkanDebugMode();
 #endif
 	vkDestroySemaphore(vulkanDevice->GetDevice(), drawCompleteSemaphore, VK_NULL_HANDLE);
-	vkDestroySemaphore(vulkanDevice->GetDevice(), presentCompleteSemaphore, VK_NULL_HANDLE);
+	vkDestroySemaphore(vulkanDevice->GetDevice(), imageReadySemaphore, VK_NULL_HANDLE);
 
 	vkDestroyFramebuffer(vulkanDevice->GetDevice(), deferredFramebuffer, VK_NULL_HANDLE);
 	SAFE_UNLOAD(deferredRenderPass, vulkanDevice);
@@ -119,8 +119,8 @@ bool VulkanInterface::Init(HWND hwnd)
 	attachmentDesc[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	attachmentDesc[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachmentDesc[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachmentDesc[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	attachmentDesc[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	attachmentDesc[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachmentDesc[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	attachmentDesc[0].flags = 0;
 
 	attachmentDesc[1].format = depthImage.format;
@@ -129,8 +129,8 @@ bool VulkanInterface::Init(HWND hwnd)
 	attachmentDesc[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	attachmentDesc[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 	attachmentDesc[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-	attachmentDesc[1].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	attachmentDesc[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	attachmentDesc[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachmentDesc[1].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	attachmentDesc[1].flags = 0;
 
 	VkAttachmentReference attachmentRefs[2];
@@ -140,8 +140,16 @@ bool VulkanInterface::Init(HWND hwnd)
 	attachmentRefs[1].attachment = 1;
 	attachmentRefs[1].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+	VkSubpassDependency dependency{};
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+	dependency.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
 	mainRenderPass = new VulkanRenderpass();
-	if (!mainRenderPass->Init(vulkanDevice, attachmentDesc, 2, attachmentRefs, 2, 1))
+	if (!mainRenderPass->Init(vulkanDevice, attachmentDesc, 2, attachmentRefs, 2, 1, &dependency, 1))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init main render pass!");
 		return false;
@@ -168,12 +176,12 @@ bool VulkanInterface::Init(HWND hwnd)
 
 	float fov = glm::radians(45.0f);
 	float aspectRatio = (float)gSettings->GetWindowWidth() / gSettings->GetWindowHeight();
-	projectionMatrix = glm::perspective(fov, aspectRatio, 0.1f, 100.0f);
+	projectionMatrix = glm::perspective(fov, aspectRatio, 0.1f, 250.0f);
 	orthoMatrix = glm::ortho(0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f);
 
 	VkSemaphoreCreateInfo semaphoreCI{};
 	semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCI, VK_NULL_HANDLE, &presentCompleteSemaphore);
+	vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCI, VK_NULL_HANDLE, &imageReadySemaphore);
 	vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCI, VK_NULL_HANDLE, &drawCompleteSemaphore);
 
 	return true;
@@ -182,17 +190,6 @@ bool VulkanInterface::Init(HWND hwnd)
 void VulkanInterface::BeginScene3D(VulkanCommandBuffer * commandBuffer)
 {
 	commandBuffer->BeginRecording();
-	InitViewportAndScissors(commandBuffer);
-
-	std::vector<FrameBufferAttachment*> attachments;
-	attachments.push_back(positionAtt);
-	attachments.push_back(normalAtt);
-	attachments.push_back(albedoAtt);
-	attachments.push_back(materialAtt);
-
-	for (unsigned int i = 0; i < attachments.size(); i++)
-		VulkanTools::SetImageLayout(attachments[i]->GetImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			NULL, commandBuffer, vulkanDevice, false);
 	
 	deferredRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, deferredFramebuffer, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 }
@@ -200,58 +197,35 @@ void VulkanInterface::BeginScene3D(VulkanCommandBuffer * commandBuffer)
 void VulkanInterface::EndScene3D(VulkanCommandBuffer * commandBuffer)
 {
 	deferredRenderPass->EndRenderpass(commandBuffer);
-
-	std::vector<FrameBufferAttachment*> attachments;
-	attachments.push_back(positionAtt);
-	attachments.push_back(normalAtt);
-	attachments.push_back(albedoAtt);
-	attachments.push_back(materialAtt);
-
-	for (unsigned int i = 0; i < attachments.size(); i++)
-		VulkanTools::SetImageLayout(attachments[i]->GetImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			NULL, commandBuffer, vulkanDevice, false);
 	
 	commandBuffer->EndRecording();
 
-	commandBuffer->Execute(vulkanDevice, NULL, NULL, NULL);
+	commandBuffer->Execute(vulkanDevice, NULL, NULL, NULL, true);
 }
 
-void VulkanInterface::BeginScene2D(VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline)
+void VulkanInterface::BeginScene2D(VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline, int frameId)
 {
 	commandBuffer->BeginRecording();
 	InitViewportAndScissors(commandBuffer);
 
-	vulkanSwapchain->AcquireNextImage(vulkanDevice, presentCompleteSemaphore);
-	VulkanTools::SetImageLayout(vulkanSwapchain->GetCurrentImage(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL, initCommandBuffer, vulkanDevice, true);
-	mainRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, vulkanSwapchain->GetCurrentFramebuffer(), VK_SUBPASS_CONTENTS_INLINE);
+	mainRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, vulkanSwapchain->GetFramebuffer(frameId), VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void VulkanInterface::EndScene2D(VulkanCommandBuffer * commandBuffer)
 {
 	mainRenderPass->EndRenderpass(commandBuffer);
 
-	VkImageMemoryBarrier prePresentBarrier{};
-	prePresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	prePresentBarrier.pNext = NULL;
-	prePresentBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	prePresentBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-	prePresentBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	prePresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	prePresentBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	prePresentBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	prePresentBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	prePresentBarrier.subresourceRange.baseMipLevel = 0;
-	prePresentBarrier.subresourceRange.levelCount = 1;
-	prePresentBarrier.subresourceRange.baseArrayLayer = 0;
-	prePresentBarrier.subresourceRange.layerCount = 1;
-	prePresentBarrier.image = vulkanSwapchain->GetCurrentImage();
-	vkCmdPipelineBarrier(commandBuffer->GetCommandBuffer(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &prePresentBarrier);
-
 	commandBuffer->EndRecording();
+}
 
-	commandBuffer->Execute(vulkanDevice, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, presentCompleteSemaphore, drawCompleteSemaphore);
-	vulkanSwapchain->Present(vulkanDevice, commandBuffer, drawCompleteSemaphore);
+void VulkanInterface::Present(std::vector<VulkanCommandBuffer*>& renderCommandBuffers)
+{
+	vulkanSwapchain->AcquireNextImage(vulkanDevice, imageReadySemaphore);
+	
+	renderCommandBuffers[vulkanSwapchain->GetCurrentBufferId()]->Execute(vulkanDevice, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+		imageReadySemaphore, drawCompleteSemaphore, false);
+
+	vulkanSwapchain->Present(vulkanDevice, drawCompleteSemaphore);
 }
 
 VulkanCommandPool * VulkanInterface::GetVulkanCommandPool()
@@ -272,6 +246,11 @@ VulkanRenderpass * VulkanInterface::GetMainRenderpass()
 VulkanRenderpass * VulkanInterface::GetDeferredRenderpass()
 {
 	return deferredRenderPass;
+}
+
+VulkanSwapchain * VulkanInterface::GetVulkanSwapchain()
+{
+	return vulkanSwapchain;
 }
 
 glm::mat4 VulkanInterface::GetProjectionMatrix()
@@ -460,8 +439,8 @@ bool VulkanInterface::InitDeferredFramebuffer()
 		attachmentDescs[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		attachmentDescs[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		attachmentDescs[i].flags = 0;
-		attachmentDescs[i].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		attachmentDescs[i].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		attachmentDescs[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		attachmentDescs[i].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	}
 
 	// Overwrite layout for depth
@@ -485,7 +464,8 @@ bool VulkanInterface::InitDeferredFramebuffer()
 	attachmentRefs[4].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	deferredRenderPass = new VulkanRenderpass();
-	if (!deferredRenderPass->Init(vulkanDevice, (VkAttachmentDescription*)attachmentDescs.data(), 5, (VkAttachmentReference*)attachmentRefs.data(), 5, 4))
+	if (!deferredRenderPass->Init(vulkanDevice, (VkAttachmentDescription*)attachmentDescs.data(), 5, (VkAttachmentReference*)attachmentRefs.data(),
+		5, 4, VK_NULL_HANDLE, 0))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init deferred renderpass!");
 		return false;
@@ -512,6 +492,11 @@ bool VulkanInterface::InitDeferredFramebuffer()
 	result = vkCreateFramebuffer(vulkanDevice->GetDevice(), &fbCI, VK_NULL_HANDLE, &deferredFramebuffer);
 	if (result != VK_SUCCESS)
 		return false;
+
+	attachmentsPtr.push_back(positionAtt);
+	attachmentsPtr.push_back(normalAtt);
+	attachmentsPtr.push_back(albedoAtt);
+	attachmentsPtr.push_back(materialAtt);
 
 	return true;
 }

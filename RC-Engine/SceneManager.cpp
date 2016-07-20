@@ -22,8 +22,8 @@ SceneManager::SceneManager()
 {
 	camera = NULL;
 	light = NULL;
+	initCommandBuffer = NULL;
 	deferredCommandBuffer = NULL;
-	renderCommandBuffer = NULL;
 	defaultShader = NULL;
 	skinnedShader = NULL;
 	deferredShader = NULL;
@@ -47,6 +47,8 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 {
 	camera = new Camera();
 	camera->Init();
+	camera->SetPosition(0.0f, 5.0f, -10.0f);
+	camera->SetDirection(0.0f, 0.0f, 1.0f);
 	
 	light = new Light();
 	light->SetAmbientColor(0.3f, 0.3f, 0.3f, 1.0f);
@@ -55,6 +57,13 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	light->SetLightDirection(-0.5f, -0.5f, 1.0f);
 
 	// Init command buffers
+	initCommandBuffer = new VulkanCommandBuffer();
+	if (!initCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
+	{
+		gLogManager->AddMessage("ERROR: Failed to create a command buffer! (initCommandBuffer)");
+		return false;
+	}
+
 	deferredCommandBuffer = new VulkanCommandBuffer();
 	if (!deferredCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
 	{
@@ -62,11 +71,15 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
-	renderCommandBuffer = new VulkanCommandBuffer();
-	if (!renderCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
+	for(size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)
 	{
-		gLogManager->AddMessage("ERROR: Failed to create a command buffer! (renderCommandBuffer)");
-		return false;
+		VulkanCommandBuffer * cmdBuffer = new VulkanCommandBuffer();
+		if (!cmdBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
+		{
+			gLogManager->AddMessage("ERROR: Failed to create a command buffer! (renderCommandBuffers)");
+			return false;
+		}
+		renderCommandBuffers.push_back(cmdBuffer);
 	}
 
 	// Init shaders
@@ -124,7 +137,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 
 	male = new SkinnedModel();
-	if (!male->Init("data/models/male.rcs", vulkan, skinnedPipeline, renderCommandBuffer))
+	if (!male->Init("data/models/male.rcs", vulkan, skinnedPipeline, initCommandBuffer))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init male model!");
 		return false;
@@ -148,6 +161,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
+	SAFE_UNLOAD(male, vulkan);
 	for (unsigned int i = 0; i < modelList.size(); i++)
 		SAFE_UNLOAD(modelList[i], vulkan);
 
@@ -158,8 +172,11 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 	SAFE_UNLOAD(deferredShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(skinnedShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(defaultShader, vulkan->GetVulkanDevice());
-	SAFE_UNLOAD(renderCommandBuffer, vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
+
+	for(unsigned int i = 0; i < renderCommandBuffers.size(); i++)
+		SAFE_UNLOAD(renderCommandBuffers[i], vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
 	SAFE_UNLOAD(deferredCommandBuffer, vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
+	SAFE_UNLOAD(initCommandBuffer, vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
 }
 
 int imageIndex = 5;
@@ -195,12 +212,17 @@ void SceneManager::Render(VulkanInterface * vulkan)
 
 	vulkan->EndScene3D(deferredCommandBuffer);
 	
-	vulkan->BeginScene2D(renderCommandBuffer, defaultPipeline);
+	for (size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)
+	{
+		vulkan->BeginScene2D(renderCommandBuffers[i], defaultPipeline, (int)i);
 
-	defaultPipeline->SetActive(renderCommandBuffer);
-	defaultShaderCanvas->Render(vulkan, renderCommandBuffer, defaultPipeline, vulkan->GetOrthoMatrix(), light, imageIndex, camera);
+		defaultPipeline->SetActive(renderCommandBuffers[i]);
+		defaultShaderCanvas->Render(vulkan, renderCommandBuffers[i], defaultPipeline, vulkan->GetOrthoMatrix(), light, imageIndex, camera);
 
-	vulkan->EndScene2D(renderCommandBuffer);
+		vulkan->EndScene2D(renderCommandBuffers[i]);
+	}
+
+	vulkan->Present(renderCommandBuffers);
 }
 
 bool SceneManager::LoadMapFile(std::string filename, VulkanInterface * vulkan)
@@ -226,7 +248,7 @@ bool SceneManager::LoadMapFile(std::string filename, VulkanInterface * vulkan)
 		modelPath = "data/models/" + modelName;
 
 		Model * model = new Model();
-		if (!model->Init(modelPath, vulkan, deferredPipeline, renderCommandBuffer))
+		if (!model->Init(modelPath, vulkan, deferredPipeline, initCommandBuffer))
 		{
 			gLogManager->AddMessage("ERROR: Failed to init model: " + modelName);
 			return false;

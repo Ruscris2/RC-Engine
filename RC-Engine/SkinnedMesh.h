@@ -31,6 +31,10 @@ class SkinnedMesh
 		};
 		MaterialUniformBuffer materialUniformBuffer;
 
+		VkDescriptorPool descriptorPool;
+		VkDescriptorSet descriptorSet;
+		VkWriteDescriptorSet descriptorWrite[4];
+
 		VkBuffer vertexBuffer;
 		VkDeviceMemory vertexMemory;
 		VkBuffer indexBuffer;
@@ -46,11 +50,12 @@ class SkinnedMesh
 		SkinnedMesh();
 		~SkinnedMesh();
 
-		bool Init(VulkanInterface * vulkan, FILE * modelFile);
+		bool Init(VulkanInterface * vulkan, FILE * modelFile, VulkanPipeline * vulkanPipeline, VkDescriptorBufferInfo vsUniformDesc);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer);
 		void UpdateUniformBuffer(VulkanInterface * vulkan);
 		void SetMaterial(Material * material);
-		VkDescriptorBufferInfo * GetMaterialUniformBufferInfo();
+		void WriteDescriptorSet(VulkanInterface * vulkan, VkDescriptorBufferInfo vsUniformDesc);
+		VkDescriptorSet * GetDescriptorSet();
 		Material * GetMaterial();
 };

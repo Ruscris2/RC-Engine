@@ -118,6 +118,6 @@ void VulkanTools::SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, V
 	if (beginAndExecCmdBuffer)
 	{
 		cmdBuffer->EndRecording();
-		cmdBuffer->Execute(device, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, NULL, NULL);
+		cmdBuffer->Execute(device, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, NULL, NULL, true);
 	}
 }

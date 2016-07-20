@@ -87,6 +87,7 @@ bool VulkanSwapchain::Init(VulkanDevice * vulkanDevice, VkImageView depthImageVi
 	swapChainCI.queueFamilyIndexCount = 0;
 	swapChainCI.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	swapChainCI.pQueueFamilyIndices = VK_NULL_HANDLE;
+	swapChainCI.clipped = VK_TRUE;
 
 	result = vkCreateSwapchainKHR(vulkanDevice->GetDevice(), &swapChainCI, VK_NULL_HANDLE, &swapChain);
 	if (result != VK_SUCCESS)
@@ -170,7 +171,7 @@ void VulkanSwapchain::AcquireNextImage(VulkanDevice * vulkanDevice, VkSemaphore 
 	vkAcquireNextImageKHR(vulkanDevice->GetDevice(), swapChain, UINT64_MAX, signalSemaphore, VK_NULL_HANDLE, &currentBuffer);
 }
 
-void VulkanSwapchain::Present(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer, VkSemaphore waitSemaphore)
+void VulkanSwapchain::Present(VulkanDevice * vulkanDevice, VkSemaphore waitSemaphore)
 {
 	VkPresentInfoKHR present;
 	present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -189,7 +190,17 @@ VkImage VulkanSwapchain::GetCurrentImage()
 	return swapChainBuffers[currentBuffer].image;
 }
 
-VkFramebuffer VulkanSwapchain::GetCurrentFramebuffer()
+uint32_t VulkanSwapchain::GetCurrentBufferId()
 {
-	return frameBuffers[currentBuffer];
+	return currentBuffer;
+}
+
+VkFramebuffer VulkanSwapchain::GetFramebuffer(int id)
+{
+	return frameBuffers[id];
+}
+
+size_t VulkanSwapchain::GetSwapchainBufferCount()
+{
+	return swapChainBuffers.size();
 }

@@ -12,15 +12,17 @@ Mesh::Mesh()
 {
 	vertexBuffer = VK_NULL_HANDLE;
 	indexBuffer = VK_NULL_HANDLE;
+	descriptorPool = VK_NULL_HANDLE;
 }
 
 Mesh::~Mesh()
 {
+	descriptorPool = VK_NULL_HANDLE;
 	indexBuffer = VK_NULL_HANDLE;
 	vertexBuffer = VK_NULL_HANDLE;
 }
 
-bool Mesh::Init(VulkanInterface * vulkan, FILE * modelFile)
+bool Mesh::Init(VulkanInterface * vulkan, FILE * modelFile, VulkanPipeline * vulkanPipeline, VkDescriptorBufferInfo vsUniformDesc)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
@@ -161,7 +163,7 @@ bool Mesh::Init(VulkanInterface * vulkan, FILE * modelFile)
 	vkCmdCopyBuffer(cmdBuffer->GetCommandBuffer(), stagingIndexBuffer, indexBuffer, 1, &copyRegion);
 
 	cmdBuffer->EndRecording();
-	cmdBuffer->Execute(vulkanDevice, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE);
+	cmdBuffer->Execute(vulkanDevice, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, true);
 
 	SAFE_UNLOAD(cmdBuffer, vulkanDevice, cmdPool);
 
@@ -216,6 +218,39 @@ bool Mesh::Init(VulkanInterface * vulkan, FILE * modelFile)
 	fsUniformBufferInfo.buffer = fsUniformBuffer;
 	fsUniformBufferInfo.offset = 0;
 	fsUniformBufferInfo.range = sizeof(materialUniformBuffer);
+
+	// Descriptor pool
+	VkDescriptorPoolSize typeCounts[4];
+	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[0].descriptorCount = 1;
+	typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[1].descriptorCount = 1;
+	typeCounts[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[2].descriptorCount = 1;
+	typeCounts[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[3].descriptorCount = 1;
+
+	VkDescriptorPoolCreateInfo descriptorPoolCI{};
+	descriptorPoolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPoolCI.maxSets = 1;
+	descriptorPoolCI.poolSizeCount = sizeof(typeCounts) / sizeof(typeCounts[0]);
+	descriptorPoolCI.pPoolSizes = typeCounts;
+
+	result = vkCreateDescriptorPool(vulkanDevice->GetDevice(), &descriptorPoolCI, VK_NULL_HANDLE, &descriptorPool);
+	if (result != VK_SUCCESS)
+		return false;
+
+	// Descriptor set
+	VkDescriptorSetAllocateInfo descSetAllocInfo[1];
+	descSetAllocInfo[0].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descSetAllocInfo[0].pNext = NULL;
+	descSetAllocInfo[0].descriptorPool = descriptorPool;
+	descSetAllocInfo[0].descriptorSetCount = 1;
+	descSetAllocInfo[0].pSetLayouts = vulkanPipeline->GetDescriptorLayout();
+	result = vkAllocateDescriptorSets(vulkanDevice->GetDevice(), descSetAllocInfo, &descriptorSet);
+	if (result != VK_SUCCESS)
+		return false;
+
 	return true;
 }
 
@@ -223,6 +258,7 @@ void Mesh::Unload(VulkanInterface * vulkan)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 
+	vkDestroyDescriptorPool(vulkanDevice->GetDevice(), descriptorPool, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), fsUniformMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), fsUniformBuffer, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), indexMemory, VK_NULL_HANDLE);
@@ -258,9 +294,67 @@ void Mesh::SetMaterial(Material * material)
 	this->material = material;
 }
 
-VkDescriptorBufferInfo * Mesh::GetMaterialUniformBufferInfo()
+void Mesh::WriteDescriptorSet(VulkanInterface * vulkan, VkDescriptorBufferInfo vsUniformDesc)
 {
-	return &fsUniformBufferInfo;
+	descriptorWrite[0] = {};
+	descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrite[0].pNext = NULL;
+	descriptorWrite[0].dstSet = descriptorSet;
+	descriptorWrite[0].descriptorCount = 1;
+	descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorWrite[0].pBufferInfo = &vsUniformDesc;
+	descriptorWrite[0].dstArrayElement = 0;
+	descriptorWrite[0].dstBinding = 0;
+
+	// Write mesh diffuse texture
+	VkDescriptorImageInfo diffuseTextureDesc{};
+	diffuseTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	diffuseTextureDesc.imageView = material->GetDiffuseTexture()->GetImageView();
+	diffuseTextureDesc.sampler = vulkan->GetColorSampler();
+
+	descriptorWrite[1] = {};
+	descriptorWrite[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrite[1].pNext = NULL;
+	descriptorWrite[1].dstSet = descriptorSet;
+	descriptorWrite[1].descriptorCount = 1;
+	descriptorWrite[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorWrite[1].pImageInfo = &diffuseTextureDesc;
+	descriptorWrite[1].dstArrayElement = 0;
+	descriptorWrite[1].dstBinding = 1;
+
+	// Write mesh specular texture
+	VkDescriptorImageInfo specularTextureDesc{};
+	specularTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	specularTextureDesc.imageView = material->GetSpecularTexture()->GetImageView();
+	specularTextureDesc.sampler = vulkan->GetColorSampler();
+
+	descriptorWrite[2] = {};
+	descriptorWrite[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrite[2].pNext = NULL;
+	descriptorWrite[2].dstSet = descriptorSet;
+	descriptorWrite[2].descriptorCount = 1;
+	descriptorWrite[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorWrite[2].pImageInfo = &specularTextureDesc;
+	descriptorWrite[2].dstArrayElement = 0;
+	descriptorWrite[2].dstBinding = 2;
+
+	// Update material uniform buffer
+	descriptorWrite[3] = {};
+	descriptorWrite[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrite[3].pNext = NULL;
+	descriptorWrite[3].dstSet = descriptorSet;
+	descriptorWrite[3].descriptorCount = 1;
+	descriptorWrite[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorWrite[3].pBufferInfo = &fsUniformBufferInfo;
+	descriptorWrite[3].dstArrayElement = 0;
+	descriptorWrite[3].dstBinding = 3;
+
+	vkUpdateDescriptorSets(vulkan->GetVulkanDevice()->GetDevice(), sizeof(descriptorWrite) / sizeof(descriptorWrite[0]), descriptorWrite, 0, NULL);
+}
+
+VkDescriptorSet * Mesh::GetDescriptorSet()
+{
+	return &descriptorSet;
 }
 
 Material * Mesh::GetMaterial()
