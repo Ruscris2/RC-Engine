@@ -26,6 +26,7 @@ Input::Input()
 	keyStateValues[KEYBOARD_KEY_3] = 0x33;
 	keyStateValues[KEYBOARD_KEY_4] = 0x34;
 	keyStateValues[KEYBOARD_KEY_5] = 0x35;
+	keyStateValues[KEYBOARD_KEY_6] = 0x36;
 	keyStateValues[KEYBOARD_KEY_SHIFT] = 0x10;
 	memset(wasKeyPressed, 0, sizeof(bool) * 256);
 	memset(keyboardState, 0, sizeof(bool) * 256);

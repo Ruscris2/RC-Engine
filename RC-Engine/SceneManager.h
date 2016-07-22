@@ -6,6 +6,10 @@
 ==========================================================================================*/
 #pragma once
 
+#include <thread>
+#include <atomic>
+#include <mutex>
+
 #include "Camera.h"
 #include "VulkanInterface.h"
 #include "DefaultShader.h"
@@ -18,10 +22,12 @@
 #include "Light.h"
 #include "Canvas.h"
 #include "Animation.h"
+#include "Physics.h"
 
 class SceneManager
 {
 	private:
+		Physics * physics;
 		Camera * camera;
 		Light * light;
 		DefaultShader * defaultShader;
@@ -36,9 +42,7 @@ class SceneManager
 		Canvas * defaultShaderCanvas;
 		SkinnedModel * male;
 		Animation * idleAnim;
-		Animation * walkAnim;
 		std::vector<Model*> modelList;
-
 	private:
 		bool LoadMapFile(std::string filename, VulkanInterface * vulkan);
 		bool BuildDefaultPipeline(VulkanInterface * vulkan);

@@ -225,7 +225,8 @@ void SkinnedModel::Unload(VulkanInterface * vulkan)
 
 void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera)
 {
-	currentAnim->Update(gTimer->GetDelta(), boneOffsets, boneMapping);
+	if(currentAnim != NULL)
+		currentAnim->Update(gTimer->GetDelta(), boneOffsets, boneMapping);
 
 	uint8_t *pData;
 

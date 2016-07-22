@@ -6,6 +6,7 @@
 ==========================================================================================*/
 
 #include <fstream>
+#include <gtc/type_ptr.hpp>
 
 #include "Model.h"
 #include "StdInc.h"
@@ -23,8 +24,11 @@ Model::~Model()
 	vsUniformBuffer = VK_NULL_HANDLE;
 }
 
-bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VulkanCommandBuffer * cmdBuffer)
+bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VulkanCommandBuffer * cmdBuffer,
+	Physics * physics, float mass)
 {
+	this->physics = physics;
+
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VkResult result;
 	
@@ -170,14 +174,119 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 	}
 
 	fclose(file);
+	matFile.close();
+
+
+	// Read collision file
+	pos = filename.rfind('.');
+	filename.replace(pos, 4, ".col");
+
+	FILE * colFile = fopen(filename.c_str(), "rb");
+	if (colFile == NULL)
+		collisionMeshPresent = false;
+	else
+	{
+		collisionMeshPresent = true;
+
+		collisionMesh = new btTriangleMesh();
+
+		struct ColVertex
+		{
+			float x, y, z;
+		};
+
+		unsigned int colVertexCount;
+
+		fread(&colVertexCount, sizeof(unsigned int), 1, colFile);
+		for (unsigned int i = 0; i < colVertexCount / 3; i++)
+		{
+			btVector3 v0, v1, v2;
+			ColVertex colVertex;
+
+			fread(&colVertex, sizeof(ColVertex), 1, colFile);
+			v0 = btVector3(colVertex.x, colVertex.y, colVertex.z);
+			fread(&colVertex, sizeof(ColVertex), 1, colFile);
+			v1 = btVector3(colVertex.x, colVertex.y, colVertex.z);
+			fread(&colVertex, sizeof(ColVertex), 1, colFile);
+			v2 = btVector3(colVertex.x, colVertex.y, colVertex.z);
+
+			collisionMesh->addTriangle(v0, v1, v2);
+		}
+	}
+
+	if(colFile)
+		fclose(colFile);
+
+	// Setup physics object
+	this->mass = (btScalar)mass;
+
+	physicsStatic = false;
+	if (mass == 0.0f)
+		physicsStatic = true;
+
+	if(collisionMeshPresent == false)
+	{
+		emptyCollisionShape = new btEmptyShape();
+		physicsStatic = true;
+	}
+	else
+	{
+		collisionShape = new btGImpactMeshShape(collisionMesh);
+		collisionShape->setLocalScaling(btVector3(1, 1, 1));
+		collisionShape->setMargin(0.01f);
+		collisionShape->updateBound();
+	}
+
+	btTransform transform;
+	transform.setIdentity();
+	
+	btDefaultMotionState * motionState = new btDefaultMotionState(transform);
+	btVector3 inertia(0, 0, 0);
+
+	btCollisionShape * colShape;
+	if (physicsStatic == true)
+	{
+		if (collisionMeshPresent)
+		{
+			collisionShape->calculateLocalInertia(mass, inertia);
+			colShape = collisionShape;
+		}
+		else
+		{
+			emptyCollisionShape->calculateLocalInertia(mass, inertia);
+			colShape = emptyCollisionShape;
+		}
+	}
+	else
+	{
+		collisionShape->calculateLocalInertia(mass, inertia);
+		colShape = collisionShape;
+	}
+	
+	btRigidBody::btRigidBodyConstructionInfo rigidBodyCI(mass, motionState, colShape, inertia);
+	rigidBody = new btRigidBody(rigidBodyCI);
+	
+	physics->GetDynamicsWorld()->addRigidBody(rigidBody);
+	rigidBody->setFriction(1.0f);
 
 	return true;
 }
 
-void Model::Unload(VulkanInterface * vulkan)
+void Model::Unload(VulkanInterface * vulkan, Physics * physics)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	
+	physics->GetDynamicsWorld()->removeRigidBody(rigidBody);
+	delete rigidBody->getMotionState();
+	delete rigidBody;
+
+	if (physicsStatic == false)
+		delete collisionShape;
+	if (collisionMeshPresent == true)
+		delete collisionMesh;
+	else
+		delete emptyCollisionShape;
+
 	vkFreeMemory(vulkanDevice->GetDevice(), vsUniformMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), vsUniformBuffer, VK_NULL_HANDLE);
 
@@ -194,6 +303,12 @@ void Model::Unload(VulkanInterface * vulkan)
 
 void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera)
 {
+	btTransform transform;
+	btQuaternion btQuat;
+	rigidBody->getMotionState()->getWorldTransform(transform);
+
+	transform.getOpenGLMatrix((btScalar*)&vertexUniformBuffer.worldMatrix);
+	
 	uint8_t *pData;
 
 	// Update vertex uniform buffer
@@ -222,10 +337,31 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 
 void Model::SetPosition(float x, float y, float z)
 {
-	posX = x;
-	posY = y;
-	posZ = z;
-	UpdateWorldMatrix();
+	physics->GetDynamicsWorld()->removeRigidBody(rigidBody);
+	
+	if (physicsStatic == false)
+	{
+		rigidBody->setLinearVelocity(btVector3(0.0f, 0.0f, 0.0f));
+		rigidBody->setAngularVelocity(btVector3(0.0f, 0.0f, 0.0f));
+
+		btTransform transform;
+		transform.setIdentity();
+		transform.setOrigin(btVector3(x, y, z));
+
+		rigidBody->setCenterOfMassTransform(transform);
+		rigidBody->setWorldTransform(transform);
+	}
+	else
+	{
+		btTransform transform;
+		rigidBody->getMotionState()->getWorldTransform(transform);
+		transform.setOrigin(btVector3(x, y, z));
+		rigidBody->getMotionState()->setWorldTransform(transform);
+		rigidBody->setCenterOfMassTransform(transform);
+	}
+
+	rigidBody->activate();
+	physics->GetDynamicsWorld()->addRigidBody(rigidBody);
 }
 
 void Model::SetRotation(float x, float y, float z)
@@ -233,7 +369,11 @@ void Model::SetRotation(float x, float y, float z)
 	rotX = x;
 	rotY = y;
 	rotZ = z;
-	UpdateWorldMatrix();
+}
+
+void Model::SetVelocity(float x, float y, float z)
+{
+	rigidBody->setLinearVelocity(btVector3(x, y, z));
 }
 
 unsigned int Model::GetMeshCount()
@@ -244,12 +384,4 @@ unsigned int Model::GetMeshCount()
 Material * Model::GetMaterial(int materialId)
 {
 	return materials[materialId];
-}
-
-void Model::UpdateWorldMatrix()
-{
-	vertexUniformBuffer.worldMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(posX, posY, posZ));
-	vertexUniformBuffer.worldMatrix = glm::rotate(vertexUniformBuffer.worldMatrix, glm::radians(rotX), glm::vec3(1.0f, 0.0f, 0.0f));
-	vertexUniformBuffer.worldMatrix = glm::rotate(vertexUniformBuffer.worldMatrix, glm::radians(rotY), glm::vec3(0.0f, 1.0f, 0.0f));
-	vertexUniformBuffer.worldMatrix = glm::rotate(vertexUniformBuffer.worldMatrix, glm::radians(rotZ), glm::vec3(0.0f, 0.0f, 1.0f));
 }

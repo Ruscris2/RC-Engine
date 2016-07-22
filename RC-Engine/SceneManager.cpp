@@ -20,6 +20,7 @@ extern Timer * gTimer;
 
 SceneManager::SceneManager()
 {
+	physics = NULL;
 	camera = NULL;
 	light = NULL;
 	initCommandBuffer = NULL;
@@ -32,24 +33,29 @@ SceneManager::SceneManager()
 	deferredPipeline = NULL;
 	defaultShaderCanvas = NULL;
 	idleAnim = NULL;
-	walkAnim = NULL;
 }
 
 SceneManager::~SceneManager()
 {
-	SAFE_DELETE(walkAnim);
 	SAFE_DELETE(idleAnim);
 	SAFE_DELETE(light);
 	SAFE_DELETE(camera);
+	SAFE_DELETE(physics);
 }
 
 bool SceneManager::Init(VulkanInterface * vulkan)
 {
+	// Physics init
+	physics = new Physics();
+	physics->Init();
+
+	// Camera setup
 	camera = new Camera();
 	camera->Init();
 	camera->SetPosition(0.0f, 5.0f, -10.0f);
 	camera->SetDirection(0.0f, 0.0f, 1.0f);
 	
+	// Light setup
 	light = new Light();
 	light->SetAmbientColor(0.3f, 0.3f, 0.3f, 1.0f);
 	light->SetDiffuseColor(0.6f, 0.6f, 0.6f, 1.0f);
@@ -149,12 +155,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	idleAnim->SetAnimationSpeed(0.001f);
 
-	walkAnim = new Animation();
-	if (!walkAnim->Init("data/anims/walk.fbx", 52))
-		return false;
-	walkAnim->SetAnimationSpeed(0.001f);
-
-	male->SetAnimation(walkAnim);
+	male->SetAnimation(idleAnim);
 
 	return true;
 }
@@ -163,7 +164,7 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 {
 	SAFE_UNLOAD(male, vulkan);
 	for (unsigned int i = 0; i < modelList.size(); i++)
-		SAFE_UNLOAD(modelList[i], vulkan);
+		SAFE_UNLOAD(modelList[i], vulkan, physics);
 
 	SAFE_UNLOAD(defaultShaderCanvas, vulkan);
 	SAFE_UNLOAD(deferredPipeline, vulkan->GetVulkanDevice());
@@ -184,6 +185,22 @@ float angle = 0.0f;
 
 void SceneManager::Render(VulkanInterface * vulkan)
 {
+	physics->Update();
+
+	if (gInput->WasKeyPressed(KEYBOARD_KEY_6))
+	{
+		Model * model = new Model();
+		model->Init("data/models/box.rcm", vulkan, deferredPipeline, initCommandBuffer, physics, 20.0f);
+		
+		glm::vec3 pos = camera->GetPosition();
+		glm::vec3 dir = camera->GetDirection();
+		float power = 5.0f;
+		model->SetPosition(pos.x, pos.y, pos.z);
+		model->SetVelocity(dir.x * power, dir.y * power, dir.z * power);
+
+		modelList.push_back(model);
+	}
+
 	angle += 0.001f * gTimer->GetDelta();
 	if (angle > 90.0f)
 		angle = 0.0f;
@@ -211,7 +228,7 @@ void SceneManager::Render(VulkanInterface * vulkan)
 	male->Render(vulkan, deferredCommandBuffer, skinnedPipeline, camera);
 	
 	vulkan->EndScene3D(deferredCommandBuffer);
-	
+
 	for (size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)
 	{
 		vulkan->BeginScene2D(renderCommandBuffers[i], defaultPipeline, (int)i);
@@ -240,15 +257,16 @@ bool SceneManager::LoadMapFile(std::string filename, VulkanInterface * vulkan)
 		std::string modelName;
 		float posX, posY, posZ;
 		float rotX, rotY, rotZ;
+		float mass;
 
-		file >> modelName >> posX >> posY >> posZ >> rotX >> rotY >> rotZ;
+		file >> modelName >> posX >> posY >> posZ >> rotX >> rotY >> rotZ >> mass;
 
 		modelName.append(".rcm");
 
 		modelPath = "data/models/" + modelName;
 
 		Model * model = new Model();
-		if (!model->Init(modelPath, vulkan, deferredPipeline, initCommandBuffer))
+		if (!model->Init(modelPath, vulkan, deferredPipeline, initCommandBuffer, physics, mass))
 		{
 			gLogManager->AddMessage("ERROR: Failed to init model: " + modelName);
 			return false;

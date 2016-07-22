@@ -6,12 +6,15 @@
 ==========================================================================================*/
 #pragma once
 
+#include <BulletCollision/Gimpact/btGimpactShape.h>
+
 #include "VulkanPipeline.h"
 #include "Mesh.h"
 #include "Camera.h"
 #include "Texture.h"
 #include "Light.h"
 #include "Material.h"
+#include "Physics.h"
 
 class Model
 {
@@ -35,17 +38,26 @@ class Model
 		VkDeviceMemory vsUniformMemory;
 		VkDescriptorBufferInfo vsUniformBufferInfo;
 		VkMemoryRequirements vsMemReq;
-	private:
-		void UpdateWorldMatrix();
+
+		Physics * physics;
+		bool collisionMeshPresent;
+		bool physicsStatic;
+		btCollisionShape * emptyCollisionShape;
+		btGImpactMeshShape * collisionShape;
+		btTriangleMesh * collisionMesh;
+		btRigidBody * rigidBody;
+		btScalar mass;
 	public:
 		Model();
 		~Model();
 
-		bool Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VulkanCommandBuffer * cmdBuffer);
-		void Unload(VulkanInterface * vulkan);
+		bool Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VulkanCommandBuffer * cmdBuffer,
+			Physics * physics, float mass);
+		void Unload(VulkanInterface * vulkan, Physics * physics);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera);
 		void SetPosition(float x, float y, float z);
 		void SetRotation(float x, float y, float z);
+		void SetVelocity(float x, float y, float z);
 		unsigned int GetMeshCount();
 		Material * GetMaterial(int materialId);
 };

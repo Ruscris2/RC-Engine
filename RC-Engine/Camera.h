@@ -29,4 +29,5 @@ class Camera
 		void SetDirection(float x, float y, float z);
 		glm::mat4 GetViewMatrix();
 		glm::vec3 GetPosition();
+		glm::vec3 GetDirection();
 };

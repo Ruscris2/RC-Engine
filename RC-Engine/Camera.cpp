@@ -25,7 +25,7 @@ void Camera::Init()
 
 void Camera::HandleInput()
 {
-	float speed = 0.006f;
+	float speed = 0.001f;
 	float sensitivity = 0.2f;
 
 	bool update = false;
@@ -96,6 +96,11 @@ glm::mat4 Camera::GetViewMatrix()
 glm::vec3 Camera::GetPosition()
 {
 	return position;
+}
+
+glm::vec3 Camera::GetDirection()
+{
+	return direction;
 }
 
 void Camera::Update()
