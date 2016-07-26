@@ -10,6 +10,13 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
+#include <gtc/quaternion.hpp>
+
+enum CAMERA_STATE
+{
+	CAMERA_STATE_FLY,
+	CAMERA_STATE_ORBIT_PLAYER
+};
 
 class Camera
 {
@@ -19,7 +26,12 @@ class Camera
 		glm::vec3 lookAt;
 		glm::vec3 up;
 		glm::vec3 direction;
+		glm::vec3 orbitPoint;
+		glm::vec3 orbitPointOrientation;
 		float pitch, yaw, roll;
+		float orbitRadius;
+
+		CAMERA_STATE currentState;
 	private:
 		void Update();
 	public:
@@ -27,7 +39,10 @@ class Camera
 		void HandleInput();
 		void SetPosition(float x, float y, float z);
 		void SetDirection(float x, float y, float z);
+		void SetOrbitParameters(glm::vec3 orbitPoint, glm::vec3 orbitPointOrientation, float radius);
+		void SetCameraState(CAMERA_STATE state);
 		glm::mat4 GetViewMatrix();
 		glm::vec3 GetPosition();
 		glm::vec3 GetDirection();
+		CAMERA_STATE GetCameraState();
 };

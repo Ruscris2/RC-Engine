@@ -54,4 +54,6 @@ class SkinnedModel
 		void SetPosition(float x, float y, float z);
 		void SetRotation(float x, float y, float z);
 		void SetAnimation(Animation * anim);
+		glm::vec3 GetPosition();
+		glm::vec3 GetRotation();
 };

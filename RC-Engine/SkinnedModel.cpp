@@ -281,6 +281,16 @@ void SkinnedModel::SetAnimation(Animation * anim)
 	currentAnim = anim;
 }
 
+glm::vec3 SkinnedModel::GetPosition()
+{
+	return glm::vec3(posX, posY, posZ);
+}
+
+glm::vec3 SkinnedModel::GetRotation()
+{
+	return glm::vec3(rotX, rotY, rotZ);
+}
+
 void SkinnedModel::UpdateWorldMatrix()
 {
 	vertexUniformBuffer.worldMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(posX, posY, posZ));

@@ -7,3 +7,4 @@ bin/log.txt
 RC-Engine.VC.db
 *.log
 *.idb
+include/Bullet3OpenCL/CMakeLists.txt

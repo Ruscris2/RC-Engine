@@ -176,7 +176,7 @@ bool VulkanInterface::Init(HWND hwnd)
 
 	float fov = glm::radians(45.0f);
 	float aspectRatio = (float)gSettings->GetWindowWidth() / gSettings->GetWindowHeight();
-	projectionMatrix = glm::perspective(fov, aspectRatio, 0.1f, 250.0f);
+	projectionMatrix = glm::perspective(fov, aspectRatio, 0.01f, 100.0f);
 	orthoMatrix = glm::ortho(0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f);
 
 	VkSemaphoreCreateInfo semaphoreCI{};

@@ -33,10 +33,12 @@ SceneManager::SceneManager()
 	deferredPipeline = NULL;
 	defaultShaderCanvas = NULL;
 	idleAnim = NULL;
+	player = NULL;
 }
 
 SceneManager::~SceneManager()
 {
+	SAFE_DELETE(player);
 	SAFE_DELETE(idleAnim);
 	SAFE_DELETE(light);
 	SAFE_DELETE(camera);
@@ -54,6 +56,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	camera->Init();
 	camera->SetPosition(0.0f, 5.0f, -10.0f);
 	camera->SetDirection(0.0f, 0.0f, 1.0f);
+	camera->SetCameraState(CAMERA_STATE_ORBIT_PLAYER);
 	
 	// Light setup
 	light = new Light();
@@ -142,13 +145,13 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	if (!LoadMapFile("data/testmap.map", vulkan))
 		return false;
 
+	// Skinned models and animations
 	male = new SkinnedModel();
 	if (!male->Init("data/models/male.rcs", vulkan, skinnedPipeline, initCommandBuffer))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init male model!");
 		return false;
 	}
-	male->SetPosition(0.0f, 0.0f, 0.0f);
 
 	idleAnim = new Animation();
 	if (!idleAnim->Init("data/anims/idle.fbx", 52))
@@ -156,6 +159,10 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	idleAnim->SetAnimationSpeed(0.001f);
 
 	male->SetAnimation(idleAnim);
+
+	player = new Player();
+	player->Init(male);
+	player->SetPosition(0.0f, 0.0f, 0.0f);
 
 	return true;
 }
@@ -200,6 +207,10 @@ void SceneManager::Render(VulkanInterface * vulkan)
 
 		modelList.push_back(model);
 	}
+	if (gInput->WasKeyPressed(KEYBOARD_KEY_7))
+		camera->SetCameraState(CAMERA_STATE_ORBIT_PLAYER);
+	if (gInput->WasKeyPressed(KEYBOARD_KEY_8))
+		camera->SetCameraState(CAMERA_STATE_FLY);
 
 	angle += 0.001f * gTimer->GetDelta();
 	if (angle > 90.0f)
@@ -225,7 +236,7 @@ void SceneManager::Render(VulkanInterface * vulkan)
 	for (unsigned int i = 0; i < modelList.size(); i++)
 		modelList[i]->Render(vulkan, deferredCommandBuffer, deferredPipeline, camera);
 	
-	male->Render(vulkan, deferredCommandBuffer, skinnedPipeline, camera);
+	player->Update(vulkan, deferredCommandBuffer, skinnedPipeline, camera);
 	
 	vulkan->EndScene3D(deferredCommandBuffer);
 

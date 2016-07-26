@@ -23,6 +23,7 @@
 #include "Canvas.h"
 #include "Animation.h"
 #include "Physics.h"
+#include "Player.h"
 
 class SceneManager
 {
@@ -40,9 +41,10 @@ class SceneManager
 		VulkanCommandBuffer * deferredCommandBuffer;
 		std::vector<VulkanCommandBuffer*> renderCommandBuffers;
 		Canvas * defaultShaderCanvas;
-		SkinnedModel * male;
 		Animation * idleAnim;
 		std::vector<Model*> modelList;
+		SkinnedModel * male;
+		Player * player;
 	private:
 		bool LoadMapFile(std::string filename, VulkanInterface * vulkan);
 		bool BuildDefaultPipeline(VulkanInterface * vulkan);
