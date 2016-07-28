@@ -11,6 +11,21 @@
 #include "VulkanRenderpass.h"
 #include "VulkanCommandBuffer.h"
 
+struct VulkanPipelineCI
+{
+	VulkanDevice * vulkanDevice;
+	Shader * shader;
+	VulkanRenderpass * vulkanRenderpass;
+	VkVertexInputAttributeDescription * vertexLayout;
+	uint32_t numVertexLayout;
+	VkDescriptorSetLayoutBinding * layoutBindings;
+	uint32_t numLayoutBindings;
+	size_t strideSize;
+	int numColorAttachments;
+	bool wireframeEnabled;
+	bool zbufferEnabled;
+};
+
 class VulkanPipeline
 {
 	private:
@@ -23,9 +38,7 @@ class VulkanPipeline
 		VulkanPipeline();
 		~VulkanPipeline();
 
-		bool Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRenderpass * vulkanRenderpass,
-			VkVertexInputAttributeDescription * vertexLayout, uint32_t numVertexLayout, VkDescriptorSetLayoutBinding * layoutBindings,
-			uint32_t numLayoutBindings, size_t strideSize, int numColorAttachments);
+		bool Init(VulkanPipelineCI * pipelineCI);
 		void Unload(VulkanDevice * vulkanDevice);
 		void SetActive(VulkanCommandBuffer * commandBuffer);
 		VkDescriptorSetLayout * GetDescriptorLayout();

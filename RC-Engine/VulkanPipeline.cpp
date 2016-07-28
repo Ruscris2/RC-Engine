@@ -23,24 +23,22 @@ VulkanPipeline::~VulkanPipeline()
 	pipelineCache = VK_NULL_HANDLE;
 }
 
-bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRenderpass * vulkanRenderpass,
-	VkVertexInputAttributeDescription * vertexLayout, uint32_t numVertexLayout, VkDescriptorSetLayoutBinding * layoutBindings,
-	uint32_t numLayoutBindings, size_t strideSize, int numColorAttachments)
+bool VulkanPipeline::Init(VulkanPipelineCI * pipelineCI)
 {
 	VkResult result;
 
 	// Vertex layout
 	vertexBinding.binding = 0;
 	vertexBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-	vertexBinding.stride = (uint32_t)strideSize;
+	vertexBinding.stride = (uint32_t)pipelineCI->strideSize;
 
 	// Pipeline layout
 	VkDescriptorSetLayoutCreateInfo descriptorLayoutCI{};
 	descriptorLayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptorLayoutCI.bindingCount = numLayoutBindings;
-	descriptorLayoutCI.pBindings = layoutBindings;
+	descriptorLayoutCI.bindingCount = pipelineCI->numLayoutBindings;
+	descriptorLayoutCI.pBindings = pipelineCI->layoutBindings;
 
-	result = vkCreateDescriptorSetLayout(vulkanDevice->GetDevice(), &descriptorLayoutCI, VK_NULL_HANDLE, &descriptorLayout);
+	result = vkCreateDescriptorSetLayout(pipelineCI->vulkanDevice->GetDevice(), &descriptorLayoutCI, VK_NULL_HANDLE, &descriptorLayout);
 	if (result != VK_SUCCESS)
 		return false;
 
@@ -49,7 +47,7 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRe
 	pipelineLayoutCI.setLayoutCount = 1;
 	pipelineLayoutCI.pSetLayouts = &descriptorLayout;
 
-	result = vkCreatePipelineLayout(vulkanDevice->GetDevice(), &pipelineLayoutCI, VK_NULL_HANDLE, &pipelineLayout);
+	result = vkCreatePipelineLayout(pipelineCI->vulkanDevice->GetDevice(), &pipelineLayoutCI, VK_NULL_HANDLE, &pipelineLayout);
 	if (result != VK_SUCCESS)
 		return false;
 
@@ -57,7 +55,7 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRe
 	VkPipelineCacheCreateInfo pipelineCacheCI{};
 	pipelineCacheCI.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 	pipelineCacheCI.pNext = NULL;
-	result = vkCreatePipelineCache(vulkanDevice->GetDevice(), &pipelineCacheCI, VK_NULL_HANDLE, &pipelineCache);
+	result = vkCreatePipelineCache(pipelineCI->vulkanDevice->GetDevice(), &pipelineCacheCI, VK_NULL_HANDLE, &pipelineCache);
 	if (result != VK_SUCCESS)
 		return false;
 
@@ -77,8 +75,8 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRe
 	vi.flags = 0;
 	vi.vertexBindingDescriptionCount = 1;
 	vi.pVertexBindingDescriptions = &vertexBinding;
-	vi.vertexAttributeDescriptionCount = numVertexLayout;
-	vi.pVertexAttributeDescriptions = vertexLayout;
+	vi.vertexAttributeDescriptionCount = pipelineCI->numVertexLayout;
+	vi.pVertexAttributeDescriptions = pipelineCI->vertexLayout;
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyCI{};
 	inputAssemblyCI.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -89,7 +87,7 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRe
 	VkPipelineRasterizationStateCreateInfo rs{};
 	rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rs.pNext = NULL;
-	rs.polygonMode = VK_POLYGON_MODE_FILL;
+	rs.polygonMode = (pipelineCI->wireframeEnabled ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL);
 	rs.cullMode = VK_CULL_MODE_BACK_BIT;
 	rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	rs.depthClampEnable = VK_FALSE;
@@ -106,7 +104,7 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRe
 	cb.pNext = NULL;
 
 	std::vector<VkPipelineColorBlendAttachmentState> blendAttachState;
-	blendAttachState.resize(numColorAttachments);
+	blendAttachState.resize(pipelineCI->numColorAttachments);
 
 	for (unsigned int i = 0; i < blendAttachState.size(); i++)
 	{
@@ -145,7 +143,7 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRe
 	ds.pNext = NULL;
 	ds.depthTestEnable = VK_TRUE;
 	ds.depthWriteEnable = VK_TRUE;
-	ds.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+	ds.depthCompareOp = (pipelineCI->zbufferEnabled ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_ALWAYS);
 	ds.depthBoundsTestEnable = VK_FALSE;
 	ds.stencilTestEnable = VK_FALSE;
 	ds.back.failOp = VK_STENCIL_OP_KEEP;
@@ -171,28 +169,28 @@ bool VulkanPipeline::Init(VulkanDevice * vulkanDevice, Shader * shader, VulkanRe
 	ms.alphaToOneEnable = VK_FALSE;
 	ms.minSampleShading = 0.0;
 
-	VkGraphicsPipelineCreateInfo pipelineCI{};
-	pipelineCI.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineCI.pNext = NULL;
-	pipelineCI.layout = pipelineLayout;
-	pipelineCI.basePipelineHandle = VK_NULL_HANDLE;
-	pipelineCI.basePipelineIndex = 0;
-	pipelineCI.flags = 0;
-	pipelineCI.pVertexInputState = &vi;
-	pipelineCI.pInputAssemblyState = &inputAssemblyCI;
-	pipelineCI.pRasterizationState = &rs;
-	pipelineCI.pColorBlendState = &cb;
-	pipelineCI.pTessellationState = VK_NULL_HANDLE;
-	pipelineCI.pMultisampleState = &ms;
-	pipelineCI.pDynamicState = &dynamicStateCI;
-	pipelineCI.pViewportState = &vp;
-	pipelineCI.pDepthStencilState = &ds;
-	pipelineCI.pStages = shader->GetShaderStages();
-	pipelineCI.stageCount = 2;
-	pipelineCI.renderPass = vulkanRenderpass->GetRenderpass();
-	pipelineCI.subpass = 0;
+	VkGraphicsPipelineCreateInfo graphicsPipelineCI{};
+	graphicsPipelineCI.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	graphicsPipelineCI.pNext = NULL;
+	graphicsPipelineCI.layout = pipelineLayout;
+	graphicsPipelineCI.basePipelineHandle = VK_NULL_HANDLE;
+	graphicsPipelineCI.basePipelineIndex = 0;
+	graphicsPipelineCI.flags = 0;
+	graphicsPipelineCI.pVertexInputState = &vi;
+	graphicsPipelineCI.pInputAssemblyState = &inputAssemblyCI;
+	graphicsPipelineCI.pRasterizationState = &rs;
+	graphicsPipelineCI.pColorBlendState = &cb;
+	graphicsPipelineCI.pTessellationState = VK_NULL_HANDLE;
+	graphicsPipelineCI.pMultisampleState = &ms;
+	graphicsPipelineCI.pDynamicState = &dynamicStateCI;
+	graphicsPipelineCI.pViewportState = &vp;
+	graphicsPipelineCI.pDepthStencilState = &ds;
+	graphicsPipelineCI.pStages = pipelineCI->shader->GetShaderStages();
+	graphicsPipelineCI.stageCount = 2;
+	graphicsPipelineCI.renderPass = pipelineCI->vulkanRenderpass->GetRenderpass();
+	graphicsPipelineCI.subpass = 0;
 
-	result = vkCreateGraphicsPipelines(vulkanDevice->GetDevice(), pipelineCache, 1, &pipelineCI, VK_NULL_HANDLE, &pipeline);
+	result = vkCreateGraphicsPipelines(pipelineCI->vulkanDevice->GetDevice(), pipelineCache, 1, &graphicsPipelineCI, VK_NULL_HANDLE, &pipeline);
 	if (result != VK_SUCCESS)
 		return false;
 	

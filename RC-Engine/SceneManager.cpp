@@ -295,6 +295,7 @@ bool SceneManager::LoadMapFile(std::string filename, VulkanInterface * vulkan)
 
 bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 {
+	// Vertex layout
 	VkVertexInputAttributeDescription vertexLayoutDefault[2];
 
 	vertexLayoutDefault[0].binding = 0;
@@ -307,9 +308,9 @@ bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	vertexLayoutDefault[1].format = VK_FORMAT_R32G32_SFLOAT;
 	vertexLayoutDefault[1].offset = sizeof(float) * 3;
 
+	// Layout bindings
 	VkDescriptorSetLayoutBinding layoutBindingsDefault[6];
 
-	// Layout bindings
 	layoutBindingsDefault[0].binding = 0;
 	layoutBindingsDefault[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	layoutBindingsDefault[0].descriptorCount = 1;
@@ -351,9 +352,21 @@ bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 		float u, v;
 	};
 
+	VulkanPipelineCI pipelineCI;
+	pipelineCI.vulkanDevice = vulkan->GetVulkanDevice();
+	pipelineCI.shader = defaultShader;
+	pipelineCI.vulkanRenderpass = vulkan->GetMainRenderpass();
+	pipelineCI.vertexLayout = vertexLayoutDefault;
+	pipelineCI.numVertexLayout = 2;
+	pipelineCI.layoutBindings = layoutBindingsDefault;
+	pipelineCI.numLayoutBindings = 6;
+	pipelineCI.strideSize = sizeof(DefaultVertex);
+	pipelineCI.numColorAttachments = 1;
+	pipelineCI.wireframeEnabled = false;
+	pipelineCI.zbufferEnabled = true;
+
 	defaultPipeline = new VulkanPipeline();
-	if (!defaultPipeline->Init(vulkan->GetVulkanDevice(), defaultShader, vulkan->GetMainRenderpass(), vertexLayoutDefault, 2,
-		layoutBindingsDefault, 6, sizeof(DefaultVertex), 1))
+	if (!defaultPipeline->Init(&pipelineCI))
 		return false;
 
 	return true;
@@ -361,6 +374,7 @@ bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 
 bool SceneManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 {
+	// Vertex layout
 	VkVertexInputAttributeDescription vertexLayoutSkinned[5];
 
 	// Position
@@ -393,9 +407,9 @@ bool SceneManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	vertexLayoutSkinned[4].format = VK_FORMAT_R32G32B32A32_SINT;
 	vertexLayoutSkinned[4].offset = sizeof(float) * 12;
 
+	// Layout bindings
 	VkDescriptorSetLayoutBinding layoutBindingsSkinned[4];
 
-	// Layout bindings
 	layoutBindingsSkinned[0].binding = 0;
 	layoutBindingsSkinned[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	layoutBindingsSkinned[0].descriptorCount = 1;
@@ -428,9 +442,21 @@ bool SceneManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 		uint32_t boneIDs[4];
 	};
 
+	VulkanPipelineCI pipelineCI;
+	pipelineCI.vulkanDevice = vulkan->GetVulkanDevice();
+	pipelineCI.shader = skinnedShader;
+	pipelineCI.vulkanRenderpass = vulkan->GetDeferredRenderpass();
+	pipelineCI.vertexLayout = vertexLayoutSkinned;
+	pipelineCI.numVertexLayout = 5;
+	pipelineCI.layoutBindings = layoutBindingsSkinned;
+	pipelineCI.numLayoutBindings = 4;
+	pipelineCI.strideSize = sizeof(SkinnedVertex);
+	pipelineCI.numColorAttachments = 4;
+	pipelineCI.wireframeEnabled = false;
+	pipelineCI.zbufferEnabled = true;
+
 	skinnedPipeline = new VulkanPipeline();
-	if (!skinnedPipeline->Init(vulkan->GetVulkanDevice(), skinnedShader, vulkan->GetDeferredRenderpass(), vertexLayoutSkinned, 5,
-		layoutBindingsSkinned, 4, sizeof(SkinnedVertex), 4))
+	if (!skinnedPipeline->Init(&pipelineCI))
 		return false;
 
 	return true;
@@ -438,6 +464,7 @@ bool SceneManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 
 bool SceneManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 {
+	// Vertex layout
 	VkVertexInputAttributeDescription vertexLayoutDeferred[3];
 
 	vertexLayoutDeferred[0].binding = 0;
@@ -455,9 +482,9 @@ bool SceneManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	vertexLayoutDeferred[2].format = VK_FORMAT_R32G32B32_SFLOAT;
 	vertexLayoutDeferred[2].offset = sizeof(float) * 5;
 
+	// Layout bindings
 	VkDescriptorSetLayoutBinding layoutBindingsDeferred[4];
 
-	// Layout bindings
 	layoutBindingsDeferred[0].binding = 0;
 	layoutBindingsDeferred[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	layoutBindingsDeferred[0].descriptorCount = 1;
@@ -488,9 +515,21 @@ bool SceneManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 		float nx, ny, nz;
 	};
 
+	VulkanPipelineCI pipelineCI;
+	pipelineCI.vulkanDevice = vulkan->GetVulkanDevice();
+	pipelineCI.shader = deferredShader;
+	pipelineCI.vulkanRenderpass = vulkan->GetDeferredRenderpass();
+	pipelineCI.vertexLayout = vertexLayoutDeferred;
+	pipelineCI.numVertexLayout = 3;
+	pipelineCI.layoutBindings = layoutBindingsDeferred;
+	pipelineCI.numLayoutBindings = 4;
+	pipelineCI.strideSize = sizeof(DeferredVertex);
+	pipelineCI.numColorAttachments = 4;
+	pipelineCI.wireframeEnabled = false;
+	pipelineCI.zbufferEnabled = true;
+
 	deferredPipeline = new VulkanPipeline();
-	if (!deferredPipeline->Init(vulkan->GetVulkanDevice(), deferredShader, vulkan->GetDeferredRenderpass(), vertexLayoutDeferred, 3,
-		layoutBindingsDeferred, 4, sizeof(DeferredVertex), 4))
+	if (!deferredPipeline->Init(&pipelineCI))
 		return false;
 
 	return true;
