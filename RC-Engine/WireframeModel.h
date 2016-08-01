@@ -12,8 +12,11 @@
 
 enum GEOMETRY_TYPE
 {
+	GEOMETRY_TYPE_INVALID,
 	GEOMETRY_TYPE_BOX,
-	GEOMETRY_TYPE_SPHERE
+	GEOMETRY_TYPE_SPHERE,
+	GEOMETRY_TYPE_POLYGON,
+	GEOMETRY_TYPE_CYLINDER
 };
 
 struct GEOMETRY_GENERATE_INFO
@@ -22,6 +25,7 @@ struct GEOMETRY_GENERATE_INFO
 	float width, height, length;
 	float radius;
 	unsigned int slices, stacks;
+	glm::vec3 v1, v2, v3, v4;
 };
 
 class WireframeModel

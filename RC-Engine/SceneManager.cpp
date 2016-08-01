@@ -187,13 +187,13 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	player->SetPosition(0.0f, 0.0f, 0.0f);
 
 	GEOMETRY_GENERATE_INFO geometryInfo{};
+	geometryInfo.radius = 1.0f;
+	geometryInfo.slices = 20;
+	geometryInfo.stacks = 20;
 	geometryInfo.type = GEOMETRY_TYPE_SPHERE;
-	geometryInfo.radius = 2.0f;
-	geometryInfo.slices = 10;
-	geometryInfo.stacks = 10;
 
 	testModel = new WireframeModel();
-	if (!testModel->Init(vulkan, wireframePipeline, geometryInfo, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)))
+	if (!testModel->Init(vulkan, wireframePipeline, geometryInfo, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init test model!");
 		return false;

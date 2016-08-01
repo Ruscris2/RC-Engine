@@ -40,6 +40,9 @@ bool WireframeModel::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipel
 
 	if (generateInfo.type == GEOMETRY_TYPE_BOX)
 	{
+		if (generateInfo.width == 0.0f || generateInfo.height == 0.0f || generateInfo.length == 0.0f)
+			return false;
+
 		vertexCount = 8;
 		indexCount = 36;
 
@@ -97,6 +100,9 @@ bool WireframeModel::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipel
 	}
 	else if (generateInfo.type == GEOMETRY_TYPE_SPHERE)
 	{
+		if (generateInfo.radius == 0.0f || generateInfo.slices == 0 || generateInfo.stacks == 0)
+			return false;
+
 		std::vector<Vertex> vertices;
 		std::vector<uint32_t> indices;
 
@@ -125,6 +131,7 @@ bool WireframeModel::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipel
 		vertex.x = 0.0f;
 		vertex.y = -generateInfo.radius;
 		vertex.z = 0.0f;
+		vertices.push_back(vertex);
 
 		for (unsigned int i = 1; i <= generateInfo.slices; i++)
 		{
@@ -154,6 +161,143 @@ bool WireframeModel::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipel
 		for (unsigned int i = 0; i < generateInfo.slices; i++)
 		{
 			indices.push_back(southPoleIndex);
+			indices.push_back(baseIndex + i);
+			indices.push_back(baseIndex + i + 1);
+		}
+
+		vertexCount = (unsigned int)vertices.size();
+		indexCount = (unsigned int)indices.size();
+
+		vertexData = new Vertex[vertexCount];
+		indexData = new uint32_t[indexCount];
+
+		memcpy(vertexData, vertices.data(), sizeof(Vertex) * vertexCount);
+		memcpy(indexData, indices.data(), sizeof(uint32_t) * indexCount);
+	}
+	else if (generateInfo.type == GEOMETRY_TYPE_POLYGON)
+	{
+		vertexCount = 4;
+		indexCount = 6;
+
+		vertexData = new Vertex[vertexCount];
+		indexData = new uint32_t[indexCount];
+		
+		vertexData[0].x = generateInfo.v1.x;
+		vertexData[0].y = generateInfo.v1.y;
+		vertexData[0].z = generateInfo.v1.z;
+
+		vertexData[1].x = generateInfo.v2.x;
+		vertexData[1].y = generateInfo.v2.y;
+		vertexData[1].z = generateInfo.v2.z;
+
+		vertexData[2].x = generateInfo.v3.x;
+		vertexData[2].y = generateInfo.v3.y;
+		vertexData[2].z = generateInfo.v3.z;
+
+		vertexData[3].x = generateInfo.v4.x;
+		vertexData[3].y = generateInfo.v4.y;
+		vertexData[3].z = generateInfo.v4.z;
+
+		indexData[0] = 0; indexData[1] = 2; indexData[2] = 3;
+		indexData[3] = 0; indexData[4] = 1; indexData[5] = 2;
+	}
+	else if (generateInfo.type == GEOMETRY_TYPE_CYLINDER)
+	{
+		if (generateInfo.radius == 0.0f || generateInfo.height == 0.0f || generateInfo.stacks == 0 || generateInfo.slices == 0)
+			return false;
+
+		std::vector<Vertex> vertices;
+		std::vector<uint32_t> indices;
+
+		// Body
+		float stackHeight = generateInfo.height / generateInfo.stacks;
+		unsigned int ringCount = generateInfo.stacks + 1;
+
+		for (unsigned int i = 0; i < ringCount; i++)
+		{
+			float y = -0.5f * generateInfo.height + i * stackHeight;
+			float theta = 2.0f * glm::pi<float>() / generateInfo.slices;
+
+			for (unsigned int j = 0; j <= generateInfo.slices; j++)
+			{
+				Vertex vertex;
+
+				vertex.x = glm::cos(j * theta);
+				vertex.y = y;
+				vertex.z = glm::sin(j * theta);
+				vertices.push_back(vertex);
+			}
+		}
+
+		unsigned int ringVertexCount = generateInfo.slices + 1;
+		for (unsigned int i = 0; i < generateInfo.stacks; i++)
+		{
+			for (unsigned int j = 0; j < generateInfo.slices; j++)
+			{
+				indices.push_back(i * ringVertexCount + j);
+				indices.push_back((i + 1) * ringVertexCount + j);
+				indices.push_back((i + 1) * ringVertexCount + j + 1);
+
+				indices.push_back(i * ringVertexCount + j);
+				indices.push_back((i + 1) * ringVertexCount + j + 1);
+				indices.push_back(i * ringVertexCount + j + 1);
+			}
+		}
+
+		Vertex vertex;
+		float y;
+		unsigned int baseIndex, centerIndex;
+
+		float theta = 2.0f * glm::pi<float>() / generateInfo.slices;;
+
+		// Top cap
+		baseIndex = (unsigned int)vertices.size();
+
+		y = 0.5f * generateInfo.height;
+
+		for (unsigned int i = 0; i <= generateInfo.slices; i++)
+		{
+			vertex.x = generateInfo.radius * glm::cos(i * theta);
+			vertex.y = y;
+			vertex.z = generateInfo.radius * glm::sin(i * theta);
+			vertices.push_back(vertex);
+		}
+
+		vertex.x = 0.0f;
+		vertex.y = y;
+		vertex.z = 0.0f;
+		vertices.push_back(vertex);
+
+		centerIndex = (unsigned int)vertices.size() - 1;
+		for (unsigned int i = 0; i < generateInfo.slices; i++)
+		{
+			indices.push_back(centerIndex);
+			indices.push_back(baseIndex + i + 1);
+			indices.push_back(baseIndex + i);
+		}
+
+		// Bottom cap
+		baseIndex = (unsigned int)vertices.size();
+
+		y = -0.5f * generateInfo.height;
+		
+		for (unsigned int i = 0; i <= generateInfo.slices; i++)
+		{
+			vertex.x = generateInfo.radius * glm::cos(i * theta);
+			vertex.y = y;
+			vertex.z = generateInfo.radius * glm::sin(i * theta);
+			vertices.push_back(vertex);
+		}
+
+		vertex.x = 0.0f;
+		vertex.y = y;
+		vertex.z = 0.0f;
+		vertices.push_back(vertex);
+
+		centerIndex = (unsigned int)vertices.size() - 1;
+		for (unsigned int i = 0; i < generateInfo.slices; i++)
+		{
+			indices.push_back(centerIndex);
 			indices.push_back(baseIndex + i);
 			indices.push_back(baseIndex + i + 1);
 		}
