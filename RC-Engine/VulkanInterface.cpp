@@ -390,7 +390,7 @@ bool VulkanInterface::InitDeferredFramebuffer()
 	VkResult result;
 
 	positionAtt = new FrameBufferAttachment();
-	if (!positionAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
+	if (!positionAtt->Create(vulkanDevice, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create position framebuffer attachment!");
 		return false;

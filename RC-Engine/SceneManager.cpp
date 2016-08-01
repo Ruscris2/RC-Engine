@@ -187,10 +187,10 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	player->SetPosition(0.0f, 0.0f, 0.0f);
 
 	GEOMETRY_GENERATE_INFO geometryInfo{};
-	geometryInfo.type = GEOMETRY_TYPE_BOX;
-	geometryInfo.width = 3.0f;
-	geometryInfo.height = 1.0f;
-	geometryInfo.length = 1.0f;
+	geometryInfo.type = GEOMETRY_TYPE_SPHERE;
+	geometryInfo.radius = 2.0f;
+	geometryInfo.slices = 10;
+	geometryInfo.stacks = 10;
 
 	testModel = new WireframeModel();
 	if (!testModel->Init(vulkan, wireframePipeline, geometryInfo, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)))
@@ -198,7 +198,8 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		gLogManager->AddMessage("ERROR: Failed to init test model!");
 		return false;
 	}
-	
+	testModel->SetPosition(0.0f, 1.0f, 0.0f);
+
 	return true;
 }
 
@@ -628,7 +629,7 @@ bool SceneManager::BuildWireframePipeline(VulkanInterface * vulkan)
 	pipelineCI.strideSize = sizeof(WireframeVertex);
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = true;
-	pipelineCI.zbufferEnabled = false;
+	pipelineCI.zbufferEnabled = true;
 
 	wireframePipeline = new VulkanPipeline();
 	if (!wireframePipeline->Init(&pipelineCI))

@@ -30,6 +30,8 @@ void main()
 	vec4 albedo = texture(samplerAlbedo, texCoord);
 	vec4 specular = texture(samplerSpecular, texCoord);
 	
+	gl_FragDepth = texture(samplerPosition, texCoord).a;
+	
 	if(ubo.imageIndex == 5)
 	{	
 		vec3 viewDir = normalize(ubo.cameraPosition - fragPos);

@@ -95,7 +95,7 @@ bool WireframeModel::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipel
 		indexData[30] = 5; indexData[31] = 2; indexData[32] = 6;
 		indexData[33] = 5; indexData[34] = 1; indexData[35] = 2;
 	}
-	else if (generateInfo.type == GEOMETRY_TYPE_SPEHERE)
+	else if (generateInfo.type == GEOMETRY_TYPE_SPHERE)
 	{
 		std::vector<Vertex> vertices;
 		std::vector<uint32_t> indices;

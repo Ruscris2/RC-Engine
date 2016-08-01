@@ -29,6 +29,7 @@ void main()
 	outAlbedo = texture(diffuseSampler, texCoord);
 	outSpecular = texture(specularSampler, texCoord);
 	
+	outPosition.a = gl_FragCoord.z;
 	outSpecular.g = ubo.materialShininess;
 	outSpecular.b = ubo.materialSpecStrength;
 }
