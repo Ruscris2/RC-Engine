@@ -40,7 +40,7 @@ class VulkanInterface
 		VulkanCommandPool * vulkanCommandPool;
 		VulkanCommandBuffer * initCommandBuffer;
 		VulkanSwapchain * vulkanSwapchain;
-		VulkanRenderpass * mainRenderPass;
+		VulkanRenderpass * forwardRenderPass;
 		VulkanRenderpass * deferredRenderPass;
 
 		VkViewport viewport;
@@ -79,15 +79,15 @@ class VulkanInterface
 		~VulkanInterface();
 
 		bool Init(HWND hwnd);
-		void BeginScene3D(VulkanCommandBuffer * commandBuffer);
-		void EndScene3D(VulkanCommandBuffer * commandBuffer);
-		void BeginScene2D(VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline, int frameId);
-		void EndScene2D(VulkanCommandBuffer * commandBuffer);
+		void BeginSceneDeferred(VulkanCommandBuffer * commandBuffer);
+		void EndSceneDeferred(VulkanCommandBuffer * commandBuffer);
+		void BeginSceneForward(VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline, int frameId);
+		void EndSceneForward(VulkanCommandBuffer * commandBuffer);
 		void Present(std::vector<VulkanCommandBuffer*>& renderCommandBuffers);
 		void InitViewportAndScissors(VulkanCommandBuffer * commandBuffer);
 		VulkanCommandPool * GetVulkanCommandPool();
 		VulkanDevice * GetVulkanDevice();
-		VulkanRenderpass * GetMainRenderpass();
+		VulkanRenderpass * GetForwardRenderpass();
 		VulkanRenderpass * GetDeferredRenderpass();
 		VulkanSwapchain * GetVulkanSwapchain();
 		glm::mat4 GetProjectionMatrix();

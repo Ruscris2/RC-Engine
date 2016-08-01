@@ -88,7 +88,7 @@ bool VulkanPipeline::Init(VulkanPipelineCI * pipelineCI)
 	rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rs.pNext = NULL;
 	rs.polygonMode = (pipelineCI->wireframeEnabled ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL);
-	rs.cullMode = VK_CULL_MODE_BACK_BIT;
+	rs.cullMode = (pipelineCI->wireframeEnabled ?  VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT);
 	rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	rs.depthClampEnable = VK_FALSE;
 	rs.rasterizerDiscardEnable = VK_FALSE;

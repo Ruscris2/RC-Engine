@@ -21,7 +21,7 @@ VulkanInterface::VulkanInterface()
 	vulkanCommandPool = NULL;
 	initCommandBuffer = NULL;
 	vulkanSwapchain = NULL;
-	mainRenderPass = NULL;
+	forwardRenderPass = NULL;
 	deferredRenderPass = NULL;
 
 	positionAtt = NULL;
@@ -53,7 +53,7 @@ VulkanInterface::~VulkanInterface()
 	vkDestroyImageView(vulkanDevice->GetDevice(), depthImage.view, VK_NULL_HANDLE); depthImage.view = VK_NULL_HANDLE;
 	
 	SAFE_UNLOAD(vulkanSwapchain, vulkanDevice);
-	SAFE_UNLOAD(mainRenderPass, vulkanDevice);
+	SAFE_UNLOAD(forwardRenderPass, vulkanDevice);
 	SAFE_UNLOAD(initCommandBuffer, vulkanDevice, vulkanCommandPool);
 	SAFE_UNLOAD(vulkanCommandPool, vulkanDevice);
 	SAFE_UNLOAD(vulkanDevice, vulkanInstance);
@@ -148,15 +148,15 @@ bool VulkanInterface::Init(HWND hwnd)
 	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-	mainRenderPass = new VulkanRenderpass();
-	if (!mainRenderPass->Init(vulkanDevice, attachmentDesc, 2, attachmentRefs, 2, 1, &dependency, 1))
+	forwardRenderPass = new VulkanRenderpass();
+	if (!forwardRenderPass->Init(vulkanDevice, attachmentDesc, 2, attachmentRefs, 2, 1, &dependency, 1))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init main render pass!");
 		return false;
 	}
 
 	vulkanSwapchain = new VulkanSwapchain();
-	if (!vulkanSwapchain->Init(vulkanDevice, depthImage.view, mainRenderPass))
+	if (!vulkanSwapchain->Init(vulkanDevice, depthImage.view, forwardRenderPass))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create swapchain!");
 		return false;
@@ -187,14 +187,14 @@ bool VulkanInterface::Init(HWND hwnd)
 	return true;
 }
 
-void VulkanInterface::BeginScene3D(VulkanCommandBuffer * commandBuffer)
+void VulkanInterface::BeginSceneDeferred(VulkanCommandBuffer * commandBuffer)
 {
 	commandBuffer->BeginRecording();
 	
 	deferredRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, deferredFramebuffer, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 }
 
-void VulkanInterface::EndScene3D(VulkanCommandBuffer * commandBuffer)
+void VulkanInterface::EndSceneDeferred(VulkanCommandBuffer * commandBuffer)
 {
 	deferredRenderPass->EndRenderpass(commandBuffer);
 	
@@ -203,17 +203,16 @@ void VulkanInterface::EndScene3D(VulkanCommandBuffer * commandBuffer)
 	commandBuffer->Execute(vulkanDevice, NULL, NULL, NULL, true);
 }
 
-void VulkanInterface::BeginScene2D(VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline, int frameId)
+void VulkanInterface::BeginSceneForward(VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline, int frameId)
 {
 	commandBuffer->BeginRecording();
-	InitViewportAndScissors(commandBuffer);
 
-	mainRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, vulkanSwapchain->GetFramebuffer(frameId), VK_SUBPASS_CONTENTS_INLINE);
+	forwardRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, vulkanSwapchain->GetFramebuffer(frameId), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 }
 
-void VulkanInterface::EndScene2D(VulkanCommandBuffer * commandBuffer)
+void VulkanInterface::EndSceneForward(VulkanCommandBuffer * commandBuffer)
 {
-	mainRenderPass->EndRenderpass(commandBuffer);
+	forwardRenderPass->EndRenderpass(commandBuffer);
 
 	commandBuffer->EndRecording();
 }
@@ -238,9 +237,9 @@ VulkanDevice * VulkanInterface::GetVulkanDevice()
 	return vulkanDevice;
 }
 
-VulkanRenderpass * VulkanInterface::GetMainRenderpass()
+VulkanRenderpass * VulkanInterface::GetForwardRenderpass()
 {
-	return mainRenderPass;
+	return forwardRenderPass;
 }
 
 VulkanRenderpass * VulkanInterface::GetDeferredRenderpass()

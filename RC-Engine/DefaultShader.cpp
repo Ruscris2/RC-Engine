@@ -9,10 +9,8 @@
 
 #include "DefaultShader.h"
 #include "LogManager.h"
-#include "Settings.h"
 
 extern LogManager * gLogManager;
-extern Settings * gSettings;
 
 DefaultShader::DefaultShader()
 {

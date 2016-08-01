@@ -179,6 +179,8 @@
     <ClCompile Include="VulkanSwapchain.cpp" />
     <ClCompile Include="VulkanTools.cpp" />
     <ClCompile Include="WinWindow.cpp" />
+    <ClCompile Include="WireframeModel.cpp" />
+    <ClCompile Include="WireframeShader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Animation.h" />
@@ -214,6 +216,8 @@
     <ClInclude Include="VulkanSwapchain.h" />
     <ClInclude Include="VulkanTools.h" />
     <ClInclude Include="WinWindow.h" />
+    <ClInclude Include="WireframeModel.h" />
+    <ClInclude Include="WireframeShader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
