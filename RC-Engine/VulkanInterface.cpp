@@ -287,6 +287,11 @@ FrameBufferAttachment * VulkanInterface::GetMaterialAttachment()
 	return materialAtt;
 }
 
+FrameBufferAttachment * VulkanInterface::GetDepthAttachment()
+{
+	return depthAtt;
+}
+
 VkFramebuffer VulkanInterface::GetDeferredFramebuffer()
 {
 	return deferredFramebuffer;
@@ -298,10 +303,9 @@ bool VulkanInterface::InitDepthBuffer()
 	VkImageCreateInfo imageCI{};
 
 	std::vector<VkFormat> depthFormats;
-	depthFormats.push_back(VK_FORMAT_D32_SFLOAT_S8_UINT);
-	depthFormats.push_back(VK_FORMAT_D24_UNORM_S8_UINT);
-	depthFormats.push_back(VK_FORMAT_D16_UNORM_S8_UINT);
-	
+	depthFormats.push_back(VK_FORMAT_D32_SFLOAT);
+	depthFormats.push_back(VK_FORMAT_D16_UNORM);
+
 	VkFormatProperties properties;
 	for (unsigned int i = 0; i < depthFormats.size(); i++)
 	{
@@ -348,7 +352,7 @@ bool VulkanInterface::InitDepthBuffer()
 	viewCI.components.g = VK_COMPONENT_SWIZZLE_G;
 	viewCI.components.b = VK_COMPONENT_SWIZZLE_B;
 	viewCI.components.a = VK_COMPONENT_SWIZZLE_A;
-	viewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+	viewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 	viewCI.subresourceRange.baseMipLevel = 0;
 	viewCI.subresourceRange.levelCount = 1;
 	viewCI.subresourceRange.baseArrayLayer = 0;
@@ -390,7 +394,7 @@ bool VulkanInterface::InitDeferredFramebuffer()
 	VkResult result;
 
 	positionAtt = new FrameBufferAttachment();
-	if (!positionAtt->Create(vulkanDevice, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
+	if (!positionAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create position framebuffer attachment!");
 		return false;

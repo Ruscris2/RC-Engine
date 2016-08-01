@@ -97,5 +97,6 @@ class VulkanInterface
 		FrameBufferAttachment * GetNormalAttachment();
 		FrameBufferAttachment * GetAlbedoAttachment();
 		FrameBufferAttachment * GetMaterialAttachment();
+		FrameBufferAttachment * GetDepthAttachment();
 		VkFramebuffer GetDeferredFramebuffer();
 };

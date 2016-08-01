@@ -40,7 +40,7 @@ bool FrameBufferAttachment::Create(VulkanDevice * device, VkFormat format, VkIma
 	}
 	if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
 	{
-		aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 		imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	}
 

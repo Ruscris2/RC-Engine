@@ -27,7 +27,7 @@ Canvas::~Canvas()
 }
 
 bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView,
-	VkImageView albedoView, VkImageView materialView)
+	VkImageView albedoView, VkImageView materialView, VkImageView depthView)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
@@ -303,7 +303,7 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	fsUniformBufferInfo.range = sizeof(fragmentUniformBuffer);
 
 	// Descriptor pool
-	VkDescriptorPoolSize typeCounts[6];
+	VkDescriptorPoolSize typeCounts[7];
 	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	typeCounts[0].descriptorCount = 1;
 	typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -314,8 +314,10 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	typeCounts[3].descriptorCount = 1;
 	typeCounts[4].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	typeCounts[4].descriptorCount = 1;
-	typeCounts[5].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[5].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	typeCounts[5].descriptorCount = 1;
+	typeCounts[6].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[6].descriptorCount = 1;
 
 	VkDescriptorPoolCreateInfo descriptorPoolCI{};
 	descriptorPoolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -338,7 +340,7 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	if (result != VK_SUCCESS)
 		return false;
 
-	VkWriteDescriptorSet write[6];
+	VkWriteDescriptorSet write[7];
 
 	write[0] = {};
 	write[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -410,15 +412,30 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	write[4].dstArrayElement = 0;
 	write[4].dstBinding = 4;
 
+	VkDescriptorImageInfo depthTextureDesc{};
+	depthTextureDesc.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depthTextureDesc.imageView = depthView;
+	depthTextureDesc.sampler = vulkan->GetColorSampler();
+
 	write[5] = {};
 	write[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write[5].pNext = NULL;
 	write[5].dstSet = descriptorSet;
 	write[5].descriptorCount = 1;
-	write[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	write[5].pBufferInfo = &fsUniformBufferInfo;
+	write[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	write[5].pImageInfo = &depthTextureDesc;
 	write[5].dstArrayElement = 0;
 	write[5].dstBinding = 5;
+
+	write[6] = {};
+	write[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write[6].pNext = NULL;
+	write[6].dstSet = descriptorSet;
+	write[6].descriptorCount = 1;
+	write[6].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	write[6].pBufferInfo = &fsUniformBufferInfo;
+	write[6].dstArrayElement = 0;
+	write[6].dstBinding = 6;
 
 	vkUpdateDescriptorSets(vulkanDevice->GetDevice(), sizeof(write) / sizeof(write[0]), write, 0, NULL);
 

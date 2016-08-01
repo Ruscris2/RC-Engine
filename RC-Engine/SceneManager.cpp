@@ -157,7 +157,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	// Init screen quad
 	defaultShaderCanvas = new Canvas();
 	if (!defaultShaderCanvas->Init(vulkan, defaultPipeline, vulkan->GetPositionAttachment()->GetImageView(), vulkan->GetNormalAttachment()->GetImageView(),
-		vulkan->GetAlbedoAttachment()->GetImageView(), vulkan->GetMaterialAttachment()->GetImageView()))
+		vulkan->GetAlbedoAttachment()->GetImageView(), vulkan->GetMaterialAttachment()->GetImageView(), vulkan->GetDepthAttachment()->GetImageView()))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init default shader canvas!");
 		return false;
@@ -363,7 +363,7 @@ bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	vertexLayoutDefault[1].offset = sizeof(float) * 3;
 
 	// Layout bindings
-	VkDescriptorSetLayoutBinding layoutBindingsDefault[6];
+	VkDescriptorSetLayoutBinding layoutBindingsDefault[7];
 
 	layoutBindingsDefault[0].binding = 0;
 	layoutBindingsDefault[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -396,10 +396,16 @@ bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	layoutBindingsDefault[4].pImmutableSamplers = VK_NULL_HANDLE;
 
 	layoutBindingsDefault[5].binding = 5;
-	layoutBindingsDefault[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsDefault[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	layoutBindingsDefault[5].descriptorCount = 1;
 	layoutBindingsDefault[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	layoutBindingsDefault[5].pImmutableSamplers = VK_NULL_HANDLE;
+
+	layoutBindingsDefault[6].binding = 6;
+	layoutBindingsDefault[6].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsDefault[6].descriptorCount = 1;
+	layoutBindingsDefault[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsDefault[6].pImmutableSamplers = VK_NULL_HANDLE;
 
 	struct DefaultVertex {
 		float x, y, z;
@@ -413,7 +419,7 @@ bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	pipelineCI.vertexLayout = vertexLayoutDefault;
 	pipelineCI.numVertexLayout = 2;
 	pipelineCI.layoutBindings = layoutBindingsDefault;
-	pipelineCI.numLayoutBindings = 6;
+	pipelineCI.numLayoutBindings = 7;
 	pipelineCI.strideSize = sizeof(DefaultVertex);
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = false;

@@ -7,8 +7,9 @@ layout (binding = 1) uniform sampler2D samplerPosition;
 layout (binding = 2) uniform sampler2D samplerNormal;
 layout (binding = 3) uniform sampler2D samplerAlbedo;
 layout (binding = 4) uniform sampler2D samplerSpecular;
+layout (binding = 5) uniform sampler2D samplerDepth;
 
-layout (binding = 5) uniform UBO
+layout (binding = 6) uniform UBO
 {
 	vec4 ambientColor;
 	vec4 diffuseColor;
@@ -30,7 +31,7 @@ void main()
 	vec4 albedo = texture(samplerAlbedo, texCoord);
 	vec4 specular = texture(samplerSpecular, texCoord);
 	
-	gl_FragDepth = texture(samplerPosition, texCoord).a;
+	gl_FragDepth = texture(samplerDepth, texCoord).b;
 	
 	if(ubo.imageIndex == 5)
 	{	
