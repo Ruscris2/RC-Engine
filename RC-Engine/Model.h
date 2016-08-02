@@ -53,7 +53,7 @@ class Model
 
 		bool Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VulkanCommandBuffer * cmdBuffer,
 			Physics * physics, float mass);
-		void Unload(VulkanInterface * vulkan, Physics * physics);
+		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera);
 		void SetPosition(float x, float y, float z);
 		void SetRotation(float x, float y, float z);

@@ -233,7 +233,7 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 	{
 		collisionShape = new btGImpactMeshShape(collisionMesh);
 		collisionShape->setLocalScaling(btVector3(1, 1, 1));
-		collisionShape->setMargin(0.01f);
+		collisionShape->setMargin(0.0f);
 		collisionShape->updateBound();
 	}
 
@@ -272,7 +272,7 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline 
 	return true;
 }
 
-void Model::Unload(VulkanInterface * vulkan, Physics * physics)
+void Model::Unload(VulkanInterface * vulkan)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	
@@ -304,7 +304,7 @@ void Model::Unload(VulkanInterface * vulkan, Physics * physics)
 void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera)
 {
 	btTransform transform;
-	btQuaternion btQuat;
+
 	rigidBody->getMotionState()->getWorldTransform(transform);
 
 	transform.getOpenGLMatrix((btScalar*)&vertexUniformBuffer.worldMatrix);

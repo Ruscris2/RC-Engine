@@ -183,14 +183,15 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	male->SetAnimation(idleAnim);
 
 	player = new Player();
-	player->Init(male);
-	player->SetPosition(0.0f, 0.0f, 0.0f);
+	player->Init(male, physics);
+	player->SetPosition(0.0f, 5.0f, 0.0f);
 
 	GEOMETRY_GENERATE_INFO geometryInfo{};
-	geometryInfo.radius = 1.0f;
-	geometryInfo.slices = 20;
-	geometryInfo.stacks = 20;
-	geometryInfo.type = GEOMETRY_TYPE_SPHERE;
+	geometryInfo.radius = 0.3f;
+	geometryInfo.height = 1.8f;
+	geometryInfo.slices = 10;
+	geometryInfo.stacks = 10;
+	geometryInfo.type = GEOMETRY_TYPE_CYLINDER;
 
 	testModel = new WireframeModel();
 	if (!testModel->Init(vulkan, wireframePipeline, geometryInfo, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)))
@@ -198,7 +199,6 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		gLogManager->AddMessage("ERROR: Failed to init test model!");
 		return false;
 	}
-	testModel->SetPosition(0.0f, 1.0f, 0.0f);
 
 	return true;
 }
@@ -209,7 +209,7 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 
 	SAFE_UNLOAD(male, vulkan);
 	for (unsigned int i = 0; i < modelList.size(); i++)
-		SAFE_UNLOAD(modelList[i], vulkan, physics);
+		SAFE_UNLOAD(modelList[i], vulkan);
 
 	SAFE_UNLOAD(defaultShaderCanvas, vulkan);
 	SAFE_UNLOAD(wireframePipeline, vulkan->GetVulkanDevice());
@@ -237,7 +237,10 @@ void SceneManager::Render(VulkanInterface * vulkan)
 {
 	physics->Update();
 
-	if (gInput->WasKeyPressed(KEYBOARD_KEY_6))
+	glm::vec3 playerPos = player->GetPosition();
+	testModel->SetPosition(playerPos.x, playerPos.y, playerPos.z);
+
+	if (gInput->WasKeyPressed(KEYBOARD_KEY_E))
 	{
 		Model * model = new Model();
 		model->Init("data/models/box.rcm", vulkan, deferredPipeline, initCommandBuffer, physics, 20.0f);
@@ -250,10 +253,17 @@ void SceneManager::Render(VulkanInterface * vulkan)
 
 		modelList.push_back(model);
 	}
-	if (gInput->WasKeyPressed(KEYBOARD_KEY_7))
+
+	if (gInput->WasKeyPressed(KEYBOARD_KEY_O))
+	{
 		camera->SetCameraState(CAMERA_STATE_ORBIT_PLAYER);
-	if (gInput->WasKeyPressed(KEYBOARD_KEY_8))
+		player->TogglePlayerInput(true);
+	}
+	if (gInput->WasKeyPressed(KEYBOARD_KEY_P))
+	{
 		camera->SetCameraState(CAMERA_STATE_FLY);
+		player->TogglePlayerInput(false);
+	}
 
 	angle += 0.001f * gTimer->GetDelta();
 	if (angle > 90.0f)
@@ -273,7 +283,7 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		imageIndex = 4;
 	if (gInput->WasKeyPressed(KEYBOARD_KEY_5))
 		imageIndex = 5;
-	
+
 	// Deferred rendering
 	vulkan->BeginSceneDeferred(deferredCommandBuffer);
 

@@ -6,6 +6,7 @@
 ==========================================================================================*/
 
 #include <btBulletDynamicsCommon.h>
+#include <BulletCollision/CollisionDispatch/btGhostObject.h>
 
 #pragma once
 

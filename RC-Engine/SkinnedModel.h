@@ -21,9 +21,6 @@ class SkinnedModel
 		std::vector<Texture*> textures;
 		std::vector<Material*> materials;
 		std::vector<VulkanCommandBuffer*> drawCmdBuffers;
-
-		float posX, posY, posZ;
-		float rotX, rotY, rotZ;
 		
 		Animation * currentAnim;
 		unsigned int numBones;
@@ -42,18 +39,13 @@ class SkinnedModel
 		VkDeviceMemory vsUniformMemory;
 		VkDescriptorBufferInfo vsUniformBufferInfo;
 		VkMemoryRequirements vsMemReq;
-	private:
-		void UpdateWorldMatrix();
 	public:
 		SkinnedModel();
 		~SkinnedModel();
 
 		bool Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VulkanCommandBuffer * cmdBuffer);
 		void Unload(VulkanInterface * vulkan);
-		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera);
-		void SetPosition(float x, float y, float z);
-		void SetRotation(float x, float y, float z);
+		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
+			Camera * camera, glm::mat4 &worldMatrix);
 		void SetAnimation(Animation * anim);
-		glm::vec3 GetPosition();
-		glm::vec3 GetRotation();
 };

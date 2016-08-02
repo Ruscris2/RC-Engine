@@ -222,9 +222,9 @@ bool WireframeModel::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipel
 			{
 				Vertex vertex;
 
-				vertex.x = glm::cos(j * theta);
+				vertex.x = glm::cos(j * theta) * generateInfo.radius;
 				vertex.y = y;
-				vertex.z = glm::sin(j * theta);
+				vertex.z = glm::sin(j * theta) * generateInfo.radius;
 				vertices.push_back(vertex);
 			}
 		}

@@ -223,7 +223,8 @@ void SkinnedModel::Unload(VulkanInterface * vulkan)
 	}
 }
 
-void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera)
+void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
+	Camera * camera, glm::mat4 &worldMatrix)
 {
 	if(currentAnim != NULL)
 		currentAnim->Update(gTimer->GetDelta(), boneOffsets, boneMapping);
@@ -231,6 +232,7 @@ void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * comman
 	uint8_t *pData;
 
 	// Update vertex uniform buffer
+	vertexUniformBuffer.worldMatrix = worldMatrix;
 	vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
 
 	if (currentAnim != NULL)
@@ -260,41 +262,7 @@ void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * comman
 	}
 }
 
-void SkinnedModel::SetPosition(float x, float y, float z)
-{
-	posX = x;
-	posY = y;
-	posZ = z;
-	UpdateWorldMatrix();
-}
-
-void SkinnedModel::SetRotation(float x, float y, float z)
-{
-	rotX = x;
-	rotY = y;
-	rotZ = z;
-	UpdateWorldMatrix();
-}
-
 void SkinnedModel::SetAnimation(Animation * anim)
 {
 	currentAnim = anim;
-}
-
-glm::vec3 SkinnedModel::GetPosition()
-{
-	return glm::vec3(posX, posY, posZ);
-}
-
-glm::vec3 SkinnedModel::GetRotation()
-{
-	return glm::vec3(rotX, rotY, rotZ);
-}
-
-void SkinnedModel::UpdateWorldMatrix()
-{
-	vertexUniformBuffer.worldMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(posX, posY, posZ));
-	vertexUniformBuffer.worldMatrix = glm::rotate(vertexUniformBuffer.worldMatrix, glm::radians(rotX), glm::vec3(1.0f, 0.0f, 0.0f));
-	vertexUniformBuffer.worldMatrix = glm::rotate(vertexUniformBuffer.worldMatrix, glm::radians(rotY), glm::vec3(0.0f, 1.0f, 0.0f));
-	vertexUniformBuffer.worldMatrix = glm::rotate(vertexUniformBuffer.worldMatrix, glm::radians(rotZ), glm::vec3(0.0f, 0.0f, 1.0f));
 }
