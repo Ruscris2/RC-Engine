@@ -36,6 +36,8 @@ VulkanInterface::~VulkanInterface()
 #if VULKAN_DEBUG_MODE_ENABLED
 		UnloadVulkanDebugMode();
 #endif
+	vkDestroyPipelineCache(vulkanDevice->GetDevice(), pipelineCache, VK_NULL_HANDLE);
+
 	vkDestroySemaphore(vulkanDevice->GetDevice(), drawCompleteSemaphore, VK_NULL_HANDLE);
 	vkDestroySemaphore(vulkanDevice->GetDevice(), imageReadySemaphore, VK_NULL_HANDLE);
 
@@ -184,6 +186,14 @@ bool VulkanInterface::Init(HWND hwnd)
 	vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCI, VK_NULL_HANDLE, &imageReadySemaphore);
 	vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCI, VK_NULL_HANDLE, &drawCompleteSemaphore);
 
+	// Pipeline cache
+	VkPipelineCacheCreateInfo pipelineCacheCI{};
+	pipelineCacheCI.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+	pipelineCacheCI.pNext = NULL;
+	VkResult result = vkCreatePipelineCache(vulkanDevice->GetDevice(), &pipelineCacheCI, VK_NULL_HANDLE, &pipelineCache);
+	if (result != VK_SUCCESS)
+		return false;
+
 	return true;
 }
 
@@ -203,7 +213,7 @@ void VulkanInterface::EndSceneDeferred(VulkanCommandBuffer * commandBuffer)
 	commandBuffer->Execute(vulkanDevice, NULL, NULL, NULL, true);
 }
 
-void VulkanInterface::BeginSceneForward(VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline, int frameId)
+void VulkanInterface::BeginSceneForward(VulkanCommandBuffer * commandBuffer, int frameId)
 {
 	commandBuffer->BeginRecording();
 
@@ -295,6 +305,11 @@ FrameBufferAttachment * VulkanInterface::GetDepthAttachment()
 VkFramebuffer VulkanInterface::GetDeferredFramebuffer()
 {
 	return deferredFramebuffer;
+}
+
+VkPipelineCache VulkanInterface::GetPipelineCache()
+{
+	return pipelineCache;
 }
 
 bool VulkanInterface::InitDepthBuffer()

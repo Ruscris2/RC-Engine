@@ -149,7 +149,7 @@
   <ItemGroup>
     <ClCompile Include="Animation.cpp" />
     <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="Canvas.cpp" />
+    <ClCompile Include="RenderDummy.cpp" />
     <ClCompile Include="DeferredShader.cpp" />
     <ClCompile Include="FrameBufferAttachment.cpp" />
     <ClCompile Include="Input.cpp" />
@@ -185,7 +185,7 @@
   <ItemGroup>
     <ClInclude Include="Animation.h" />
     <ClInclude Include="Camera.h" />
-    <ClInclude Include="Canvas.h" />
+    <ClInclude Include="RenderDummy.h" />
     <ClInclude Include="DeferredShader.h" />
     <ClInclude Include="FrameBufferAttachment.h" />
     <ClInclude Include="Input.h" />

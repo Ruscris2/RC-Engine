@@ -22,7 +22,6 @@
 #include "VulkanSwapchain.h"
 #include "VulkanRenderpass.h"
 #include "FrameBufferAttachment.h"
-#include "VulkanPipeline.h"
 
 class VulkanInterface
 {
@@ -62,6 +61,7 @@ class VulkanInterface
 		VkSemaphore imageReadySemaphore;
 		VkSemaphore drawCompleteSemaphore;
 
+		VkPipelineCache pipelineCache;
 #if VULKAN_DEBUG_MODE_ENABLED
 		VkDebugReportCallbackEXT debugReport;
 #endif
@@ -81,7 +81,7 @@ class VulkanInterface
 		bool Init(HWND hwnd);
 		void BeginSceneDeferred(VulkanCommandBuffer * commandBuffer);
 		void EndSceneDeferred(VulkanCommandBuffer * commandBuffer);
-		void BeginSceneForward(VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline, int frameId);
+		void BeginSceneForward(VulkanCommandBuffer * commandBuffer, int frameId);
 		void EndSceneForward(VulkanCommandBuffer * commandBuffer);
 		void Present(std::vector<VulkanCommandBuffer*>& renderCommandBuffers);
 		void InitViewportAndScissors(VulkanCommandBuffer * commandBuffer);
@@ -99,4 +99,5 @@ class VulkanInterface
 		FrameBufferAttachment * GetMaterialAttachment();
 		FrameBufferAttachment * GetDepthAttachment();
 		VkFramebuffer GetDeferredFramebuffer();
+		VkPipelineCache GetPipelineCache();
 };

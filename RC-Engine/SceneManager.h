@@ -12,6 +12,7 @@
 
 #include "Camera.h"
 #include "VulkanInterface.h"
+#include "VulkanPipeline.h"
 #include "DefaultShader.h"
 #include "SkinnedShader.h"
 #include "DeferredShader.h"
@@ -22,7 +23,7 @@
 #include "SkinnedModel.h"
 #include "WireframeModel.h"
 #include "Light.h"
-#include "Canvas.h"
+#include "RenderDummy.h"
 #include "Animation.h"
 #include "Physics.h"
 #include "Player.h"
@@ -33,23 +34,28 @@ class SceneManager
 		Physics * physics;
 		Camera * camera;
 		Light * light;
+
 		DefaultShader * defaultShader;
 		SkinnedShader * skinnedShader;
 		DeferredShader * deferredShader;
 		WireframeShader * wireframeShader;
+
 		VulkanPipeline * defaultPipeline;
 		VulkanPipeline * skinnedPipeline;
 		VulkanPipeline * deferredPipeline;
 		VulkanPipeline * wireframePipeline;
+
 		VulkanCommandBuffer * initCommandBuffer;
 		VulkanCommandBuffer * deferredCommandBuffer;
 		std::vector<VulkanCommandBuffer*> renderCommandBuffers;
-		std::vector<VulkanCommandBuffer*> screenQuadDrawCmdBuffers;
-		Canvas * defaultShaderCanvas;
+
+		RenderDummy * renderDummy;
+
 		Animation * idleAnim;
 		std::vector<Model*> modelList;
 		SkinnedModel * male;
 		Player * player;
+
 		WireframeModel * testModel;
 	private:
 		bool LoadMapFile(std::string filename, VulkanInterface * vulkan);

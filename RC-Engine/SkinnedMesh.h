@@ -7,6 +7,7 @@
 #pragma once
 
 #include "VulkanInterface.h"
+#include "VulkanPipeline.h"
 #include "Material.h"
 
 class SkinnedMesh

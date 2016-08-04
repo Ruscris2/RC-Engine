@@ -6,10 +6,8 @@
 ==========================================================================================*/
 #pragma once
 
-#include "VulkanDevice.h"
+#include "VulkanInterface.h"
 #include "Shader.h"
-#include "VulkanRenderpass.h"
-#include "VulkanCommandBuffer.h"
 
 struct VulkanPipelineCI
 {
@@ -32,13 +30,12 @@ class VulkanPipeline
 		VkVertexInputBindingDescription vertexBinding;
 		VkDescriptorSetLayout descriptorLayout;
 		VkPipelineLayout pipelineLayout;
-		VkPipelineCache pipelineCache;
 		VkPipeline pipeline;
 	public:
 		VulkanPipeline();
 		~VulkanPipeline();
 
-		bool Init(VulkanPipelineCI * pipelineCI);
+		bool Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineCI);
 		void Unload(VulkanDevice * vulkanDevice);
 		void SetActive(VulkanCommandBuffer * commandBuffer);
 		VkDescriptorSetLayout * GetDescriptorLayout();

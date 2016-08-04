@@ -11,7 +11,6 @@ VulkanPipeline::VulkanPipeline()
 {
 	descriptorLayout = VK_NULL_HANDLE;
 	pipelineLayout = VK_NULL_HANDLE;
-	pipelineCache = VK_NULL_HANDLE;
 	pipeline = VK_NULL_HANDLE;
 }
 
@@ -20,10 +19,9 @@ VulkanPipeline::~VulkanPipeline()
 	descriptorLayout = VK_NULL_HANDLE;
 	pipelineLayout = VK_NULL_HANDLE;
 	pipeline = VK_NULL_HANDLE;
-	pipelineCache = VK_NULL_HANDLE;
 }
 
-bool VulkanPipeline::Init(VulkanPipelineCI * pipelineCI)
+bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineCI)
 {
 	VkResult result;
 
@@ -48,14 +46,6 @@ bool VulkanPipeline::Init(VulkanPipelineCI * pipelineCI)
 	pipelineLayoutCI.pSetLayouts = &descriptorLayout;
 
 	result = vkCreatePipelineLayout(pipelineCI->vulkanDevice->GetDevice(), &pipelineLayoutCI, VK_NULL_HANDLE, &pipelineLayout);
-	if (result != VK_SUCCESS)
-		return false;
-
-	// Pipeline cache
-	VkPipelineCacheCreateInfo pipelineCacheCI{};
-	pipelineCacheCI.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	pipelineCacheCI.pNext = NULL;
-	result = vkCreatePipelineCache(pipelineCI->vulkanDevice->GetDevice(), &pipelineCacheCI, VK_NULL_HANDLE, &pipelineCache);
 	if (result != VK_SUCCESS)
 		return false;
 
@@ -141,9 +131,9 @@ bool VulkanPipeline::Init(VulkanPipelineCI * pipelineCI)
 	VkPipelineDepthStencilStateCreateInfo ds{};
 	ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	ds.pNext = NULL;
-	ds.depthTestEnable = VK_TRUE;
+	ds.depthTestEnable = (pipelineCI->zbufferEnabled ? VK_TRUE : VK_FALSE);
 	ds.depthWriteEnable = VK_TRUE;
-	ds.depthCompareOp = (pipelineCI->zbufferEnabled ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_ALWAYS);
+	ds.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 	ds.depthBoundsTestEnable = VK_FALSE;
 	ds.stencilTestEnable = VK_FALSE;
 	ds.back.failOp = VK_STENCIL_OP_KEEP;
@@ -190,7 +180,8 @@ bool VulkanPipeline::Init(VulkanPipelineCI * pipelineCI)
 	graphicsPipelineCI.renderPass = pipelineCI->vulkanRenderpass->GetRenderpass();
 	graphicsPipelineCI.subpass = 0;
 
-	result = vkCreateGraphicsPipelines(pipelineCI->vulkanDevice->GetDevice(), pipelineCache, 1, &graphicsPipelineCI, VK_NULL_HANDLE, &pipeline);
+	result = vkCreateGraphicsPipelines(pipelineCI->vulkanDevice->GetDevice(), vulkan->GetPipelineCache(), 1,
+		&graphicsPipelineCI, VK_NULL_HANDLE, &pipeline);
 	if (result != VK_SUCCESS)
 		return false;
 	
@@ -202,7 +193,6 @@ void VulkanPipeline::Unload(VulkanDevice * vulkanDevice)
 	vkDestroyPipelineLayout(vulkanDevice->GetDevice(), pipelineLayout, VK_NULL_HANDLE);
 	vkDestroyDescriptorSetLayout(vulkanDevice->GetDevice(), descriptorLayout, VK_NULL_HANDLE);
 	vkDestroyPipeline(vulkanDevice->GetDevice(), pipeline, VK_NULL_HANDLE);
-	vkDestroyPipelineCache(vulkanDevice->GetDevice(), pipelineCache, VK_NULL_HANDLE);
 }
 
 void VulkanPipeline::SetActive(VulkanCommandBuffer * commandBuffer)

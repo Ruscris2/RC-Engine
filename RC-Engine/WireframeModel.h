@@ -6,6 +6,7 @@
 ==========================================================================================*/
 
 #include "VulkanInterface.h"
+#include "VulkanPipeline.h"
 #include "Camera.h"
 
 #pragma once

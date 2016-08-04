@@ -1,16 +1,17 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: Canvas.h                                             |
+|                             File: RenderDummy.h                                        |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 #pragma once
 
 #include "VulkanInterface.h"
+#include "VulkanPipeline.h"
 #include "Light.h"
 #include "Camera.h"
 
-class Canvas
+class RenderDummy
 {
 	private:
 		struct Vertex {
@@ -54,12 +55,15 @@ class Canvas
 		VkDeviceMemory fsUniformMemory;
 		VkDescriptorBufferInfo fsUniformBufferInfo;
 		VkMemoryRequirements fsMemReq;
+
+		std::vector<VulkanCommandBuffer*> drawCmdBuffers;
 	public:
-		Canvas();
-		~Canvas();
+		RenderDummy();
+		~RenderDummy();
 
 		bool Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView,
 			VkImageView albedoView, VkImageView materialView, VkImageView depthView);
 		void Unload(VulkanInterface * vulkan);
-		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera);
+		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
+			glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera, int frameBufferId);
 };

@@ -1,14 +1,14 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: Canvas.cpp                                           |
+|                             File: RenderDummy.cpp                                      |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 
-#include "Canvas.h"
+#include "RenderDummy.h"
 #include "StdInc.h"
 
-Canvas::Canvas()
+RenderDummy::RenderDummy()
 {
 	vertexBuffer = VK_NULL_HANDLE;
 	indexBuffer = VK_NULL_HANDLE;
@@ -17,7 +17,7 @@ Canvas::Canvas()
 	fsUniformBuffer = VK_NULL_HANDLE;
 }
 
-Canvas::~Canvas()
+RenderDummy::~RenderDummy()
 {
 	fsUniformBuffer = VK_NULL_HANDLE;
 	vsUniformBuffer = VK_NULL_HANDLE;
@@ -26,7 +26,7 @@ Canvas::~Canvas()
 	vertexBuffer = VK_NULL_HANDLE;
 }
 
-bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView,
+bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView,
 	VkImageView albedoView, VkImageView materialView, VkImageView depthView)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
@@ -43,28 +43,28 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 	// Bottom right
 	vertexData[0].x = 1.0f;
 	vertexData[0].y = 1.0f;
-	vertexData[0].z = 0.0f;
+	vertexData[0].z = -1.0f;
 	vertexData[0].u = 1.0f;
 	vertexData[0].v = 1.0f;
 
 	// Bottom left
 	vertexData[1].x = 0.0f;
 	vertexData[1].y = 1.0f;
-	vertexData[1].z = 0.0f;
+	vertexData[1].z = -1.0f;
 	vertexData[1].u = 0.0f;
 	vertexData[1].v = 1.0f;
 
 	// Top left
 	vertexData[2].x = 0.0f;
 	vertexData[2].y = 0.0f;
-	vertexData[2].z = 0.0f;
+	vertexData[2].z = -1.0f;
 	vertexData[2].u = 0.0f;
 	vertexData[2].v = 0.0f;
 
 	// Top right
 	vertexData[3].x = 1.0f;
 	vertexData[3].y = 0.0f;
-	vertexData[3].z = 0.0f;
+	vertexData[3].z = -1.0f;
 	vertexData[3].u = 1.0f;
 	vertexData[3].v = 0.0f;
 
@@ -439,12 +439,25 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkI
 
 	vkUpdateDescriptorSets(vulkanDevice->GetDevice(), sizeof(write) / sizeof(write[0]), write, 0, NULL);
 
+	// Init draw command buffers
+	for (size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)
+	{
+		VulkanCommandBuffer * cmdBuffer = new VulkanCommandBuffer();
+		if (!cmdBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), false))
+			return false;
+
+		drawCmdBuffers.push_back(cmdBuffer);
+	}
+
 	return true;
 }
 
-void Canvas::Unload(VulkanInterface * vulkan)
+void RenderDummy::Unload(VulkanInterface * vulkan)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
+
+	for (size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)
+		SAFE_UNLOAD(drawCmdBuffers[i], vulkanDevice, vulkan->GetVulkanCommandPool());
 
 	vkDestroyDescriptorPool(vulkanDevice->GetDevice(), descriptorPool, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), fsUniformMemory, VK_NULL_HANDLE);
@@ -457,7 +470,8 @@ void Canvas::Unload(VulkanInterface * vulkan)
 	vkDestroyBuffer(vulkanDevice->GetDevice(), vertexBuffer, VK_NULL_HANDLE);
 }
 
-void Canvas::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera)
+void RenderDummy::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
+	glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera, int frameBufferId)
 {
 	uint8_t *pData;
 
@@ -482,10 +496,17 @@ void Canvas::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), fsUniformMemory);
 
 	// Draw
-	VkDeviceSize offsets[1] = { 0 };
-	vkCmdBindVertexBuffers(commandBuffer->GetCommandBuffer(), 0, 1, &vertexBuffer, offsets);
-	vkCmdBindIndexBuffer(commandBuffer->GetCommandBuffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindDescriptorSets(commandBuffer->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->GetPipelineLayout(), 0, 1, &descriptorSet, 0, NULL);
+	drawCmdBuffers[frameBufferId]->BeginRecordingSecondary(vulkan->GetForwardRenderpass()->GetRenderpass(), vulkan->GetVulkanSwapchain()->GetFramebuffer((int)frameBufferId));
+	vulkan->InitViewportAndScissors(drawCmdBuffers[frameBufferId]);
+	vulkanPipeline->SetActive(drawCmdBuffers[frameBufferId]);
 
-	vkCmdDrawIndexed(commandBuffer->GetCommandBuffer(), indexCount, 1, 0, 0, 0);
+	VkDeviceSize offsets[1] = { 0 };
+	vkCmdBindVertexBuffers(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), 0, 1, &vertexBuffer, offsets);
+	vkCmdBindIndexBuffer(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindDescriptorSets(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->GetPipelineLayout(), 0, 1, &descriptorSet, 0, NULL);
+
+	vkCmdDrawIndexed(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), indexCount, 1, 0, 0, 0);
+
+	drawCmdBuffers[frameBufferId]->EndRecording();
+	drawCmdBuffers[frameBufferId]->ExecuteSecondary(commandBuffer);
 }

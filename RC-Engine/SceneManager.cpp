@@ -32,7 +32,7 @@ SceneManager::SceneManager()
 	skinnedPipeline = NULL;
 	deferredPipeline = NULL;
 	wireframePipeline = NULL;
-	defaultShaderCanvas = NULL;
+	renderDummy = NULL;
 	idleAnim = NULL;
 	player = NULL;
 }
@@ -90,14 +90,6 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 			return false;
 		}
 		renderCommandBuffers.push_back(cmdBuffer);
-
-		VulkanCommandBuffer * secondaryCmdBuffer = new VulkanCommandBuffer();
-		if (!secondaryCmdBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), false))
-		{
-			gLogManager->AddMessage("ERROR: Failed to craete a command buffer! (screenQuadDrawCmdBuffer)");
-			return false;
-		}
-		screenQuadDrawCmdBuffers.push_back(secondaryCmdBuffer);
 	}
 
 	// Init shaders
@@ -154,12 +146,12 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
-	// Init screen quad
-	defaultShaderCanvas = new Canvas();
-	if (!defaultShaderCanvas->Init(vulkan, defaultPipeline, vulkan->GetPositionAttachment()->GetImageView(), vulkan->GetNormalAttachment()->GetImageView(),
+	// Init render dummy
+	renderDummy = new RenderDummy();
+	if (!renderDummy->Init(vulkan, defaultPipeline, vulkan->GetPositionAttachment()->GetImageView(), vulkan->GetNormalAttachment()->GetImageView(),
 		vulkan->GetAlbedoAttachment()->GetImageView(), vulkan->GetMaterialAttachment()->GetImageView(), vulkan->GetDepthAttachment()->GetImageView()))
 	{
-		gLogManager->AddMessage("ERROR: Failed to init default shader canvas!");
+		gLogManager->AddMessage("ERROR: Failed to init render dummy!");
 		return false;
 	}
 
@@ -211,7 +203,7 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 	for (unsigned int i = 0; i < modelList.size(); i++)
 		SAFE_UNLOAD(modelList[i], vulkan);
 
-	SAFE_UNLOAD(defaultShaderCanvas, vulkan);
+	SAFE_UNLOAD(renderDummy, vulkan);
 	SAFE_UNLOAD(wireframePipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(deferredPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(skinnedPipeline, vulkan->GetVulkanDevice());
@@ -222,10 +214,7 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 	SAFE_UNLOAD(defaultShader, vulkan->GetVulkanDevice());
 
 	for (unsigned int i = 0; i < renderCommandBuffers.size(); i++)
-	{
 		SAFE_UNLOAD(renderCommandBuffers[i], vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
-		SAFE_UNLOAD(screenQuadDrawCmdBuffers[i], vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
-	}
 	SAFE_UNLOAD(deferredCommandBuffer, vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
 	SAFE_UNLOAD(initCommandBuffer, vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
 }
@@ -297,19 +286,11 @@ void SceneManager::Render(VulkanInterface * vulkan)
 	// Forward rendering
 	for (size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)
 	{
-		vulkan->BeginSceneForward(renderCommandBuffers[i], defaultPipeline, (int)i);
-
-		screenQuadDrawCmdBuffers[i]->BeginRecordingSecondary(vulkan->GetForwardRenderpass()->GetRenderpass(), vulkan->GetVulkanSwapchain()->GetFramebuffer((int)i));
-		vulkan->InitViewportAndScissors(screenQuadDrawCmdBuffers[i]);
-
-		defaultPipeline->SetActive(screenQuadDrawCmdBuffers[i]);
-		defaultShaderCanvas->Render(vulkan, screenQuadDrawCmdBuffers[i], defaultPipeline, vulkan->GetOrthoMatrix(), light, imageIndex, camera);
-
-		screenQuadDrawCmdBuffers[i]->EndRecording();
-		screenQuadDrawCmdBuffers[i]->ExecuteSecondary(renderCommandBuffers[i]);
-
+		vulkan->BeginSceneForward(renderCommandBuffers[i], (int)i);
+		
 		testModel->Render(vulkan, renderCommandBuffers[i], wireframePipeline, camera, (int)i);
-
+		renderDummy->Render(vulkan, renderCommandBuffers[i], defaultPipeline, vulkan->GetOrthoMatrix(), light, imageIndex, camera, (int)i);
+		
 		vulkan->EndSceneForward(renderCommandBuffers[i]);
 	}
 
@@ -433,10 +414,10 @@ bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	pipelineCI.strideSize = sizeof(DefaultVertex);
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = false;
-	pipelineCI.zbufferEnabled = false;
+	pipelineCI.zbufferEnabled = true;
 
 	defaultPipeline = new VulkanPipeline();
-	if (!defaultPipeline->Init(&pipelineCI))
+	if (!defaultPipeline->Init(vulkan, &pipelineCI))
 		return false;
 
 	return true;
@@ -526,7 +507,7 @@ bool SceneManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	pipelineCI.zbufferEnabled = true;
 
 	skinnedPipeline = new VulkanPipeline();
-	if (!skinnedPipeline->Init(&pipelineCI))
+	if (!skinnedPipeline->Init(vulkan, &pipelineCI))
 		return false;
 
 	return true;
@@ -599,7 +580,7 @@ bool SceneManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	pipelineCI.zbufferEnabled = true;
 
 	deferredPipeline = new VulkanPipeline();
-	if (!deferredPipeline->Init(&pipelineCI))
+	if (!deferredPipeline->Init(vulkan, &pipelineCI))
 		return false;
 
 	return true;
@@ -648,7 +629,7 @@ bool SceneManager::BuildWireframePipeline(VulkanInterface * vulkan)
 	pipelineCI.zbufferEnabled = true;
 
 	wireframePipeline = new VulkanPipeline();
-	if (!wireframePipeline->Init(&pipelineCI))
+	if (!wireframePipeline->Init(vulkan, &pipelineCI))
 		return false;
 
 	return true;
