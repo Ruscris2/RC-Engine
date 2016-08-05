@@ -55,8 +55,6 @@ class SceneManager
 		std::vector<Model*> modelList;
 		SkinnedModel * male;
 		Player * player;
-
-		WireframeModel * testModel;
 	private:
 		bool LoadMapFile(std::string filename, VulkanInterface * vulkan);
 		bool BuildDefaultPipeline(VulkanInterface * vulkan);

@@ -129,6 +129,9 @@
     <ClCompile Include="VulkanInterface.cpp">
       <Filter>Source Files\Vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="GameplayTimer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="WinWindow.h">
@@ -235,6 +238,9 @@
     </ClInclude>
     <ClInclude Include="VulkanInterface.h">
       <Filter>Header Files\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="GameplayTimer.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

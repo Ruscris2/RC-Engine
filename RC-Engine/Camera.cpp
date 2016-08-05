@@ -24,31 +24,22 @@ void Camera::Init()
 	orbitPointOrientation = glm::vec3(0.0f, 0.0f, 0.0f);
 	orbitRadius = 2.0f;
 	currentState = CAMERA_STATE_FLY;
-	Update();
+	baseSpeed = 0.002f;
+	sensitivity = 0.2f;
+	HandleInput();
 }
 
 void Camera::HandleInput()
 {
-	float speed = 0.002f;
-	float sensitivity = 0.2f;
-
-	bool update = false;
-
 	if (currentState == CAMERA_STATE_FLY)
 	{
-		if (gInput->IsKeyPressed(KEYBOARD_KEY_SHIFT))
-			speed *= 5.0f;
+		float sprintMultiplier = 1.0f;
 
-		if (gInput->GetCursorRelativeX() != 0)
-		{
-			update = true;
-			yaw -= gInput->GetCursorRelativeX() * sensitivity;
-		}
-		if (gInput->GetCursorRelativeY() != 0)
-		{
-			update = true;
-			pitch -= gInput->GetCursorRelativeY() * sensitivity;
-		}
+		if (gInput->IsKeyPressed(KEYBOARD_KEY_SHIFT))
+			sprintMultiplier = 5.0f;
+
+		yaw -= gInput->GetCursorRelativeX() * sensitivity;
+		pitch -= gInput->GetCursorRelativeY() * sensitivity;
 
 		direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
 		direction.y = sin(glm::radians(pitch));
@@ -56,48 +47,18 @@ void Camera::HandleInput()
 		direction = glm::normalize(direction);
 
 		if (gInput->IsKeyPressed(KEYBOARD_KEY_W))
-		{
-			update = true;
-			position = position + (direction * gTimer->GetDelta() * speed);
-		}
+			position += direction * gTimer->GetDelta() * baseSpeed * sprintMultiplier;
 		if (gInput->IsKeyPressed(KEYBOARD_KEY_S))
-		{
-			update = true;
-			position = position - (direction * gTimer->GetDelta() * speed);
-		}
+			position -= direction * gTimer->GetDelta() * baseSpeed * sprintMultiplier;
 		if (gInput->IsKeyPressed(KEYBOARD_KEY_A))
-		{
-			update = true;
-			position = position + (glm::cross(up, direction) * gTimer->GetDelta() * speed);
-		}
+			position += glm::cross(up, direction) * gTimer->GetDelta() * baseSpeed * sprintMultiplier;
 		if (gInput->IsKeyPressed(KEYBOARD_KEY_D))
-		{
-			update = true;
-			position = position - (glm::cross(up, direction) * gTimer->GetDelta() * speed);
-		}
+			position -= glm::cross(up, direction) * gTimer->GetDelta() * baseSpeed * sprintMultiplier;
 
 		lookAt = position + direction;
 	}
 	else if (currentState == CAMERA_STATE_ORBIT_PLAYER)
 	{
-		if (gInput->GetCursorRelativeX() != 0)
-		{
-			update = true;
-			yaw -= gInput->GetCursorRelativeX() * sensitivity;
-		}
-		if (gInput->GetCursorRelativeY() != 0)
-		{
-			update = true;
-			pitch += gInput->GetCursorRelativeY() * sensitivity;
-		}
-
-		// Clamp rotation
-		if (yaw > 360.0f) yaw = 0.0f;
-		if (yaw < 0.0f) yaw = 360.0f;
-		if (pitch > 90.0f) pitch = 89.9f;
-		if (pitch < -10.0f) pitch = -9.9f;
-		
-
 		// Calculate camera position
 		float horizontalDistance = orbitRadius * glm::cos(glm::radians(pitch));
 		float verticalDistance = orbitRadius * glm::sin(glm::radians(pitch));
@@ -113,21 +74,28 @@ void Camera::HandleInput()
 		direction = -glm::normalize(position + lookAt);
 	}
 
-	if (update == true)
-		Update();
+	viewMatrix = glm::lookAt(position, lookAt, up);
 }
 
 void Camera::SetPosition(float x, float y, float z)
 {
 	position = glm::vec3(x, y, z);
-	Update();
 }
 
 void Camera::SetDirection(float x, float y, float z)
 {
 	direction = glm::vec3(x, y, z);
 	lookAt = position + direction;
-	Update();
+}
+
+void Camera::SetPitch(float pitch)
+{
+	this->pitch = pitch;
+}
+
+void Camera::SetYaw(float yaw)
+{
+	this->yaw = yaw;
 }
 
 void Camera::SetOrbitParameters(glm::vec3 orbitPoint, glm::vec3 orbitPointOrientation, float radius)
@@ -135,7 +103,6 @@ void Camera::SetOrbitParameters(glm::vec3 orbitPoint, glm::vec3 orbitPointOrient
 	this->orbitPoint = orbitPoint;
 	this->orbitPointOrientation = orbitPointOrientation;
 	orbitRadius = radius;
-	Update();
 }
 
 void Camera::SetCameraState(CAMERA_STATE state)
@@ -145,7 +112,6 @@ void Camera::SetCameraState(CAMERA_STATE state)
 		yaw = 90.0f;
 
 	currentState = state;
-	Update();
 }
 
 glm::mat4 Camera::GetViewMatrix()
@@ -168,7 +134,7 @@ CAMERA_STATE Camera::GetCameraState()
 	return currentState;
 }
 
-void Camera::Update()
+float Camera::GetSensitivity()
 {
-	viewMatrix = glm::lookAt(position, lookAt, up);
+	return sensitivity;
 }

@@ -174,31 +174,17 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 
 	male->SetAnimation(idleAnim);
 
+
+	// -----------------  TODO: Players are immutable while no moving, allow dynamic objects to influence them.
 	player = new Player();
 	player->Init(male, physics);
 	player->SetPosition(0.0f, 5.0f, 0.0f);
-
-	GEOMETRY_GENERATE_INFO geometryInfo{};
-	geometryInfo.radius = 0.3f;
-	geometryInfo.height = 1.8f;
-	geometryInfo.slices = 10;
-	geometryInfo.stacks = 10;
-	geometryInfo.type = GEOMETRY_TYPE_CYLINDER;
-
-	testModel = new WireframeModel();
-	if (!testModel->Init(vulkan, wireframePipeline, geometryInfo, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)))
-	{
-		gLogManager->AddMessage("ERROR: Failed to init test model!");
-		return false;
-	}
 
 	return true;
 }
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
-	SAFE_UNLOAD(testModel, vulkan);
-
 	SAFE_UNLOAD(male, vulkan);
 	for (unsigned int i = 0; i < modelList.size(); i++)
 		SAFE_UNLOAD(modelList[i], vulkan);
@@ -227,7 +213,9 @@ void SceneManager::Render(VulkanInterface * vulkan)
 	physics->Update();
 
 	glm::vec3 playerPos = player->GetPosition();
-	testModel->SetPosition(playerPos.x, playerPos.y, playerPos.z);
+
+	if (playerPos.y < -20.0f)
+		player->SetPosition(0.0f, 5.0f, 0.0f);
 
 	if (gInput->WasKeyPressed(KEYBOARD_KEY_E))
 	{
@@ -288,7 +276,6 @@ void SceneManager::Render(VulkanInterface * vulkan)
 	{
 		vulkan->BeginSceneForward(renderCommandBuffers[i], (int)i);
 		
-		testModel->Render(vulkan, renderCommandBuffers[i], wireframePipeline, camera, (int)i);
 		renderDummy->Render(vulkan, renderCommandBuffers[i], defaultPipeline, vulkan->GetOrthoMatrix(), light, imageIndex, camera, (int)i);
 		
 		vulkan->EndSceneForward(renderCommandBuffers[i]);

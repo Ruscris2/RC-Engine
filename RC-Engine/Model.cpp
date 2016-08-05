@@ -278,14 +278,17 @@ void Model::Unload(VulkanInterface * vulkan)
 	
 	physics->GetDynamicsWorld()->removeRigidBody(rigidBody);
 	delete rigidBody->getMotionState();
-	delete rigidBody;
+	SAFE_DELETE(rigidBody);
 
 	if (physicsStatic == false)
-		delete collisionShape;
+		SAFE_DELETE(collisionShape);
+
 	if (collisionMeshPresent == true)
-		delete collisionMesh;
+	{
+		SAFE_DELETE(collisionMesh);
+	}
 	else
-		delete emptyCollisionShape;
+		SAFE_DELETE(emptyCollisionShape);
 
 	vkFreeMemory(vulkanDevice->GetDevice(), vsUniformMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), vsUniformBuffer, VK_NULL_HANDLE);

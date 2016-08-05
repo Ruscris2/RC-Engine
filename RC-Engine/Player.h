@@ -5,10 +5,9 @@
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 
-#include <BulletDynamics/Character/btKinematicCharacterController.h>
-
 #include "SkinnedModel.h"
 #include "Physics.h"
+#include "GameplayTimer.h"
 
 #pragma once
 
@@ -18,13 +17,33 @@ class Player
 		SkinnedModel * playerModel;
 
 		Physics * physics;
-		btKinematicCharacterController * character;
-		btPairCachingGhostObject * ghostObject;
-		btConvexShape * capsule;
-		
+		btConvexShape * capsuleShape;
+		btRigidBody * playerBody;
+		btVector3 walkDirection;
+		btVector3 baseDirection;
+
+		btScalar walkSpeed;
+		float baseOrientation;
+		float playerOrientation;
+		float strafeOrientation;
+		float cameraYaw;
+		float cameraPitch;
+
 		glm::mat4 worldMatrix;
 
 		bool inputEnabled;
+		bool playerMoving;
+		bool isJumping;
+		bool jumpTracking_FallingInitiated;
+		bool forwardKeyPressed;
+		bool leftKeyPressed;
+		bool rightKeyPressed;
+		bool backwardsKeyPressed;
+	private:
+		btVector3 RotateVec3Quaternion(btVector3 vec, btQuaternion quat);
+		float InterpolateRotation(float currentRotation, float targetRotation, float speed);
+		int GetCircleQuarter(float rotation);
+		void TrackJumpState();
 	public:
 		Player();
 		~Player();
@@ -33,5 +52,7 @@ class Player
 		void SetPosition(float x, float y, float z);
 		void Update(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera);
 		void TogglePlayerInput(bool toggle);
+		void Jump();
 		glm::vec3 GetPosition();
+		bool IsFalling();
 };

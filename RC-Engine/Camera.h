@@ -30,19 +30,22 @@ class Camera
 		glm::vec3 orbitPointOrientation;
 		float pitch, yaw, roll;
 		float orbitRadius;
+		float baseSpeed;
+		float sensitivity;
 
 		CAMERA_STATE currentState;
-	private:
-		void Update();
 	public:
 		void Init();
 		void HandleInput();
 		void SetPosition(float x, float y, float z);
 		void SetDirection(float x, float y, float z);
+		void SetPitch(float pitch);
+		void SetYaw(float yaw);
 		void SetOrbitParameters(glm::vec3 orbitPoint, glm::vec3 orbitPointOrientation, float radius);
 		void SetCameraState(CAMERA_STATE state);
 		glm::mat4 GetViewMatrix();
 		glm::vec3 GetPosition();
 		glm::vec3 GetDirection();
 		CAMERA_STATE GetCameraState();
+		float GetSensitivity();
 };

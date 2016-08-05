@@ -1,27 +1,22 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: Physics.h                                            |
+|                             File: GameplayTimer.h                                      |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 
-#include <btBulletDynamicsCommon.h>
-
 #pragma once
 
-class Physics
+class GameplayTimer
 {
 	private:
-		btBroadphaseInterface * broadphase;
-		btDefaultCollisionConfiguration * collisionConfiguration;
-		btCollisionDispatcher * dispatcher;
-		btSequentialImpulseConstraintSolver * solver;
-		btDiscreteDynamicsWorld * dynamicsWorld;
+		unsigned long timeStart;
+		bool timerRunning;
 	public:
-		Physics();
-		~Physics();
+		GameplayTimer();
 
-		bool Init();
-		void Update();
-		btDiscreteDynamicsWorld * GetDynamicsWorld();
+		void StartTimer();
+		void ResetTimer();
+		bool TimePassed(float timeInMs);
+		bool IsTimerRunning();
 };

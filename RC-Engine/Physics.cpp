@@ -38,14 +38,11 @@ bool Physics::Init()
 	dispatcher = new btCollisionDispatcher(collisionConfiguration);
 
 	btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher);
-	
-	broadphase->getOverlappingPairCache()->setInternalGhostPairCallback(new btGhostPairCallback());
 
 	solver = new btSequentialImpulseConstraintSolver();
 	dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration);
 
 	dynamicsWorld->setGravity(btVector3(0, -10, 0));
-	dynamicsWorld->getDispatchInfo().m_allowedCcdPenetration = 0.0001f;
 	
 	return true;
 }
