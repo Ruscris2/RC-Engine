@@ -52,6 +52,11 @@ class SceneManager
 		RenderDummy * renderDummy;
 
 		Animation * idleAnim;
+		Animation * walkAnim;
+		Animation * fallAnim;
+		Animation * jumpAnim;
+		Animation * runAnim;
+
 		std::vector<Model*> modelList;
 		SkinnedModel * male;
 		Player * player;

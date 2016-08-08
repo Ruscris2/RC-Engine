@@ -11,6 +11,15 @@
 
 #pragma once
 
+struct AnimationPack
+{
+	Animation * idleAnimation;
+	Animation * walkAnimation;
+	Animation * fallAnimation;
+	Animation * jumpAnimation;
+	Animation * runAnimation;
+};
+
 class Player
 {
 	private:
@@ -22,7 +31,9 @@ class Player
 		btVector3 walkDirection;
 		btVector3 baseDirection;
 
-		btScalar walkSpeed;
+		float walkSpeed;
+		float runSpeed;
+
 		float baseOrientation;
 		float playerOrientation;
 		float strafeOrientation;
@@ -35,10 +46,14 @@ class Player
 		bool playerMoving;
 		bool isJumping;
 		bool jumpTracking_FallingInitiated;
+		bool velocityStopped;
 		bool forwardKeyPressed;
 		bool leftKeyPressed;
 		bool rightKeyPressed;
 		bool backwardsKeyPressed;
+		bool runKeyPressed;
+
+		AnimationPack animPack;
 	private:
 		btVector3 RotateVec3Quaternion(btVector3 vec, btQuaternion quat);
 		float InterpolateRotation(float currentRotation, float targetRotation, float speed);
@@ -48,11 +63,11 @@ class Player
 		Player();
 		~Player();
 
-		void Init(SkinnedModel * model, Physics * physics);
+		void Init(SkinnedModel * model, Physics * physics, AnimationPack animPack);
 		void SetPosition(float x, float y, float z);
 		void Update(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera);
 		void TogglePlayerInput(bool toggle);
 		void Jump();
 		glm::vec3 GetPosition();
-		bool IsFalling();
+		bool IsFalling(float errorMargin = 1.0f);
 };

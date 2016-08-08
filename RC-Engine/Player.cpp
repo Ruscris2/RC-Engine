@@ -24,6 +24,8 @@ Player::Player()
 	cameraPitch = 0.0f;
 	playerMoving = false;
 	isJumping = false;
+	runKeyPressed = false;
+	velocityStopped = false;
 }
 
 Player::~Player()
@@ -36,15 +38,15 @@ Player::~Player()
 	SAFE_DELETE(capsuleShape);
 }
 
-void Player::Init(SkinnedModel * model, Physics * physics)
+void Player::Init(SkinnedModel * model, Physics * physics, AnimationPack animPack)
 {
 	playerModel = model;
 
 	this->physics = physics;
+	this->animPack = animPack;
 
 	// Player physics controller
 	capsuleShape = new btCapsuleShape(0.3f, 1.2f);
-	capsuleShape->setMargin(-0.0001f);
 
 	btTransform transform;
 	transform.setIdentity();
@@ -66,8 +68,12 @@ void Player::Init(SkinnedModel * model, Physics * physics)
 	playerBody->setCcdMotionThreshold(0.00001f);
 	physics->GetDynamicsWorld()->addRigidBody(playerBody);
 
-	walkSpeed = 5.0f;
+	walkSpeed = 2.5f;
+	runSpeed = 7.5f;
 	baseDirection = btVector3(0.0f, 0.0f, 1.0f);
+
+	animPack.walkAnimation->SetAnimationSpeed(0.001f + (0.0005f * walkSpeed));
+	animPack.runAnimation->SetAnimationSpeed(0.001f + (0.0002f * runSpeed));
 }
 
 void Player::SetPosition(float x, float y, float z)
@@ -107,6 +113,7 @@ void Player::Update(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 		leftKeyPressed = (gInput->IsKeyPressed(KEYBOARD_KEY_A) ? true : false);
 		rightKeyPressed = (gInput->IsKeyPressed(KEYBOARD_KEY_D) ? true : false);
 		backwardsKeyPressed = (gInput->IsKeyPressed(KEYBOARD_KEY_S) ? true : false);
+		runKeyPressed = (gInput->IsKeyPressed(KEYBOARD_KEY_SHIFT) ? true : false);
 
 		// Are there any opposing keys pressed at the same time?
 		if (forwardKeyPressed && backwardsKeyPressed)
@@ -150,6 +157,16 @@ void Player::Update(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 	else if (forwardKeyPressed)
 		strafeOrientation = 0.0f;
 
+	if (!playerMoving && playerOrientation != 0.0f)
+	{
+		playerOrientation += gInput->GetCursorRelativeX() * camera->GetSensitivity();
+		if (playerOrientation < 0.0f || playerOrientation > 360.0f)
+			playerOrientation = 0.0f;
+
+		// Negate last camera yaw change
+		cameraYaw += gInput->GetCursorRelativeX() * camera->GetSensitivity();
+	}
+	
 	baseOrientation = -cameraYaw;
 
 	if (playerMoving)
@@ -159,15 +176,20 @@ void Player::Update(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 	playerBody->getMotionState()->setWorldTransform(transform);
 
 	btVector3 velocity = playerBody->getLinearVelocity();
+
 	if ((forwardKeyPressed || leftKeyPressed || rightKeyPressed || backwardsKeyPressed) && inputEnabled)
 	{
-		walkDirection += baseDirection * walkSpeed * gTimer->GetDelta();
+		walkDirection += baseDirection * (runKeyPressed ? runSpeed : walkSpeed) * gTimer->GetDelta();
 		walkDirection.setY(velocity.y());
 
 		playerBody->setLinearVelocity(RotateVec3Quaternion(walkDirection, transform.getRotation()));
+		velocityStopped = false;
 	}
-	else
+	else if (velocityStopped == false)
+	{
 		playerBody->setLinearVelocity(btVector3(0.0f, velocity.y(), 0.0f));
+		velocityStopped = true;
+	}
 
 	if (inputEnabled)
 	{
@@ -190,6 +212,16 @@ void Player::Update(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 	worldMatrix = glm::translate(worldMatrix, glm::vec3(0.0f, -0.9f, 0.0f));
 	worldMatrix = glm::rotate(worldMatrix, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
+	// Apply anim
+	if (IsFalling())
+		playerModel->SetAnimation(animPack.fallAnimation);
+	else if (playerMoving && runKeyPressed && !isJumping)
+		playerModel->SetAnimation(animPack.runAnimation);
+	else if (playerMoving && !isJumping)
+		playerModel->SetAnimation(animPack.walkAnimation);
+	else if(!isJumping)
+		playerModel->SetAnimation(animPack.idleAnimation);
+
 	// Render
 	playerModel->Render(vulkan, commandBuffer, vulkanPipeline, camera, worldMatrix);
 }
@@ -201,12 +233,15 @@ void Player::TogglePlayerInput(bool toggle)
 
 void Player::Jump()
 {
-	if (isJumping == false && !IsFalling())
+	if (isJumping == false && !IsFalling(0.2f))
 	{
 		btVector3 velocity = playerBody->getLinearVelocity();
 		playerBody->setLinearVelocity(btVector3(velocity.x(), 5.0f, velocity.z()));
 		isJumping = true;
 		jumpTracking_FallingInitiated = false;
+
+		animPack.jumpAnimation->ResetAnimation();
+		playerModel->SetAnimation(animPack.jumpAnimation);
 	}
 }
 
@@ -214,9 +249,9 @@ void Player::TrackJumpState()
 {
 	if (isJumping)
 	{
-		if (IsFalling())
+		if (IsFalling(0.2f))
 			jumpTracking_FallingInitiated = true;
-		else if (!IsFalling() && jumpTracking_FallingInitiated == true)
+		else if (!IsFalling(0.2f) && jumpTracking_FallingInitiated == true)
 			isJumping = false;
 	}
 }
@@ -234,10 +269,10 @@ glm::vec3 Player::GetPosition()
 	return position;
 }
 
-bool Player::IsFalling()
+bool Player::IsFalling(float errorMargin)
 {
 	btScalar downVelocity = playerBody->getLinearVelocity().getY();
-	if (downVelocity < -0.1f)
+	if (downVelocity < -errorMargin)
 		return true;
 
 	return false;

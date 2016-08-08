@@ -32,8 +32,8 @@ class Animation
 
 		float runTime;
 		float speed;
-
-		bool loaded;
+		bool loop;
+		bool isFinished;
 	private:
 		void ReadNodeHierarchy(float animTime, const aiNode* node, const aiMatrix4x4& parentTransform,
 			std::vector<aiMatrix4x4>& boneOffsets, std::map<std::string, uint32_t>& boneMapping);
@@ -45,9 +45,10 @@ class Animation
 		Animation();
 		~Animation();
 
-		bool Init(std::string filename, uint32_t numBones);
+		bool Init(std::string filename, uint32_t numBones, bool loopAnim);
 		void SetAnimationSpeed(float speed);
-		bool IsLoaded();
+		void ResetAnimation();
 		void Update(float time, std::vector<aiMatrix4x4>& boneOffsets, std::map<std::string, uint32_t>& boneMapping);
 		std::vector<glm::mat4>& GetBoneTransforms();
+		bool IsFinished();
 };

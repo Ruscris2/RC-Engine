@@ -12,7 +12,6 @@ extern LogManager * gLogManager;
 
 Animation::Animation()
 {
-	loaded = false;
 	scene = NULL;
 }
 
@@ -21,11 +20,13 @@ Animation::~Animation()
 	scene = NULL;
 }
 
-bool Animation::Init(std::string filename, uint32_t numBones)
+bool Animation::Init(std::string filename, uint32_t numBones, bool loopAnim)
 {
 	this->numBones = numBones;
+	loop = loopAnim;
+	isFinished = false;
 
-	runTime = 0;
+	runTime = 0.0f;
 	speed = 0.001f;
 
 	scene = importer.ReadFile(filename, aiProcess_MakeLeftHanded | aiProcess_FlipWindingOrder);
@@ -43,7 +44,6 @@ bool Animation::Init(std::string filename, uint32_t numBones)
 	globalInverseTransform = scene->mRootNode->mTransformation;
 	globalInverseTransform.Inverse();
 
-	loaded = true;
 	return true;
 }
 
@@ -52,17 +52,26 @@ void Animation::SetAnimationSpeed(float speed)
 	this->speed = speed;
 }
 
-bool Animation::IsLoaded()
+void Animation::ResetAnimation()
 {
-	return loaded;
+	runTime = 0.0f;
+	isFinished = false;
 }
 
 void Animation::Update(float time, std::vector<aiMatrix4x4>& boneOffsets, std::map<std::string, uint32_t>& boneMapping)
 {
-	runTime += time * speed;
+	if(!isFinished)
+		runTime += time * speed;
 
 	float ticksPerSecond = (float)(scene->mAnimations[0]->mTicksPerSecond != 0 ? scene->mAnimations[0]->mTicksPerSecond : 25.0f);
 	float timeInTicks = runTime * ticksPerSecond;
+
+	if (timeInTicks > scene->mAnimations[0]->mDuration && !loop)
+	{
+		isFinished = true;
+		runTime -= time * speed;
+	}
+
 	float animationTime = fmod(timeInTicks, (float)scene->mAnimations[0]->mDuration);
 
 	aiMatrix4x4 identity = aiMatrix4x4();
@@ -78,6 +87,11 @@ void Animation::Update(float time, std::vector<aiMatrix4x4>& boneOffsets, std::m
 std::vector<glm::mat4>& Animation::GetBoneTransforms()
 {
 	return boneTransformsGLM;
+}
+
+bool Animation::IsFinished()
+{
+	return isFinished;
 }
 
 void Animation::ReadNodeHierarchy(float animTime, const aiNode * node, const aiMatrix4x4 & parentTransform,

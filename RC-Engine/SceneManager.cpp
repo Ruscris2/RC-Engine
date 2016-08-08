@@ -23,24 +23,40 @@ SceneManager::SceneManager()
 	physics = NULL;
 	camera = NULL;
 	light = NULL;
+
 	initCommandBuffer = NULL;
 	deferredCommandBuffer = NULL;
+
 	defaultShader = NULL;
 	skinnedShader = NULL;
 	deferredShader = NULL;
+
 	defaultPipeline = NULL;
 	skinnedPipeline = NULL;
 	deferredPipeline = NULL;
 	wireframePipeline = NULL;
+
 	renderDummy = NULL;
+
 	idleAnim = NULL;
+	walkAnim = NULL;
+	fallAnim = NULL;
+	jumpAnim = NULL;
+	runAnim = NULL;
+
 	player = NULL;
 }
 
 SceneManager::~SceneManager()
 {
 	SAFE_DELETE(player);
+
+	SAFE_DELETE(runAnim);
+	SAFE_DELETE(jumpAnim);
+	SAFE_DELETE(fallAnim);
+	SAFE_DELETE(walkAnim);
 	SAFE_DELETE(idleAnim);
+
 	SAFE_DELETE(light);
 	SAFE_DELETE(camera);
 	SAFE_DELETE(physics);
@@ -167,17 +183,41 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
+	// Animations
 	idleAnim = new Animation();
-	if (!idleAnim->Init("data/anims/idle.fbx", 52))
+	if (!idleAnim->Init("data/anims/idle.fbx", 52, true))
 		return false;
-	idleAnim->SetAnimationSpeed(0.001f);
+	idleAnim->SetAnimationSpeed(0.0005f);
+
+	walkAnim = new Animation();
+	if (!walkAnim->Init("data/anims/walk.fbx", 52, true))
+		return false;
+
+	fallAnim = new Animation();
+	if (!fallAnim->Init("data/anims/falling.fbx", 52, true))
+		return false;
+	fallAnim->SetAnimationSpeed(0.002f);
+
+	jumpAnim = new Animation();
+	if (!jumpAnim->Init("data/anims/jump.fbx", 52, false))
+		return false;
+	jumpAnim->SetAnimationSpeed(0.001f);
+
+	runAnim = new Animation();
+	if (!runAnim->Init("data/anims/run.fbx", 52, true))
+		return false;
 
 	male->SetAnimation(idleAnim);
 
+	AnimationPack animPack;
+	animPack.idleAnimation = idleAnim;
+	animPack.walkAnimation = walkAnim;
+	animPack.fallAnimation = fallAnim;
+	animPack.jumpAnimation = jumpAnim;
+	animPack.runAnimation = runAnim;
 
-	// -----------------  TODO: Players are immutable while no moving, allow dynamic objects to influence them.
 	player = new Player();
-	player->Init(male, physics);
+	player->Init(male, physics, animPack);
 	player->SetPosition(0.0f, 5.0f, 0.0f);
 
 	return true;
