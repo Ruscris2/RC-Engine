@@ -167,6 +167,8 @@
     <ClCompile Include="SkinnedMesh.cpp" />
     <ClCompile Include="SkinnedModel.cpp" />
     <ClCompile Include="SkinnedShader.cpp" />
+    <ClCompile Include="Skydome.cpp" />
+    <ClCompile Include="SkydomeShader.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Timer.cpp" />
     <ClCompile Include="VulkanCommandBuffer.cpp" />
@@ -202,6 +204,8 @@
     <ClInclude Include="SkinnedMesh.h" />
     <ClInclude Include="SkinnedModel.h" />
     <ClInclude Include="SkinnedShader.h" />
+    <ClInclude Include="Skydome.h" />
+    <ClInclude Include="SkydomeShader.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="VulkanCommandBuffer.h" />

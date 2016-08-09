@@ -17,6 +17,7 @@
 #include "SkinnedShader.h"
 #include "DeferredShader.h"
 #include "WireframeShader.h"
+#include "SkydomeShader.h"
 #include "VulkanPipeline.h"
 #include "VulkanCommandBuffer.h"
 #include "Model.h"
@@ -27,6 +28,7 @@
 #include "Animation.h"
 #include "Physics.h"
 #include "Player.h"
+#include "Skydome.h"
 
 class SceneManager
 {
@@ -39,17 +41,20 @@ class SceneManager
 		SkinnedShader * skinnedShader;
 		DeferredShader * deferredShader;
 		WireframeShader * wireframeShader;
+		SkydomeShader * skydomeShader;
 
 		VulkanPipeline * defaultPipeline;
 		VulkanPipeline * skinnedPipeline;
 		VulkanPipeline * deferredPipeline;
 		VulkanPipeline * wireframePipeline;
+		VulkanPipeline * skydomePipeline;
 
 		VulkanCommandBuffer * initCommandBuffer;
 		VulkanCommandBuffer * deferredCommandBuffer;
 		std::vector<VulkanCommandBuffer*> renderCommandBuffers;
 
 		RenderDummy * renderDummy;
+		Skydome * skydome;
 
 		Animation * idleAnim;
 		Animation * walkAnim;
@@ -66,6 +71,7 @@ class SceneManager
 		bool BuildSkinnedPipeline(VulkanInterface * vulkan);
 		bool BuildDeferredPipeline(VulkanInterface * vulkan);
 		bool BuildWireframePipeline(VulkanInterface * vulkan);
+		bool BuildSkydomePipeline(VulkanInterface * vulkan);
 	public:
 		SceneManager();
 		~SceneManager();

@@ -36,7 +36,7 @@ bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineC
 	descriptorLayoutCI.bindingCount = pipelineCI->numLayoutBindings;
 	descriptorLayoutCI.pBindings = pipelineCI->layoutBindings;
 
-	result = vkCreateDescriptorSetLayout(pipelineCI->vulkanDevice->GetDevice(), &descriptorLayoutCI, VK_NULL_HANDLE, &descriptorLayout);
+	result = vkCreateDescriptorSetLayout(vulkan->GetVulkanDevice()->GetDevice(), &descriptorLayoutCI, VK_NULL_HANDLE, &descriptorLayout);
 	if (result != VK_SUCCESS)
 		return false;
 
@@ -45,7 +45,7 @@ bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineC
 	pipelineLayoutCI.setLayoutCount = 1;
 	pipelineLayoutCI.pSetLayouts = &descriptorLayout;
 
-	result = vkCreatePipelineLayout(pipelineCI->vulkanDevice->GetDevice(), &pipelineLayoutCI, VK_NULL_HANDLE, &pipelineLayout);
+	result = vkCreatePipelineLayout(vulkan->GetVulkanDevice()->GetDevice(), &pipelineLayoutCI, VK_NULL_HANDLE, &pipelineLayout);
 	if (result != VK_SUCCESS)
 		return false;
 
@@ -78,7 +78,7 @@ bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineC
 	rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rs.pNext = NULL;
 	rs.polygonMode = (pipelineCI->wireframeEnabled ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL);
-	rs.cullMode = (pipelineCI->wireframeEnabled ?  VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT);
+	rs.cullMode = (pipelineCI->backFaceCullingEnabled ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE);
 	rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	rs.depthClampEnable = VK_FALSE;
 	rs.rasterizerDiscardEnable = VK_FALSE;
@@ -131,7 +131,7 @@ bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineC
 	VkPipelineDepthStencilStateCreateInfo ds{};
 	ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	ds.pNext = NULL;
-	ds.depthTestEnable = (pipelineCI->zbufferEnabled ? VK_TRUE : VK_FALSE);
+	ds.depthTestEnable = VK_TRUE;
 	ds.depthWriteEnable = VK_TRUE;
 	ds.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 	ds.depthBoundsTestEnable = VK_FALSE;
@@ -180,7 +180,7 @@ bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineC
 	graphicsPipelineCI.renderPass = pipelineCI->vulkanRenderpass->GetRenderpass();
 	graphicsPipelineCI.subpass = 0;
 
-	result = vkCreateGraphicsPipelines(pipelineCI->vulkanDevice->GetDevice(), vulkan->GetPipelineCache(), 1,
+	result = vkCreateGraphicsPipelines(vulkan->GetVulkanDevice()->GetDevice(), vulkan->GetPipelineCache(), 1,
 		&graphicsPipelineCI, VK_NULL_HANDLE, &pipeline);
 	if (result != VK_SUCCESS)
 		return false;

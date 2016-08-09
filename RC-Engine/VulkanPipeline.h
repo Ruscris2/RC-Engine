@@ -11,7 +11,6 @@
 
 struct VulkanPipelineCI
 {
-	VulkanDevice * vulkanDevice;
 	Shader * shader;
 	VulkanRenderpass * vulkanRenderpass;
 	VkVertexInputAttributeDescription * vertexLayout;
@@ -21,7 +20,7 @@ struct VulkanPipelineCI
 	size_t strideSize;
 	int numColorAttachments;
 	bool wireframeEnabled;
-	bool zbufferEnabled;
+	bool backFaceCullingEnabled;
 };
 
 class VulkanPipeline

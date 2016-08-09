@@ -30,13 +30,17 @@ SceneManager::SceneManager()
 	defaultShader = NULL;
 	skinnedShader = NULL;
 	deferredShader = NULL;
+	wireframeShader = NULL;
+	skydomeShader = NULL;
 
 	defaultPipeline = NULL;
 	skinnedPipeline = NULL;
 	deferredPipeline = NULL;
 	wireframePipeline = NULL;
+	skydomePipeline = NULL;
 
 	renderDummy = NULL;
+	skydome = NULL;
 
 	idleAnim = NULL;
 	walkAnim = NULL;
@@ -77,7 +81,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	
 	// Light setup
 	light = new Light();
-	light->SetAmbientColor(0.3f, 0.3f, 0.3f, 1.0f);
+	light->SetAmbientColor(0.45f, 0.45f, 0.5f, 1.0f);
 	light->SetDiffuseColor(0.6f, 0.6f, 0.6f, 1.0f);
 	light->SetSpecularColor(1.0f, 1.0f, 1.0f, 1.0f);
 	light->SetLightDirection(-0.5f, -0.5f, 1.0f);
@@ -137,6 +141,13 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
+	skydomeShader = new SkydomeShader();
+	if (!skydomeShader->Init(vulkan->GetVulkanDevice()))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init skydome shader!");
+		return false;
+	}
+
 	// Build pipelines
 	if (!BuildDefaultPipeline(vulkan))
 	{
@@ -162,6 +173,12 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
+	if (!BuildSkydomePipeline(vulkan))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init skydome pipeline!");
+		return false;
+	}
+
 	// Init render dummy
 	renderDummy = new RenderDummy();
 	if (!renderDummy->Init(vulkan, defaultPipeline, vulkan->GetPositionAttachment()->GetImageView(), vulkan->GetNormalAttachment()->GetImageView(),
@@ -170,6 +187,18 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		gLogManager->AddMessage("ERROR: Failed to init render dummy!");
 		return false;
 	}
+
+	// Init skydome
+	skydome = new Skydome();
+	if (!skydome->Init(vulkan, skydomePipeline))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init skydome!");
+		return false;
+	}
+	skydome->SetSkyColor(0.42f, 0.7f, 1.0f, 1.0f);
+	skydome->SetAtmosphereColor(1.0f, 1.0f, 0.94f, 1.0f);
+	skydome->SetGroundColor(0.2f, 0.2f, 0.2f, 1.0f);
+	skydome->SetAtmosphereHeight(0.2f);
 
 	// Load map files
 	if (!LoadMapFile("data/testmap.map", vulkan))
@@ -229,11 +258,16 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 	for (unsigned int i = 0; i < modelList.size(); i++)
 		SAFE_UNLOAD(modelList[i], vulkan);
 
+	SAFE_UNLOAD(skydome, vulkan);
 	SAFE_UNLOAD(renderDummy, vulkan);
+
+	SAFE_UNLOAD(skydomePipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(wireframePipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(deferredPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(skinnedPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(defaultPipeline, vulkan->GetVulkanDevice());
+
+	SAFE_UNLOAD(skydomeShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(wireframeShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(deferredShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(skinnedShader, vulkan->GetVulkanDevice());
@@ -316,6 +350,7 @@ void SceneManager::Render(VulkanInterface * vulkan)
 	{
 		vulkan->BeginSceneForward(renderCommandBuffers[i], (int)i);
 		
+		skydome->Render(vulkan, renderCommandBuffers[i], skydomePipeline, camera, (int)i);
 		renderDummy->Render(vulkan, renderCommandBuffers[i], defaultPipeline, vulkan->GetOrthoMatrix(), light, imageIndex, camera, (int)i);
 		
 		vulkan->EndSceneForward(renderCommandBuffers[i]);
@@ -431,7 +466,6 @@ bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	};
 
 	VulkanPipelineCI pipelineCI;
-	pipelineCI.vulkanDevice = vulkan->GetVulkanDevice();
 	pipelineCI.shader = defaultShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetForwardRenderpass();
 	pipelineCI.vertexLayout = vertexLayoutDefault;
@@ -441,7 +475,7 @@ bool SceneManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	pipelineCI.strideSize = sizeof(DefaultVertex);
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = false;
-	pipelineCI.zbufferEnabled = true;
+	pipelineCI.backFaceCullingEnabled = true;
 
 	defaultPipeline = new VulkanPipeline();
 	if (!defaultPipeline->Init(vulkan, &pipelineCI))
@@ -521,7 +555,6 @@ bool SceneManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	};
 
 	VulkanPipelineCI pipelineCI;
-	pipelineCI.vulkanDevice = vulkan->GetVulkanDevice();
 	pipelineCI.shader = skinnedShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetDeferredRenderpass();
 	pipelineCI.vertexLayout = vertexLayoutSkinned;
@@ -531,7 +564,7 @@ bool SceneManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	pipelineCI.strideSize = sizeof(SkinnedVertex);
 	pipelineCI.numColorAttachments = 4;
 	pipelineCI.wireframeEnabled = false;
-	pipelineCI.zbufferEnabled = true;
+	pipelineCI.backFaceCullingEnabled = true;
 
 	skinnedPipeline = new VulkanPipeline();
 	if (!skinnedPipeline->Init(vulkan, &pipelineCI))
@@ -594,7 +627,6 @@ bool SceneManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	};
 
 	VulkanPipelineCI pipelineCI;
-	pipelineCI.vulkanDevice = vulkan->GetVulkanDevice();
 	pipelineCI.shader = deferredShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetDeferredRenderpass();
 	pipelineCI.vertexLayout = vertexLayoutDeferred;
@@ -604,7 +636,7 @@ bool SceneManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	pipelineCI.strideSize = sizeof(DeferredVertex);
 	pipelineCI.numColorAttachments = 4;
 	pipelineCI.wireframeEnabled = false;
-	pipelineCI.zbufferEnabled = true;
+	pipelineCI.backFaceCullingEnabled = true;
 
 	deferredPipeline = new VulkanPipeline();
 	if (!deferredPipeline->Init(vulkan, &pipelineCI))
@@ -643,7 +675,6 @@ bool SceneManager::BuildWireframePipeline(VulkanInterface * vulkan)
 	};
 
 	VulkanPipelineCI pipelineCI;
-	pipelineCI.vulkanDevice = vulkan->GetVulkanDevice();
 	pipelineCI.shader = wireframeShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetForwardRenderpass();
 	pipelineCI.vertexLayout = vertexLayoutWireframe;
@@ -653,10 +684,58 @@ bool SceneManager::BuildWireframePipeline(VulkanInterface * vulkan)
 	pipelineCI.strideSize = sizeof(WireframeVertex);
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = true;
-	pipelineCI.zbufferEnabled = true;
+	pipelineCI.backFaceCullingEnabled = false;
 
 	wireframePipeline = new VulkanPipeline();
 	if (!wireframePipeline->Init(vulkan, &pipelineCI))
+		return false;
+
+	return true;
+}
+
+bool SceneManager::BuildSkydomePipeline(VulkanInterface * vulkan)
+{
+	// Vertex layout
+	VkVertexInputAttributeDescription vertexLayoutSkydome[1];
+
+	vertexLayoutSkydome[0].binding = 0;
+	vertexLayoutSkydome[0].location = 0;
+	vertexLayoutSkydome[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexLayoutSkydome[0].offset = 0;
+
+	// Layout bindings
+	VkDescriptorSetLayoutBinding layoutBindingsSkydome[2];
+
+	layoutBindingsSkydome[0].binding = 0;
+	layoutBindingsSkydome[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsSkydome[0].descriptorCount = 1;
+	layoutBindingsSkydome[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	layoutBindingsSkydome[0].pImmutableSamplers = VK_NULL_HANDLE;
+
+	layoutBindingsSkydome[1].binding = 1;
+	layoutBindingsSkydome[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsSkydome[1].descriptorCount = 1;
+	layoutBindingsSkydome[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsSkydome[1].pImmutableSamplers = VK_NULL_HANDLE;
+
+	struct SkydomeVertex {
+		float x, y, z;
+	};
+
+	VulkanPipelineCI pipelineCI;
+	pipelineCI.shader = skydomeShader;
+	pipelineCI.vulkanRenderpass = vulkan->GetForwardRenderpass();
+	pipelineCI.vertexLayout = vertexLayoutSkydome;
+	pipelineCI.numVertexLayout = 1;
+	pipelineCI.layoutBindings = layoutBindingsSkydome;
+	pipelineCI.numLayoutBindings = 2;
+	pipelineCI.strideSize = sizeof(SkydomeVertex);
+	pipelineCI.numColorAttachments = 1;
+	pipelineCI.wireframeEnabled = false;
+	pipelineCI.backFaceCullingEnabled = false;
+
+	skydomePipeline = new VulkanPipeline();
+	if (!skydomePipeline->Init(vulkan, &pipelineCI))
 		return false;
 
 	return true;
