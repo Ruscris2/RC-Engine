@@ -4,21 +4,12 @@
 |                             File: SceneManager.h                                       |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
-#pragma once
 
-#include <thread>
-#include <atomic>
-#include <mutex>
+#pragma once
 
 #include "Camera.h"
 #include "VulkanInterface.h"
-#include "VulkanPipeline.h"
-#include "DefaultShader.h"
-#include "SkinnedShader.h"
-#include "DeferredShader.h"
-#include "WireframeShader.h"
-#include "SkydomeShader.h"
-#include "VulkanPipeline.h"
+#include "PipelineManager.h"
 #include "VulkanCommandBuffer.h"
 #include "Model.h"
 #include "SkinnedModel.h"
@@ -36,18 +27,7 @@ class SceneManager
 		Physics * physics;
 		Camera * camera;
 		Light * light;
-
-		DefaultShader * defaultShader;
-		SkinnedShader * skinnedShader;
-		DeferredShader * deferredShader;
-		WireframeShader * wireframeShader;
-		SkydomeShader * skydomeShader;
-
-		VulkanPipeline * defaultPipeline;
-		VulkanPipeline * skinnedPipeline;
-		VulkanPipeline * deferredPipeline;
-		VulkanPipeline * wireframePipeline;
-		VulkanPipeline * skydomePipeline;
+		PipelineManager * pipelineManager;
 
 		VulkanCommandBuffer * initCommandBuffer;
 		VulkanCommandBuffer * deferredCommandBuffer;
@@ -67,11 +47,6 @@ class SceneManager
 		Player * player;
 	private:
 		bool LoadMapFile(std::string filename, VulkanInterface * vulkan);
-		bool BuildDefaultPipeline(VulkanInterface * vulkan);
-		bool BuildSkinnedPipeline(VulkanInterface * vulkan);
-		bool BuildDeferredPipeline(VulkanInterface * vulkan);
-		bool BuildWireframePipeline(VulkanInterface * vulkan);
-		bool BuildSkydomePipeline(VulkanInterface * vulkan);
 	public:
 		SceneManager();
 		~SceneManager();
