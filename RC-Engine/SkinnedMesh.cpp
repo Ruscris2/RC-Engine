@@ -309,7 +309,7 @@ void SkinnedMesh::WriteDescriptorSet(VulkanInterface * vulkan, VkDescriptorBuffe
 	// Write mesh diffuse texture
 	VkDescriptorImageInfo diffuseTextureDesc{};
 	diffuseTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	diffuseTextureDesc.imageView = material->GetDiffuseTexture()->GetImageView();
+	diffuseTextureDesc.imageView = *material->GetDiffuseTexture()->GetImageView();
 	diffuseTextureDesc.sampler = vulkan->GetColorSampler();
 
 	descriptorWrite[1] = {};
@@ -325,7 +325,7 @@ void SkinnedMesh::WriteDescriptorSet(VulkanInterface * vulkan, VkDescriptorBuffe
 	// Write mesh specular texture
 	VkDescriptorImageInfo specularTextureDesc{};
 	specularTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	specularTextureDesc.imageView = material->GetSpecularTexture()->GetImageView();
+	specularTextureDesc.imageView = *material->GetSpecularTexture()->GetImageView();
 	specularTextureDesc.sampler = vulkan->GetColorSampler();
 
 	descriptorWrite[2] = {};

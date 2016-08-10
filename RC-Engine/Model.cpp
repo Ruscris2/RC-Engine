@@ -384,6 +384,11 @@ unsigned int Model::GetMeshCount()
 	return (unsigned int)meshes.size();
 }
 
+Mesh * Model::GetMesh(int meshId)
+{
+	return meshes[meshId];
+}
+
 Material * Model::GetMaterial(int materialId)
 {
 	return materials[materialId];

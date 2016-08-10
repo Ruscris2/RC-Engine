@@ -1,28 +1,26 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: Texture.h                                            |
+|                             File: CanvasShader.h                                       |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
-#pragma once
 
-#include <string>
-
+#include "Shader.h"
+#include "VulkanDevice.h"
 #include "VulkanCommandBuffer.h"
 
-class Texture
+#pragma once
+
+class CanvasShader : public Shader
 {
 	private:
-		VkImage textureImage;
-		VkImageView textureImageView;
-		VkDeviceMemory textureMemory;
-		int mipMapsCount;
-	public:
-		Texture();
-		~Texture();
+		VkPipelineShaderStageCreateInfo shaderStages[2];
 
-		bool Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::string filename);
+	public:
+		CanvasShader();
+		~CanvasShader();
+
+		bool Init(VulkanDevice * vulkanDevice);
 		void Unload(VulkanDevice * vulkanDevice);
-		VkImageView * GetImageView();
-		int GetMipMapCount();
+		VkPipelineShaderStageCreateInfo * GetShaderStages();
 };

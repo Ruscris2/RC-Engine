@@ -12,6 +12,7 @@
 #include "DeferredShader.h"
 #include "WireframeShader.h"
 #include "SkydomeShader.h"
+#include "CanvasShader.h"
 
 #pragma once
 
@@ -23,18 +24,21 @@ class PipelineManager
 		DeferredShader * deferredShader;
 		WireframeShader * wireframeShader;
 		SkydomeShader * skydomeShader;
+		CanvasShader * canvasShader;
 
 		VulkanPipeline * defaultPipeline;
 		VulkanPipeline * skinnedPipeline;
 		VulkanPipeline * deferredPipeline;
 		VulkanPipeline * wireframePipeline;
 		VulkanPipeline * skydomePipeline;
+		VulkanPipeline * canvasPipeline;
 	private:
 		bool BuildDefaultPipeline(VulkanInterface * vulkan);
 		bool BuildSkinnedPipeline(VulkanInterface * vulkan);
 		bool BuildDeferredPipeline(VulkanInterface * vulkan);
 		bool BuildWireframePipeline(VulkanInterface * vulkan);
 		bool BuildSkydomePipeline(VulkanInterface * vulkan);
+		bool BuildCanvasPipeline(VulkanInterface * vulkan);
 	public:
 		PipelineManager();
 
@@ -46,4 +50,5 @@ class PipelineManager
 		VulkanPipeline * GetDeferred();
 		VulkanPipeline * GetWireframe();
 		VulkanPipeline * GetSkydome();
+		VulkanPipeline * GetCanvas();
 };

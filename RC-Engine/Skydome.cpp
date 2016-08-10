@@ -420,7 +420,9 @@ void Skydome::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuff
 	uint8_t *pData;
 
 	// Update vertex uniform buffer
-	worldMatrix = glm::translate(glm::mat4(1.0f), camera->GetPosition());
+	glm::vec3 camPos = camera->GetPosition();
+	camPos.y -= 0.25f;
+	worldMatrix = glm::translate(glm::mat4(1.0f), camPos);
 	vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * worldMatrix;
 
 	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);

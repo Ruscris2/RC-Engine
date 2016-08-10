@@ -20,6 +20,7 @@
 #include "Physics.h"
 #include "Player.h"
 #include "Skydome.h"
+#include "Canvas.h"
 
 class SceneManager
 {
@@ -45,6 +46,8 @@ class SceneManager
 		std::vector<Model*> modelList;
 		SkinnedModel * male;
 		Player * player;
+
+		Canvas * testCanvas;
 	private:
 		bool LoadMapFile(std::string filename, VulkanInterface * vulkan);
 	public:

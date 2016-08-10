@@ -18,12 +18,14 @@ PipelineManager::PipelineManager()
 	deferredShader = NULL;
 	wireframeShader = NULL;
 	skydomeShader = NULL;
+	canvasShader = NULL;
 
 	defaultPipeline = NULL;
 	skinnedPipeline = NULL;
 	deferredPipeline = NULL;
 	wireframePipeline = NULL;
 	skydomePipeline = NULL;
+	canvasPipeline = NULL;
 }
 
 bool PipelineManager::Init(VulkanInterface * vulkan)
@@ -64,6 +66,13 @@ bool PipelineManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
+	canvasShader = new CanvasShader();
+	if (!canvasShader->Init(vulkan->GetVulkanDevice()))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init canvas shader!");
+		return false;
+	}
+
 	// Build pipelines
 	if (!BuildDefaultPipeline(vulkan))
 	{
@@ -95,17 +104,25 @@ bool PipelineManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
+	if (!BuildCanvasPipeline(vulkan))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init canvas pipeline!");
+		return false;
+	}
+
 	return true;
 }
 
 void PipelineManager::Unload(VulkanInterface * vulkan)
 {
+	SAFE_UNLOAD(canvasPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(skydomePipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(wireframePipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(deferredPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(skinnedPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(defaultPipeline, vulkan->GetVulkanDevice());
 
+	SAFE_UNLOAD(canvasShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(skydomeShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(wireframeShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(deferredShader, vulkan->GetVulkanDevice());
@@ -136,6 +153,11 @@ VulkanPipeline * PipelineManager::GetWireframe()
 VulkanPipeline * PipelineManager::GetSkydome()
 {
 	return skydomePipeline;
+}
+
+VulkanPipeline * PipelineManager::GetCanvas()
+{
+	return canvasPipeline;
 }
 
 bool PipelineManager::BuildDefaultPipeline(VulkanInterface * vulkan)
@@ -474,6 +496,60 @@ bool PipelineManager::BuildSkydomePipeline(VulkanInterface * vulkan)
 
 	skydomePipeline = new VulkanPipeline();
 	if (!skydomePipeline->Init(vulkan, &pipelineCI))
+		return false;
+
+	return true;
+}
+
+bool PipelineManager::BuildCanvasPipeline(VulkanInterface * vulkan)
+{
+	// Vertex layout
+	VkVertexInputAttributeDescription vertexLayoutCanvas[2];
+
+	vertexLayoutCanvas[0].binding = 0;
+	vertexLayoutCanvas[0].location = 0;
+	vertexLayoutCanvas[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexLayoutCanvas[0].offset = 0;
+
+	vertexLayoutCanvas[1].binding = 0;
+	vertexLayoutCanvas[1].location = 1;
+	vertexLayoutCanvas[1].format = VK_FORMAT_R32G32_SFLOAT;
+	vertexLayoutCanvas[1].offset = sizeof(float) * 3;
+
+	// Layout bindings
+	VkDescriptorSetLayoutBinding layoutBindingsCanvas[2];
+
+	layoutBindingsCanvas[0].binding = 0;
+	layoutBindingsCanvas[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsCanvas[0].descriptorCount = 1;
+	layoutBindingsCanvas[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	layoutBindingsCanvas[0].pImmutableSamplers = VK_NULL_HANDLE;
+
+	layoutBindingsCanvas[1].binding = 1;
+	layoutBindingsCanvas[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindingsCanvas[1].descriptorCount = 1;
+	layoutBindingsCanvas[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsCanvas[1].pImmutableSamplers = VK_NULL_HANDLE;
+
+	struct CanvasVertex {
+		float x, y, z;
+		float u, v;
+	};
+
+	VulkanPipelineCI pipelineCI;
+	pipelineCI.shader = canvasShader;
+	pipelineCI.vulkanRenderpass = vulkan->GetForwardRenderpass();
+	pipelineCI.vertexLayout = vertexLayoutCanvas;
+	pipelineCI.numVertexLayout = 2;
+	pipelineCI.layoutBindings = layoutBindingsCanvas;
+	pipelineCI.numLayoutBindings = 2;
+	pipelineCI.strideSize = sizeof(CanvasVertex);
+	pipelineCI.numColorAttachments = 1;
+	pipelineCI.wireframeEnabled = false;
+	pipelineCI.backFaceCullingEnabled = true;
+
+	canvasPipeline = new VulkanPipeline();
+	if (!canvasPipeline->Init(vulkan, &pipelineCI))
 		return false;
 
 	return true;

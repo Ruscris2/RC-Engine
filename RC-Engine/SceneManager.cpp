@@ -179,11 +179,21 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	player->Init(male, physics, animPack);
 	player->SetPosition(0.0f, 5.0f, 0.0f);
 
+
+	testCanvas = new Canvas();
+	if (!testCanvas->Init(vulkan, pipelineManager->GetCanvas()))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init test canvas!");
+		return false;
+	}
+
 	return true;
 }
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
+	SAFE_UNLOAD(testCanvas, vulkan);
+
 	SAFE_UNLOAD(male, vulkan);
 	for (unsigned int i = 0; i < modelList.size(); i++)
 		SAFE_UNLOAD(modelList[i], vulkan);
@@ -273,9 +283,12 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		skydome->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetSkydome(), camera, (int)i);
 		renderDummy->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetDefault(), vulkan->GetOrthoMatrix(), light, imageIndex, camera, (int)i);
 		
+		VkImageView * testImageView = modelList[0]->GetMesh(0)->GetMaterial()->GetDiffuseTexture()->GetImageView();
+		testCanvas->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), vulkan->GetOrthoMatrix(), testImageView, (int)i);
+
 		vulkan->EndSceneForward(renderCommandBuffers[i]);
 	}
-
+	
 	// Present to screen
 	vulkan->Present(renderCommandBuffers);
 }

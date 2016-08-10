@@ -59,5 +59,6 @@ class Model
 		void SetRotation(float x, float y, float z);
 		void SetVelocity(float x, float y, float z);
 		unsigned int GetMeshCount();
+		Mesh * GetMesh(int meshId);
 		Material * GetMaterial(int materialId);
 };

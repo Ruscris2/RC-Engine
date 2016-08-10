@@ -149,6 +149,8 @@
   <ItemGroup>
     <ClCompile Include="Animation.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Canvas.cpp" />
+    <ClCompile Include="CanvasShader.cpp" />
     <ClCompile Include="GameplayTimer.cpp" />
     <ClCompile Include="PipelineManager.cpp" />
     <ClCompile Include="RenderDummy.cpp" />
@@ -189,6 +191,8 @@
   <ItemGroup>
     <ClInclude Include="Animation.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Canvas.h" />
+    <ClInclude Include="CanvasShader.h" />
     <ClInclude Include="GameplayTimer.h" />
     <ClInclude Include="PipelineManager.h" />
     <ClInclude Include="RenderDummy.h" />

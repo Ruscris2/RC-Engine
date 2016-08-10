@@ -245,9 +245,9 @@ void Texture::Unload(VulkanDevice * vulkanDevice)
 	vkDestroyImage(vulkanDevice->GetDevice(), textureImage, VK_NULL_HANDLE);
 }
 
-VkImageView Texture::GetImageView()
+VkImageView * Texture::GetImageView()
 {
-	return textureImageView;
+	return &textureImageView;
 }
 
 int Texture::GetMipMapCount()

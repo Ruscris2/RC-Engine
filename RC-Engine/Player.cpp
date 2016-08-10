@@ -213,7 +213,7 @@ void Player::Update(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 	worldMatrix = glm::rotate(worldMatrix, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	// Apply anim
-	if (IsFalling())
+	if (IsFalling(2.5f))
 		playerModel->SetAnimation(animPack.fallAnimation);
 	else if (playerMoving && runKeyPressed && !isJumping)
 		playerModel->SetAnimation(animPack.runAnimation);
