@@ -1,4 +1,7 @@
 # RC-Engine
+
+<img src="./images/rc-engine_logo_github.png" alt="RC-Engine Logo" height="256px">
+
 RC-Engine is an open-source 3D game engine using Vulkan.
 
 # Building the project
