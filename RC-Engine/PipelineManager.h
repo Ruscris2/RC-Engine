@@ -42,7 +42,8 @@ class PipelineManager
 	public:
 		PipelineManager();
 
-		bool Init(VulkanInterface * vulkan);
+		bool InitUIPipelines(VulkanInterface * vulkan);
+		bool InitGamePipelines(VulkanInterface * vulkan);
 		void Unload(VulkanInterface * vulkan);
 
 		VulkanPipeline * GetDefault();

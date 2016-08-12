@@ -21,10 +21,21 @@
 #include "Player.h"
 #include "Skydome.h"
 #include "Canvas.h"
+#include "GameplayTimer.h"
+
+enum GAME_STATE
+{
+	GAME_STATE_UNINITIALIZED,
+	GAME_STATE_SPLASH_SCREEN,
+	GAME_STATE_LOADING,
+	GAME_STATE_INGAME
+};
 
 class SceneManager
 {
 	private:
+		GAME_STATE currentGameState, lastGameState;
+
 		Physics * physics;
 		Camera * camera;
 		Light * light;
@@ -47,9 +58,14 @@ class SceneManager
 		SkinnedModel * male;
 		Player * player;
 
-		Canvas * testCanvas;
+		Texture * logo;
+		Canvas * logoCanvas;
+		GameplayTimer * splashScreenTimer;
+		bool showSplashScreen;
 	private:
 		bool LoadMapFile(std::string filename, VulkanInterface * vulkan);
+		bool LoadGame(VulkanInterface * vulkan);
+		void ChangeGameState(GAME_STATE newGameState);
 	public:
 		SceneManager();
 		~SceneManager();

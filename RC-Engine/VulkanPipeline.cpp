@@ -98,15 +98,30 @@ bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineC
 
 	for (unsigned int i = 0; i < blendAttachState.size(); i++)
 	{
-		blendAttachState[i] = {};
-		blendAttachState[i].colorWriteMask = 0xf;
-		blendAttachState[i].blendEnable = VK_FALSE;
-		blendAttachState[i].alphaBlendOp = VK_BLEND_OP_ADD;
-		blendAttachState[i].colorBlendOp = VK_BLEND_OP_ADD;
-		blendAttachState[i].srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-		blendAttachState[i].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-		blendAttachState[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-		blendAttachState[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		if (pipelineCI->transparencyEnabled)
+		{
+			blendAttachState[i] = {};
+			blendAttachState[i].colorWriteMask = 0x0f;
+			blendAttachState[i].blendEnable = VK_TRUE;
+			blendAttachState[i].alphaBlendOp = VK_BLEND_OP_ADD;
+			blendAttachState[i].colorBlendOp = VK_BLEND_OP_ADD;
+			blendAttachState[i].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+			blendAttachState[i].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			blendAttachState[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			blendAttachState[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		}
+		else
+		{
+			blendAttachState[i] = {};
+			blendAttachState[i].colorWriteMask = 0xf;
+			blendAttachState[i].blendEnable = VK_FALSE;
+			blendAttachState[i].alphaBlendOp = VK_BLEND_OP_ADD;
+			blendAttachState[i].colorBlendOp = VK_BLEND_OP_ADD;
+			blendAttachState[i].srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+			blendAttachState[i].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+			blendAttachState[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			blendAttachState[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		}
 	}
 
 	cb.attachmentCount = (uint32_t)blendAttachState.size();

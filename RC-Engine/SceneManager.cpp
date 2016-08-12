@@ -20,6 +20,8 @@ extern Timer * gTimer;
 
 SceneManager::SceneManager()
 {
+	lastGameState = currentGameState = GAME_STATE_UNINITIALIZED;
+
 	physics = NULL;
 	camera = NULL;
 	light = NULL;
@@ -38,6 +40,8 @@ SceneManager::SceneManager()
 	runAnim = NULL;
 
 	player = NULL;
+
+	showSplashScreen = true;
 }
 
 SceneManager::~SceneManager()
@@ -57,36 +61,11 @@ SceneManager::~SceneManager()
 
 bool SceneManager::Init(VulkanInterface * vulkan)
 {
-	// Physics init
-	physics = new Physics();
-	physics->Init();
-
-	// Camera setup
-	camera = new Camera();
-	camera->Init();
-	camera->SetPosition(0.0f, 5.0f, -10.0f);
-	camera->SetDirection(0.0f, 0.0f, 1.0f);
-	camera->SetCameraState(CAMERA_STATE_ORBIT_PLAYER);
-	
-	// Light setup
-	light = new Light();
-	light->SetAmbientColor(0.45f, 0.45f, 0.5f, 1.0f);
-	light->SetDiffuseColor(0.6f, 0.6f, 0.6f, 1.0f);
-	light->SetSpecularColor(1.0f, 1.0f, 1.0f, 1.0f);
-	light->SetLightDirection(-0.5f, -0.5f, 1.0f);
-
 	// Init command buffers
 	initCommandBuffer = new VulkanCommandBuffer();
 	if (!initCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create a command buffer! (initCommandBuffer)");
-		return false;
-	}
-
-	deferredCommandBuffer = new VulkanCommandBuffer();
-	if (!deferredCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
-	{
-		gLogManager->AddMessage("ERROR: Failed to create a command buffer! (deferredCommandBuffer)");
 		return false;
 	}
 
@@ -103,9 +82,65 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 
 	// Init pipeline manager
 	pipelineManager = new PipelineManager();
-	if (!pipelineManager->Init(vulkan))
+	if (!pipelineManager->InitUIPipelines(vulkan))
 	{
-		gLogManager->AddMessage("ERROR: Failed to init pipeline manager!");
+		gLogManager->AddMessage("ERROR: Failed to init UI pipelines!");
+		return false;
+	}
+
+	// Splash screen logo
+	logo = new Texture();
+	if (!logo->Init(vulkan->GetVulkanDevice(), initCommandBuffer, "data/textures/logo.rct"))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init logo texture!");
+		return false;
+	}
+
+	logoCanvas = new Canvas();
+	if (!logoCanvas->Init(vulkan, pipelineManager->GetCanvas()))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init test canvas!");
+		return false;
+	}
+	logoCanvas->SetDimensions(0.4f, 0.5f);
+	logoCanvas->SetPosition(0.3f, 0.25f);
+
+	splashScreenTimer = new GameplayTimer();
+
+	ChangeGameState(GAME_STATE_SPLASH_SCREEN);
+	return true;
+}
+
+bool SceneManager::LoadGame(VulkanInterface * vulkan)
+{
+	// Physics init
+	physics = new Physics();
+	physics->Init();
+
+	// Camera setup
+	camera = new Camera();
+	camera->Init();
+	camera->SetPosition(0.0f, 5.0f, -10.0f);
+	camera->SetDirection(0.0f, 0.0f, 1.0f);
+	camera->SetCameraState(CAMERA_STATE_ORBIT_PLAYER);
+
+	// Light setup
+	light = new Light();
+	light->SetAmbientColor(0.45f, 0.45f, 0.5f, 1.0f);
+	light->SetDiffuseColor(0.6f, 0.6f, 0.6f, 1.0f);
+	light->SetSpecularColor(1.0f, 1.0f, 1.0f, 1.0f);
+	light->SetLightDirection(-0.5f, -0.5f, 1.0f);
+
+	deferredCommandBuffer = new VulkanCommandBuffer();
+	if (!deferredCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
+	{
+		gLogManager->AddMessage("ERROR: Failed to create a command buffer! (deferredCommandBuffer)");
+		return false;
+	}
+
+	if (!pipelineManager->InitGamePipelines(vulkan))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init game pipelines!");
 		return false;
 	}
 
@@ -179,20 +214,12 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	player->Init(male, physics, animPack);
 	player->SetPosition(0.0f, 5.0f, 0.0f);
 
-
-	testCanvas = new Canvas();
-	if (!testCanvas->Init(vulkan, pipelineManager->GetCanvas()))
-	{
-		gLogManager->AddMessage("ERROR: Failed to init test canvas!");
-		return false;
-	}
-
 	return true;
 }
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
-	SAFE_UNLOAD(testCanvas, vulkan);
+	SAFE_UNLOAD(logoCanvas, vulkan);
 
 	SAFE_UNLOAD(male, vulkan);
 	for (unsigned int i = 0; i < modelList.size(); i++)
@@ -214,77 +241,106 @@ float angle = 0.0f;
 
 void SceneManager::Render(VulkanInterface * vulkan)
 {
-	physics->Update();
-
-	glm::vec3 playerPos = player->GetPosition();
-
-	if (playerPos.y < -20.0f)
-		player->SetPosition(0.0f, 5.0f, 0.0f);
-
-	if (gInput->WasKeyPressed(KEYBOARD_KEY_E))
-	{
-		Model * model = new Model();
-		model->Init("data/models/box.rcm", vulkan, pipelineManager->GetDeferred(), initCommandBuffer, physics, 20.0f);
-		
-		glm::vec3 pos = camera->GetPosition();
-		glm::vec3 dir = camera->GetDirection();
-		float power = 5.0f;
-		model->SetPosition(pos.x, pos.y, pos.z);
-		model->SetVelocity(dir.x * power, dir.y * power, dir.z * power);
-
-		modelList.push_back(model);
-	}
-
-	if (gInput->WasKeyPressed(KEYBOARD_KEY_O))
-	{
-		camera->SetCameraState(CAMERA_STATE_ORBIT_PLAYER);
-		player->TogglePlayerInput(true);
-	}
-	if (gInput->WasKeyPressed(KEYBOARD_KEY_P))
-	{
-		camera->SetCameraState(CAMERA_STATE_FLY);
-		player->TogglePlayerInput(false);
-	}
-
-	angle += 0.001f * gTimer->GetDelta();
-	if (angle > 90.0f)
-		angle = 0.0f;
-		
-	camera->HandleInput();
-	light->SetLightDirection(glm::sin(angle), -0.5f, 1.0f);
-
-	// Debug deferred shading
-	if (gInput->WasKeyPressed(KEYBOARD_KEY_1))
-		imageIndex = 1;
-	if (gInput->WasKeyPressed(KEYBOARD_KEY_2))
-		imageIndex = 2;
-	if (gInput->WasKeyPressed(KEYBOARD_KEY_3))
-		imageIndex = 3;
-	if (gInput->WasKeyPressed(KEYBOARD_KEY_4))
-		imageIndex = 4;
-	if (gInput->WasKeyPressed(KEYBOARD_KEY_5))
-		imageIndex = 5;
-
-	// Deferred rendering
-	vulkan->BeginSceneDeferred(deferredCommandBuffer);
-
-	for (unsigned int i = 0; i < modelList.size(); i++)
-		modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetDeferred(), camera);
+	// Splash screen
+	if (showSplashScreen == true && splashScreenTimer)
+			splashScreenTimer->StartTimer();
 	
-	player->Update(vulkan, deferredCommandBuffer, pipelineManager->GetSkinned(), camera);
-	
-	vulkan->EndSceneDeferred(deferredCommandBuffer);
+	if (showSplashScreen == true)
+	{
+		if (splashScreenTimer->TimePassed(1000))
+		{
+			ChangeGameState(GAME_STATE_LOADING);
+			if (LoadGame(vulkan))
+				ChangeGameState(GAME_STATE_INGAME);
+			else
+				THROW_ERROR();
+
+			showSplashScreen = false;
+			SAFE_DELETE(splashScreenTimer);
+		}
+	}
+
+	if (currentGameState == GAME_STATE_INGAME)
+	{
+		physics->Update();
+
+		glm::vec3 playerPos = player->GetPosition();
+
+		if (playerPos.y < -20.0f)
+			player->SetPosition(0.0f, 5.0f, 0.0f);
+
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_E))
+		{
+			Model * model = new Model();
+			model->Init("data/models/box.rcm", vulkan, pipelineManager->GetDeferred(), initCommandBuffer, physics, 20.0f);
+
+			glm::vec3 pos = camera->GetPosition();
+			glm::vec3 dir = camera->GetDirection();
+			float power = 5.0f;
+			model->SetPosition(pos.x, pos.y, pos.z);
+			model->SetVelocity(dir.x * power, dir.y * power, dir.z * power);
+
+			modelList.push_back(model);
+		}
+
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_O))
+		{
+			camera->SetCameraState(CAMERA_STATE_ORBIT_PLAYER);
+			player->TogglePlayerInput(true);
+		}
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_P))
+		{
+			camera->SetCameraState(CAMERA_STATE_FLY);
+			player->TogglePlayerInput(false);
+		}
+
+		angle += 0.001f * gTimer->GetDelta();
+		if (angle > 90.0f)
+			angle = 0.0f;
+
+		camera->HandleInput();
+		light->SetLightDirection(glm::sin(angle), -0.5f, 1.0f);
+
+		// Debug deferred shading
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_1))
+			imageIndex = 1;
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_2))
+			imageIndex = 2;
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_3))
+			imageIndex = 3;
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_4))
+			imageIndex = 4;
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_5))
+			imageIndex = 5;
+
+		// Deferred rendering
+		vulkan->BeginSceneDeferred(deferredCommandBuffer);
+
+		for (unsigned int i = 0; i < modelList.size(); i++)
+			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetDeferred(), camera);
+
+		player->Update(vulkan, deferredCommandBuffer, pipelineManager->GetSkinned(), camera);
+
+		vulkan->EndSceneDeferred(deferredCommandBuffer);
+	}
 
 	// Forward rendering
 	for (size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)
 	{
 		vulkan->BeginSceneForward(renderCommandBuffers[i], (int)i);
 		
-		skydome->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetSkydome(), camera, (int)i);
-		renderDummy->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetDefault(), vulkan->GetOrthoMatrix(), light, imageIndex, camera, (int)i);
-		
-		VkImageView * testImageView = modelList[0]->GetMesh(0)->GetMaterial()->GetDiffuseTexture()->GetImageView();
-		testCanvas->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), vulkan->GetOrthoMatrix(), testImageView, (int)i);
+		if (currentGameState == GAME_STATE_INGAME)
+		{
+			skydome->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetSkydome(), camera, (int)i);
+			renderDummy->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetDefault(), vulkan->GetOrthoMatrix(), light, imageIndex, camera, (int)i);
+		}
+		else if(currentGameState == GAME_STATE_SPLASH_SCREEN)
+			logoCanvas->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), vulkan->GetOrthoMatrix(), logo->GetImageView(), (int)i);
+		else
+		{
+			gLogManager->AddMessage("ERROR: Unknown game state!");
+			THROW_ERROR();
+		}
 
 		vulkan->EndSceneForward(renderCommandBuffers[i]);
 	}
@@ -331,4 +387,17 @@ bool SceneManager::LoadMapFile(std::string filename, VulkanInterface * vulkan)
 
 	file.close();
 	return true;
+}
+
+void SceneManager::ChangeGameState(GAME_STATE newGameState)
+{
+	lastGameState = currentGameState;
+	currentGameState = newGameState;
+
+	if (currentGameState == GAME_STATE_SPLASH_SCREEN)
+		gLogManager->AddMessage("GAME STATE: SPLASH SCREEN");
+	else if (currentGameState == GAME_STATE_LOADING)
+		gLogManager->AddMessage("GAME STATE: LOADING");
+	else if (currentGameState == GAME_STATE_INGAME)
+		gLogManager->AddMessage("GAME STATE: INGAME");
 }

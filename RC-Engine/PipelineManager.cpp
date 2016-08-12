@@ -28,7 +28,25 @@ PipelineManager::PipelineManager()
 	canvasPipeline = NULL;
 }
 
-bool PipelineManager::Init(VulkanInterface * vulkan)
+bool PipelineManager::InitUIPipelines(VulkanInterface * vulkan)
+{
+	canvasShader = new CanvasShader();
+	if (!canvasShader->Init(vulkan->GetVulkanDevice()))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init canvas shader!");
+		return false;
+	}
+
+	if (!BuildCanvasPipeline(vulkan))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init canvas pipeline!");
+		return false;
+	}
+
+	return true;
+}
+
+bool PipelineManager::InitGamePipelines(VulkanInterface * vulkan)
 {
 	// Init shaders
 	defaultShader = new DefaultShader();
@@ -66,13 +84,6 @@ bool PipelineManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
-	canvasShader = new CanvasShader();
-	if (!canvasShader->Init(vulkan->GetVulkanDevice()))
-	{
-		gLogManager->AddMessage("ERROR: Failed to init canvas shader!");
-		return false;
-	}
-
 	// Build pipelines
 	if (!BuildDefaultPipeline(vulkan))
 	{
@@ -101,12 +112,6 @@ bool PipelineManager::Init(VulkanInterface * vulkan)
 	if (!BuildSkydomePipeline(vulkan))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init skydome pipeline!");
-		return false;
-	}
-
-	if (!BuildCanvasPipeline(vulkan))
-	{
-		gLogManager->AddMessage("ERROR: Failed to init canvas pipeline!");
 		return false;
 	}
 
@@ -236,6 +241,7 @@ bool PipelineManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = false;
 	pipelineCI.backFaceCullingEnabled = true;
+	pipelineCI.transparencyEnabled = false;
 
 	defaultPipeline = new VulkanPipeline();
 	if (!defaultPipeline->Init(vulkan, &pipelineCI))
@@ -325,6 +331,7 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	pipelineCI.numColorAttachments = 4;
 	pipelineCI.wireframeEnabled = false;
 	pipelineCI.backFaceCullingEnabled = true;
+	pipelineCI.transparencyEnabled = false;
 
 	skinnedPipeline = new VulkanPipeline();
 	if (!skinnedPipeline->Init(vulkan, &pipelineCI))
@@ -397,6 +404,7 @@ bool PipelineManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	pipelineCI.numColorAttachments = 4;
 	pipelineCI.wireframeEnabled = false;
 	pipelineCI.backFaceCullingEnabled = true;
+	pipelineCI.transparencyEnabled = false;
 
 	deferredPipeline = new VulkanPipeline();
 	if (!deferredPipeline->Init(vulkan, &pipelineCI))
@@ -445,6 +453,7 @@ bool PipelineManager::BuildWireframePipeline(VulkanInterface * vulkan)
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = true;
 	pipelineCI.backFaceCullingEnabled = false;
+	pipelineCI.transparencyEnabled = false;
 
 	wireframePipeline = new VulkanPipeline();
 	if (!wireframePipeline->Init(vulkan, &pipelineCI))
@@ -493,6 +502,7 @@ bool PipelineManager::BuildSkydomePipeline(VulkanInterface * vulkan)
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = false;
 	pipelineCI.backFaceCullingEnabled = false;
+	pipelineCI.transparencyEnabled = false;
 
 	skydomePipeline = new VulkanPipeline();
 	if (!skydomePipeline->Init(vulkan, &pipelineCI))
@@ -547,6 +557,7 @@ bool PipelineManager::BuildCanvasPipeline(VulkanInterface * vulkan)
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = false;
 	pipelineCI.backFaceCullingEnabled = true;
+	pipelineCI.transparencyEnabled = true;
 
 	canvasPipeline = new VulkanPipeline();
 	if (!canvasPipeline->Init(vulkan, &pipelineCI))

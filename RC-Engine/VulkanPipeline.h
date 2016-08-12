@@ -21,6 +21,7 @@ struct VulkanPipelineCI
 	int numColorAttachments;
 	bool wireframeEnabled;
 	bool backFaceCullingEnabled;
+	bool transparencyEnabled;
 };
 
 class VulkanPipeline
