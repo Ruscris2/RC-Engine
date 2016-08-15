@@ -81,6 +81,13 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		renderCommandBuffers.push_back(cmdBuffer);
 	}
 
+	deferredCommandBuffer = new VulkanCommandBuffer();
+	if (!deferredCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
+	{
+		gLogManager->AddMessage("ERROR: Failed to create a command buffer! (deferredCommandBuffer)");
+		return false;
+	}
+
 	// Init pipeline manager
 	pipelineManager = new PipelineManager();
 	if (!pipelineManager->InitUIPipelines(vulkan))
@@ -129,13 +136,6 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 	light->SetDiffuseColor(0.6f, 0.6f, 0.6f, 1.0f);
 	light->SetSpecularColor(1.0f, 1.0f, 1.0f, 1.0f);
 	light->SetLightDirection(-0.5f, -0.5f, 1.0f);
-
-	deferredCommandBuffer = new VulkanCommandBuffer();
-	if (!deferredCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
-	{
-		gLogManager->AddMessage("ERROR: Failed to create a command buffer! (deferredCommandBuffer)");
-		return false;
-	}
 
 	if (!pipelineManager->InitGamePipelines(vulkan))
 	{
@@ -321,6 +321,11 @@ void SceneManager::Render(VulkanInterface * vulkan)
 
 		player->Update(vulkan, deferredCommandBuffer, pipelineManager->GetSkinned(), camera);
 
+		vulkan->EndSceneDeferred(deferredCommandBuffer);
+	}
+	else
+	{
+		vulkan->BeginSceneDeferred(deferredCommandBuffer);
 		vulkan->EndSceneDeferred(deferredCommandBuffer);
 	}
 

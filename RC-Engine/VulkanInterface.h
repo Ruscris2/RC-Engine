@@ -6,7 +6,7 @@
 ==========================================================================================*/
 #pragma once
 
-#define VULKAN_DEBUG_MODE_ENABLED false
+#define VULKAN_DEBUG_MODE_ENABLED true
 
 #define VK_USE_PLATFORM_WIN32_KHR
 
