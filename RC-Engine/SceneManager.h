@@ -22,6 +22,7 @@
 #include "Skydome.h"
 #include "Canvas.h"
 #include "GameplayTimer.h"
+#include "GUIManager.h"
 
 enum GAME_STATE
 {
@@ -40,6 +41,7 @@ class SceneManager
 		Camera * camera;
 		Light * light;
 		PipelineManager * pipelineManager;
+		GUIManager * guiManager;
 
 		VulkanCommandBuffer * initCommandBuffer;
 		VulkanCommandBuffer * deferredCommandBuffer;
@@ -58,8 +60,7 @@ class SceneManager
 		SkinnedModel * male;
 		Player * player;
 
-		Texture * logo;
-		Canvas * logoCanvas;
+		GUIElement * splashScreen;
 		GameplayTimer * splashScreenTimer;
 		bool showSplashScreen;
 	private:

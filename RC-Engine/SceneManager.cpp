@@ -41,6 +41,7 @@ SceneManager::SceneManager()
 
 	player = NULL;
 
+	splashScreen = NULL;
 	showSplashScreen = true;
 }
 
@@ -88,22 +89,20 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 		return false;
 	}
 
-	// Splash screen logo
-	logo = new Texture();
-	if (!logo->Init(vulkan->GetVulkanDevice(), initCommandBuffer, "data/textures/logo.rct"))
-	{
-		gLogManager->AddMessage("ERROR: Failed to init logo texture!");
+	// Init GUI manager
+	guiManager = new GUIManager();
+	if (!guiManager->Init(vulkan, initCommandBuffer, pipelineManager->GetCanvas()))
 		return false;
-	}
 
-	logoCanvas = new Canvas();
-	if (!logoCanvas->Init(vulkan, pipelineManager->GetCanvas()))
+	// Splash screen logo
+	splashScreen = new GUIElement();
+	if (!splashScreen->Init(vulkan, initCommandBuffer, pipelineManager->GetCanvas(), "data/textures/logo.rct"))
 	{
-		gLogManager->AddMessage("ERROR: Failed to init test canvas!");
+		gLogManager->AddMessage("ERROR: Failed to init splash screen logo!");
 		return false;
 	}
-	logoCanvas->SetDimensions(0.4f, 0.5f);
-	logoCanvas->SetPosition(0.3f, 0.25f);
+	splashScreen->SetDimensions(0.4f, 0.5f);
+	splashScreen->SetPosition(0.3f, 0.25f);
 
 	splashScreenTimer = new GameplayTimer();
 
@@ -219,7 +218,7 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
-	SAFE_UNLOAD(logoCanvas, vulkan);
+	SAFE_UNLOAD(splashScreen, vulkan);
 
 	SAFE_UNLOAD(male, vulkan);
 	for (unsigned int i = 0; i < modelList.size(); i++)
@@ -228,6 +227,7 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 	SAFE_UNLOAD(skydome, vulkan);
 	SAFE_UNLOAD(renderDummy, vulkan);
 
+	SAFE_UNLOAD(guiManager, vulkan);
 	SAFE_UNLOAD(pipelineManager, vulkan);
 
 	for (unsigned int i = 0; i < renderCommandBuffers.size(); i++)
@@ -334,13 +334,15 @@ void SceneManager::Render(VulkanInterface * vulkan)
 			skydome->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetSkydome(), camera, (int)i);
 			renderDummy->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetDefault(), vulkan->GetOrthoMatrix(), light, imageIndex, camera, (int)i);
 		}
-		else if(currentGameState == GAME_STATE_SPLASH_SCREEN)
-			logoCanvas->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), vulkan->GetOrthoMatrix(), logo->GetImageView(), (int)i);
+		else if (currentGameState == GAME_STATE_SPLASH_SCREEN)
+			splashScreen->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), (int)i);
 		else
 		{
 			gLogManager->AddMessage("ERROR: Unknown game state!");
 			THROW_ERROR();
 		}
+
+		guiManager->Update(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), (int)i);
 
 		vulkan->EndSceneForward(renderCommandBuffers[i]);
 	}
