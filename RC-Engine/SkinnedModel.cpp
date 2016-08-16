@@ -27,7 +27,7 @@ SkinnedModel::~SkinnedModel()
 	vsUniformBuffer = VK_NULL_HANDLE;
 }
 
-bool SkinnedModel::Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VulkanCommandBuffer * cmdBuffer)
+bool SkinnedModel::Init(std::string filename, VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VkResult result;
@@ -39,9 +39,9 @@ bool SkinnedModel::Init(std::string filename, VulkanInterface * vulkan, VulkanPi
 	vertexUniformBuffer.worldMatrix = glm::mat4(1.0f);
 	vertexUniformBuffer.MVP = glm::mat4();
 	for (unsigned int i = 0; i < MAX_BONES; i++)
-		vertexUniformBuffer.bones[i] = glm::mat4();
+		boneUniformBufferData.bones[i] = glm::mat4();
 
-	// Vertex shader Uniform buffer
+	// Vertex shader - Uniform buffer
 	VkBufferCreateInfo vsBufferCI{};
 	vsBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	vsBufferCI.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
@@ -80,6 +80,45 @@ bool SkinnedModel::Init(std::string filename, VulkanInterface * vulkan, VulkanPi
 	vsUniformBufferInfo.offset = 0;
 	vsUniformBufferInfo.range = sizeof(vertexUniformBuffer);
 
+	// Vertex shader - Bone Uniform buffer
+	VkBufferCreateInfo boneBufferCI{};
+	boneBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	boneBufferCI.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	boneBufferCI.size = sizeof(boneUniformBufferData);
+	boneBufferCI.queueFamilyIndexCount = 0;
+	boneBufferCI.pQueueFamilyIndices = VK_NULL_HANDLE;
+	boneBufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	result = vkCreateBuffer(vulkanDevice->GetDevice(), &boneBufferCI, VK_NULL_HANDLE, &boneUniformBuffer);
+	if (result != VK_SUCCESS)
+		return false;
+
+	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), boneUniformBuffer, &boneMemReq);
+
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = boneMemReq.size;
+	if (!vulkanDevice->MemoryTypeFromProperties(vsMemReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &allocInfo.memoryTypeIndex))
+		return false;
+
+	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &boneUniformMemory);
+	if (result != VK_SUCCESS)
+		return false;
+
+	result = vkMapMemory(vulkanDevice->GetDevice(), boneUniformMemory, 0, boneMemReq.size, 0, (void**)&pData);
+	if (result != VK_SUCCESS)
+		return false;
+
+	memcpy(pData, &boneUniformBufferData, sizeof(boneUniformBufferData));
+
+	vkUnmapMemory(vulkanDevice->GetDevice(), boneUniformMemory);
+
+	result = vkBindBufferMemory(vulkanDevice->GetDevice(), boneUniformBuffer, boneUniformMemory, 0);
+	if (result != VK_SUCCESS)
+		return false;
+
+	boneUniformBufferInfo.buffer = boneUniformBuffer;
+	boneUniformBufferInfo.offset = 0;
+	boneUniformBufferInfo.range = sizeof(boneUniformBufferData);
+
 	// Open .rcs file
 	FILE * file = fopen(filename.c_str(), "rb");
 	if (file == NULL)
@@ -106,7 +145,7 @@ bool SkinnedModel::Init(std::string filename, VulkanInterface * vulkan, VulkanPi
 	{
 		// Create and read mesh data
 		SkinnedMesh * mesh = new SkinnedMesh();
-		if (!mesh->Init(vulkan, file, vulkanPipeline, vsUniformBufferInfo))
+		if (!mesh->Init(vulkan, file))
 		{
 			gLogManager->AddMessage("ERROR: Failed to init a mesh!");
 			return false;
@@ -162,9 +201,6 @@ bool SkinnedModel::Init(std::string filename, VulkanInterface * vulkan, VulkanPi
 		materials.push_back(material);
 		meshes[i]->SetMaterial(material);
 
-		// Write descriptor set for each mesh
-		meshes[i]->WriteDescriptorSet(vulkan, vsUniformBufferInfo);
-
 		// Init draw command buffers for each meash
 		VulkanCommandBuffer * drawCmdBuffer = new VulkanCommandBuffer();
 		if (!drawCmdBuffer->Init(vulkanDevice, vulkan->GetVulkanCommandPool(), false))
@@ -209,6 +245,8 @@ void SkinnedModel::Unload(VulkanInterface * vulkan)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 
+	vkFreeMemory(vulkanDevice->GetDevice(), boneUniformMemory, VK_NULL_HANDLE);
+	vkDestroyBuffer(vulkanDevice->GetDevice(), boneUniformBuffer, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), vsUniformMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), vsUniformBuffer, VK_NULL_HANDLE);
 
@@ -224,22 +262,11 @@ void SkinnedModel::Unload(VulkanInterface * vulkan)
 }
 
 void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
-	Camera * camera, glm::mat4 &worldMatrix)
+	Camera * camera, ShadowMaps * shadowMaps)
 {
-	if(currentAnim != NULL)
-		currentAnim->Update(gTimer->GetDelta(), boneOffsets, boneMapping);
-
 	uint8_t *pData;
 
-	// Update vertex uniform buffer
-	vertexUniformBuffer.worldMatrix = worldMatrix;
 	vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
-
-	if (currentAnim != NULL)
-	{
-		std::vector<glm::mat4> boneTransforms = currentAnim->GetBoneTransforms();
-		memcpy(vertexUniformBuffer.bones, boneTransforms.data(), sizeof(glm::mat4) * boneTransforms.size());
-	}
 
 	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);
 	memcpy(pData, &vertexUniformBuffer, sizeof(vertexUniformBuffer));
@@ -247,22 +274,160 @@ void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * comman
 
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
-		meshes[i]->UpdateUniformBuffer(vulkan);
+		if (vulkanPipeline->GetPipelineName() == "SKINNED")
+		{
+			meshes[i]->UpdateUniformBuffer(vulkan);
+			UpdateDescriptorSet(vulkan, vulkanPipeline, meshes[i]);
 
-		// Record draw command
-		drawCmdBuffers[i]->BeginRecordingSecondary(vulkan->GetDeferredRenderpass()->GetRenderpass(), vulkan->GetDeferredFramebuffer());
+			// Record draw command
+			drawCmdBuffers[i]->BeginRecordingSecondary(vulkan->GetDeferredRenderpass()->GetRenderpass(), vulkan->GetDeferredFramebuffer());
 
-		vulkan->InitViewportAndScissors(drawCmdBuffers[i]);
-		vulkanPipeline->SetActive(drawCmdBuffers[i]);
-		vkCmdBindDescriptorSets(drawCmdBuffers[i]->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->GetPipelineLayout(), 0, 1, meshes[i]->GetDescriptorSet(), 0, NULL);
-		meshes[i]->Render(vulkan, drawCmdBuffers[i]);
+			vulkan->InitViewportAndScissors(drawCmdBuffers[i]);
+			vulkanPipeline->SetActive(drawCmdBuffers[i]);
+			meshes[i]->Render(vulkan, drawCmdBuffers[i]);
 
-		drawCmdBuffers[i]->EndRecording();
-		drawCmdBuffers[i]->ExecuteSecondary(commandBuffer);
+			drawCmdBuffers[i]->EndRecording();
+			drawCmdBuffers[i]->ExecuteSecondary(commandBuffer);
+		}
+		else if (vulkanPipeline->GetPipelineName() == "SHADOWSKINNED")
+		{
+			UpdateDescriptorSet(vulkan, vulkanPipeline, meshes[i]);
+
+			// Record draw command
+			drawCmdBuffers[i]->BeginRecordingSecondary(shadowMaps->GetShadowRenderpass()->GetRenderpass(), shadowMaps->GetFramebuffer());
+
+			vulkan->InitViewportAndScissors(drawCmdBuffers[i]);
+			vulkanPipeline->SetActive(drawCmdBuffers[i]);
+			meshes[i]->Render(vulkan, drawCmdBuffers[i]);
+
+			drawCmdBuffers[i]->EndRecording();
+			drawCmdBuffers[i]->ExecuteSecondary(commandBuffer);
+		}
 	}
+}
+
+void SkinnedModel::UpdateAnimation(VulkanInterface * vulkan)
+{
+	if (currentAnim != NULL)
+	{
+		uint8_t * pData;
+
+		currentAnim->Update(gTimer->GetDelta(), boneOffsets, boneMapping);
+	
+		std::vector<glm::mat4> boneTransforms = currentAnim->GetBoneTransforms();
+		memcpy(boneUniformBufferData.bones, boneTransforms.data(), sizeof(glm::mat4) * boneTransforms.size());
+
+		vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), boneUniformMemory, 0, boneMemReq.size, 0, (void**)&pData);
+		memcpy(pData, &boneUniformBufferData, sizeof(boneUniformBufferData));
+		vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), boneUniformMemory);
+	}
+}
+
+void SkinnedModel::SetWorldMatrix(glm::mat4 & worldMatrix)
+{
+	vertexUniformBuffer.worldMatrix = worldMatrix;
 }
 
 void SkinnedModel::SetAnimation(Animation * anim)
 {
 	currentAnim = anim;
+}
+
+void SkinnedModel::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline, SkinnedMesh * mesh)
+{
+	if (pipeline->GetPipelineName() == "SKINNED")
+	{
+		VkWriteDescriptorSet descriptorWrite[5];
+
+		descriptorWrite[0] = {};
+		descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[0].pNext = NULL;
+		descriptorWrite[0].dstSet = pipeline->GetDescriptorSet();
+		descriptorWrite[0].descriptorCount = 1;
+		descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite[0].pBufferInfo = &vsUniformBufferInfo;
+		descriptorWrite[0].dstArrayElement = 0;
+		descriptorWrite[0].dstBinding = 0;
+
+		descriptorWrite[1] = {};
+		descriptorWrite[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[1].pNext = NULL;
+		descriptorWrite[1].dstSet = pipeline->GetDescriptorSet();
+		descriptorWrite[1].descriptorCount = 1;
+		descriptorWrite[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite[1].pBufferInfo = &boneUniformBufferInfo;
+		descriptorWrite[1].dstArrayElement = 0;
+		descriptorWrite[1].dstBinding = 1;
+
+		// Write mesh diffuse texture
+		VkDescriptorImageInfo diffuseTextureDesc{};
+		diffuseTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+		diffuseTextureDesc.imageView = *mesh->GetMaterial()->GetDiffuseTexture()->GetImageView();
+		diffuseTextureDesc.sampler = vulkan->GetColorSampler();
+
+		descriptorWrite[2] = {};
+		descriptorWrite[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[2].pNext = NULL;
+		descriptorWrite[2].dstSet = pipeline->GetDescriptorSet();
+		descriptorWrite[2].descriptorCount = 1;
+		descriptorWrite[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrite[2].pImageInfo = &diffuseTextureDesc;
+		descriptorWrite[2].dstArrayElement = 0;
+		descriptorWrite[2].dstBinding = 2;
+
+		// Write mesh specular texture
+		VkDescriptorImageInfo specularTextureDesc{};
+		specularTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+		specularTextureDesc.imageView = *mesh->GetMaterial()->GetSpecularTexture()->GetImageView();
+		specularTextureDesc.sampler = vulkan->GetColorSampler();
+
+		descriptorWrite[3] = {};
+		descriptorWrite[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[3].pNext = NULL;
+		descriptorWrite[3].dstSet = pipeline->GetDescriptorSet();
+		descriptorWrite[3].descriptorCount = 1;
+		descriptorWrite[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrite[3].pImageInfo = &specularTextureDesc;
+		descriptorWrite[3].dstArrayElement = 0;
+		descriptorWrite[3].dstBinding = 3;
+
+		// Update material uniform buffer
+		descriptorWrite[4] = {};
+		descriptorWrite[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[4].pNext = NULL;
+		descriptorWrite[4].dstSet = pipeline->GetDescriptorSet();
+		descriptorWrite[4].descriptorCount = 1;
+		descriptorWrite[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite[4].pBufferInfo = mesh->GetMaterialBufferInfo();
+		descriptorWrite[4].dstArrayElement = 0;
+		descriptorWrite[4].dstBinding = 4;
+
+		vkUpdateDescriptorSets(vulkan->GetVulkanDevice()->GetDevice(), sizeof(descriptorWrite) / sizeof(descriptorWrite[0]), descriptorWrite, 0, NULL);
+	}
+	else if (pipeline->GetPipelineName() == "SHADOWSKINNED")
+	{
+		VkWriteDescriptorSet descriptorWrite[2];
+
+		descriptorWrite[0] = {};
+		descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[0].pNext = NULL;
+		descriptorWrite[0].dstSet = pipeline->GetDescriptorSet();
+		descriptorWrite[0].descriptorCount = 1;
+		descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite[0].pBufferInfo = &vsUniformBufferInfo;
+		descriptorWrite[0].dstArrayElement = 0;
+		descriptorWrite[0].dstBinding = 0;
+
+		descriptorWrite[1] = {};
+		descriptorWrite[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[1].pNext = NULL;
+		descriptorWrite[1].dstSet = pipeline->GetDescriptorSet();
+		descriptorWrite[1].descriptorCount = 1;
+		descriptorWrite[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite[1].pBufferInfo = &boneUniformBufferInfo;
+		descriptorWrite[1].dstArrayElement = 0;
+		descriptorWrite[1].dstBinding = 1;
+
+		vkUpdateDescriptorSets(vulkan->GetVulkanDevice()->GetDevice(), sizeof(descriptorWrite) / sizeof(descriptorWrite[0]), descriptorWrite, 0, NULL);
+	}
 }

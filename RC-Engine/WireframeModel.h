@@ -40,10 +40,6 @@ class WireframeModel
 		unsigned int vertexCount;
 		unsigned int indexCount;
 
-		VkDescriptorPool descriptorPool;
-		VkDescriptorSet descriptorSet;
-		VkWriteDescriptorSet descriptorWrite[1];
-
 		VkBuffer vertexBuffer;
 		VkDeviceMemory vertexMemory;
 		VkBuffer indexBuffer;
@@ -67,11 +63,12 @@ class WireframeModel
 		std::vector<VulkanCommandBuffer*> drawCmdBuffers;
 	private:
 		void UpdateWorldMatrix();
+		void UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline);
 	public:
 		WireframeModel();
 		~WireframeModel();
 
-		bool Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, GEOMETRY_GENERATE_INFO generateInfo, glm::vec4 color);
+		bool Init(VulkanInterface * vulkan, GEOMETRY_GENERATE_INFO generateInfo, glm::vec4 color);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline, Camera * camera, int framebufferId);
 		void SetPosition(float x, float y, float z);

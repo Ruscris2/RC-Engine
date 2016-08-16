@@ -20,12 +20,12 @@ GUIManager::GUIManager()
 	guiEnabled = false;
 }
 
-bool GUIManager::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline)
+bool GUIManager::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer)
 {
 	baseDir = "data/textures/GUI/";
 
 	cursor = new GUIElement();
-	if (!cursor->Init(vulkan, cmdBuffer, pipeline, baseDir + "cursor.rct"))
+	if (!cursor->Init(vulkan, cmdBuffer, baseDir + "cursor.rct"))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init GUI cursor!");
 		return false;

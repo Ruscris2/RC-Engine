@@ -17,7 +17,7 @@ GUIElement::GUIElement()
 	canvas = NULL;
 }
 
-bool GUIElement::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline, std::string filename)
+bool GUIElement::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, std::string filename)
 {
 	texture = new Texture();
 	if (!texture->Init(vulkan->GetVulkanDevice(), cmdBuffer, filename))
@@ -27,7 +27,7 @@ bool GUIElement::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer,
 	}
 
 	canvas = new Canvas();
-	if (!canvas->Init(vulkan, pipeline))
+	if (!canvas->Init(vulkan))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init canvas!");
 		return false;

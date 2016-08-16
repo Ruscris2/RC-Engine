@@ -21,10 +21,6 @@ class Skydome
 		unsigned int vertexCount;
 		unsigned int indexCount;
 
-		VkDescriptorPool descriptorPool;
-		VkDescriptorSet descriptorSet;
-		VkWriteDescriptorSet descriptorWrite[2];
-
 		VkBuffer vertexBuffer;
 		VkDeviceMemory vertexMemory;
 		VkBuffer indexBuffer;

@@ -19,12 +19,6 @@
     <Filter Include="Source Files\Vulkan">
       <UniqueIdentifier>{7f7c94ae-d62a-45a2-a384-83e491a8a588}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\Shaders">
-      <UniqueIdentifier>{7f0beb48-a644-4f58-a3bd-8bc912df9fc9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Shaders">
-      <UniqueIdentifier>{c7cbdc61-1f0b-4691-8d3e-aad0ec099bb3}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\GUI">
       <UniqueIdentifier>{23e9505b-0a87-4811-868a-67f1406e56b3}</UniqueIdentifier>
     </Filter>
@@ -84,17 +78,11 @@
     <ClCompile Include="VulkanRenderpass.cpp">
       <Filter>Source Files\Vulkan</Filter>
     </ClCompile>
-    <ClCompile Include="DefaultShader.cpp">
-      <Filter>Source Files\Shaders</Filter>
-    </ClCompile>
     <ClCompile Include="FrameBufferAttachment.cpp">
       <Filter>Source Files\Vulkan</Filter>
     </ClCompile>
     <ClCompile Include="VulkanTools.cpp">
       <Filter>Source Files\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="DeferredShader.cpp">
-      <Filter>Source Files\Shaders</Filter>
     </ClCompile>
     <ClCompile Include="Model.cpp">
       <Filter>Source Files</Filter>
@@ -111,9 +99,6 @@
     <ClCompile Include="SkinnedModel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SkinnedShader.cpp">
-      <Filter>Source Files\Shaders</Filter>
-    </ClCompile>
     <ClCompile Include="Animation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -122,9 +107,6 @@
     </ClCompile>
     <ClCompile Include="Player.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="WireframeShader.cpp">
-      <Filter>Source Files\Shaders</Filter>
     </ClCompile>
     <ClCompile Include="WireframeModel.cpp">
       <Filter>Source Files</Filter>
@@ -138,17 +120,11 @@
     <ClCompile Include="GameplayTimer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SkydomeShader.cpp">
-      <Filter>Source Files\Shaders</Filter>
-    </ClCompile>
     <ClCompile Include="Skydome.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PipelineManager.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CanvasShader.cpp">
-      <Filter>Source Files\Shaders</Filter>
     </ClCompile>
     <ClCompile Include="Canvas.cpp">
       <Filter>Source Files</Filter>
@@ -158,6 +134,12 @@
     </ClCompile>
     <ClCompile Include="GUIElement.cpp">
       <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="ShadowMaps.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Shader.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -215,17 +197,11 @@
     <ClInclude Include="VulkanRenderpass.h">
       <Filter>Header Files\Vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="DefaultShader.h">
-      <Filter>Header Files\Shaders</Filter>
-    </ClInclude>
     <ClInclude Include="FrameBufferAttachment.h">
       <Filter>Header Files\Vulkan</Filter>
     </ClInclude>
     <ClInclude Include="VulkanTools.h">
       <Filter>Header Files\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="DeferredShader.h">
-      <Filter>Header Files\Shaders</Filter>
     </ClInclude>
     <ClInclude Include="Model.h">
       <Filter>Header Files</Filter>
@@ -242,9 +218,6 @@
     <ClInclude Include="SkinnedModel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SkinnedShader.h">
-      <Filter>Header Files\Shaders</Filter>
-    </ClInclude>
     <ClInclude Include="Animation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -253,9 +226,6 @@
     </ClInclude>
     <ClInclude Include="Player.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="WireframeShader.h">
-      <Filter>Header Files\Shaders</Filter>
     </ClInclude>
     <ClInclude Include="WireframeModel.h">
       <Filter>Header Files</Filter>
@@ -269,17 +239,11 @@
     <ClInclude Include="GameplayTimer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SkydomeShader.h">
-      <Filter>Header Files\Shaders</Filter>
-    </ClInclude>
     <ClInclude Include="Skydome.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PipelineManager.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CanvasShader.h">
-      <Filter>Header Files\Shaders</Filter>
     </ClInclude>
     <ClInclude Include="Canvas.h">
       <Filter>Header Files</Filter>
@@ -289,6 +253,9 @@
     </ClInclude>
     <ClInclude Include="GUIElement.h">
       <Filter>Header Files\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="ShadowMaps.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -117,9 +117,9 @@ VkFormat FrameBufferAttachment::GetFormat()
 	return format;
 }
 
-VkImageView FrameBufferAttachment::GetImageView()
+VkImageView * FrameBufferAttachment::GetImageView()
 {
-	return view;
+	return &view;
 }
 
 VkImage FrameBufferAttachment::GetImage()

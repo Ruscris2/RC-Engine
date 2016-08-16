@@ -12,7 +12,6 @@ RenderDummy::RenderDummy()
 {
 	vertexBuffer = VK_NULL_HANDLE;
 	indexBuffer = VK_NULL_HANDLE;
-	descriptorPool = VK_NULL_HANDLE;
 	vsUniformBuffer = VK_NULL_HANDLE;
 	fsUniformBuffer = VK_NULL_HANDLE;
 }
@@ -21,13 +20,12 @@ RenderDummy::~RenderDummy()
 {
 	fsUniformBuffer = VK_NULL_HANDLE;
 	vsUniformBuffer = VK_NULL_HANDLE;
-	descriptorPool = VK_NULL_HANDLE;
 	indexBuffer = VK_NULL_HANDLE;
 	vertexBuffer = VK_NULL_HANDLE;
 }
 
-bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView,
-	VkImageView albedoView, VkImageView materialView, VkImageView depthView)
+bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView * positionView, VkImageView * normalView,
+	VkImageView * albedoView, VkImageView * materialView, VkImageView * depthView)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
@@ -302,50 +300,12 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 	fsUniformBufferInfo.offset = 0;
 	fsUniformBufferInfo.range = sizeof(fragmentUniformBuffer);
 
-	// Descriptor pool
-	VkDescriptorPoolSize typeCounts[7];
-	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	typeCounts[0].descriptorCount = 1;
-	typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	typeCounts[1].descriptorCount = 1;
-	typeCounts[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	typeCounts[2].descriptorCount = 1;
-	typeCounts[3].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	typeCounts[3].descriptorCount = 1;
-	typeCounts[4].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	typeCounts[4].descriptorCount = 1;
-	typeCounts[5].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	typeCounts[5].descriptorCount = 1;
-	typeCounts[6].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	typeCounts[6].descriptorCount = 1;
-
-	VkDescriptorPoolCreateInfo descriptorPoolCI{};
-	descriptorPoolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolCI.maxSets = 1;
-	descriptorPoolCI.poolSizeCount = sizeof(typeCounts) / sizeof(typeCounts[0]);
-	descriptorPoolCI.pPoolSizes = typeCounts;
-
-	result = vkCreateDescriptorPool(vulkanDevice->GetDevice(), &descriptorPoolCI, VK_NULL_HANDLE, &descriptorPool);
-	if (result != VK_SUCCESS)
-		return false;
-
-	// Descriptor set
-	VkDescriptorSetAllocateInfo descSetAllocInfo[1];
-	descSetAllocInfo[0].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descSetAllocInfo[0].pNext = NULL;
-	descSetAllocInfo[0].descriptorPool = descriptorPool;
-	descSetAllocInfo[0].descriptorSetCount = 1;
-	descSetAllocInfo[0].pSetLayouts = vulkanPipeline->GetDescriptorLayout();
-	result = vkAllocateDescriptorSets(vulkanDevice->GetDevice(), descSetAllocInfo, &descriptorSet);
-	if (result != VK_SUCCESS)
-		return false;
-
 	VkWriteDescriptorSet write[7];
 
 	write[0] = {};
 	write[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write[0].pNext = NULL;
-	write[0].dstSet = descriptorSet;
+	write[0].dstSet = vulkanPipeline->GetDescriptorSet();
 	write[0].descriptorCount = 1;
 	write[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	write[0].pBufferInfo = &vsUniformBufferInfo;
@@ -354,13 +314,13 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 
 	VkDescriptorImageInfo positionTextureDesc{};
 	positionTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	positionTextureDesc.imageView = positionView;
+	positionTextureDesc.imageView = *positionView;
 	positionTextureDesc.sampler = vulkan->GetColorSampler();
 
 	write[1] = {};
 	write[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write[1].pNext = NULL;
-	write[1].dstSet = descriptorSet;
+	write[1].dstSet = vulkanPipeline->GetDescriptorSet();
 	write[1].descriptorCount = 1;
 	write[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	write[1].pImageInfo = &positionTextureDesc;
@@ -369,13 +329,13 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 
 	VkDescriptorImageInfo normalTextureDesc{};
 	normalTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	normalTextureDesc.imageView = normalView;
+	normalTextureDesc.imageView = *normalView;
 	normalTextureDesc.sampler = vulkan->GetColorSampler();
 
 	write[2] = {};
 	write[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write[2].pNext = NULL;
-	write[2].dstSet = descriptorSet;
+	write[2].dstSet = vulkanPipeline->GetDescriptorSet();
 	write[2].descriptorCount = 1;
 	write[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	write[2].pImageInfo = &normalTextureDesc;
@@ -384,13 +344,13 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 
 	VkDescriptorImageInfo albedoTextureDesc{};
 	albedoTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	albedoTextureDesc.imageView = albedoView;
+	albedoTextureDesc.imageView = *albedoView;
 	albedoTextureDesc.sampler = vulkan->GetColorSampler();
 
 	write[3] = {};
 	write[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write[3].pNext = NULL;
-	write[3].dstSet = descriptorSet;
+	write[3].dstSet = vulkanPipeline->GetDescriptorSet();
 	write[3].descriptorCount = 1;
 	write[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	write[3].pImageInfo = &albedoTextureDesc;
@@ -399,13 +359,13 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 
 	VkDescriptorImageInfo materialTextureDesc{};
 	materialTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	materialTextureDesc.imageView = materialView;
+	materialTextureDesc.imageView = *materialView;
 	materialTextureDesc.sampler = vulkan->GetColorSampler();
 
 	write[4] = {};
 	write[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write[4].pNext = NULL;
-	write[4].dstSet = descriptorSet;
+	write[4].dstSet = vulkanPipeline->GetDescriptorSet();
 	write[4].descriptorCount = 1;
 	write[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	write[4].pImageInfo = &materialTextureDesc;
@@ -414,13 +374,13 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 
 	VkDescriptorImageInfo depthTextureDesc{};
 	depthTextureDesc.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	depthTextureDesc.imageView = depthView;
+	depthTextureDesc.imageView = *depthView;
 	depthTextureDesc.sampler = vulkan->GetColorSampler();
 
 	write[5] = {};
 	write[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write[5].pNext = NULL;
-	write[5].dstSet = descriptorSet;
+	write[5].dstSet = vulkanPipeline->GetDescriptorSet();
 	write[5].descriptorCount = 1;
 	write[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	write[5].pImageInfo = &depthTextureDesc;
@@ -430,7 +390,7 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 	write[6] = {};
 	write[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write[6].pNext = NULL;
-	write[6].dstSet = descriptorSet;
+	write[6].dstSet = vulkanPipeline->GetDescriptorSet();
 	write[6].descriptorCount = 1;
 	write[6].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	write[6].pBufferInfo = &fsUniformBufferInfo;
@@ -459,7 +419,6 @@ void RenderDummy::Unload(VulkanInterface * vulkan)
 	for (size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)
 		SAFE_UNLOAD(drawCmdBuffers[i], vulkanDevice, vulkan->GetVulkanCommandPool());
 
-	vkDestroyDescriptorPool(vulkanDevice->GetDevice(), descriptorPool, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), fsUniformMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), fsUniformBuffer, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), vsUniformMemory, VK_NULL_HANDLE);
@@ -503,7 +462,6 @@ void RenderDummy::Render(VulkanInterface * vulkan, VulkanCommandBuffer * command
 	VkDeviceSize offsets[1] = { 0 };
 	vkCmdBindVertexBuffers(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), 0, 1, &vertexBuffer, offsets);
 	vkCmdBindIndexBuffer(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindDescriptorSets(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->GetPipelineLayout(), 0, 1, &descriptorSet, 0, NULL);
 
 	vkCmdDrawIndexed(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), indexCount, 1, 0, 0, 0);
 

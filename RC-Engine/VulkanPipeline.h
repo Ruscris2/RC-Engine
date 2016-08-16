@@ -11,6 +11,7 @@
 
 struct VulkanPipelineCI
 {
+	std::string pipelineName;
 	Shader * shader;
 	VulkanRenderpass * vulkanRenderpass;
 	VkVertexInputAttributeDescription * vertexLayout;
@@ -18,6 +19,7 @@ struct VulkanPipelineCI
 	VkDescriptorSetLayoutBinding * layoutBindings;
 	uint32_t numLayoutBindings;
 	size_t strideSize;
+	VkDescriptorPoolSize * typeCounts;
 	int numColorAttachments;
 	bool wireframeEnabled;
 	bool backFaceCullingEnabled;
@@ -30,7 +32,11 @@ class VulkanPipeline
 		VkVertexInputBindingDescription vertexBinding;
 		VkDescriptorSetLayout descriptorLayout;
 		VkPipelineLayout pipelineLayout;
+		VkDescriptorPool descriptorPool;
+		VkDescriptorSet descriptorSet;
 		VkPipeline pipeline;
+
+		std::string pipelineName;
 	public:
 		VulkanPipeline();
 		~VulkanPipeline();
@@ -38,6 +44,8 @@ class VulkanPipeline
 		bool Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineCI);
 		void Unload(VulkanDevice * vulkanDevice);
 		void SetActive(VulkanCommandBuffer * commandBuffer);
+		VkDescriptorSet GetDescriptorSet();
 		VkDescriptorSetLayout * GetDescriptorLayout();
 		VkPipelineLayout GetPipelineLayout();
+		std::string GetPipelineName();
 };

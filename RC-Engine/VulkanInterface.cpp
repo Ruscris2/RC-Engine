@@ -135,12 +135,13 @@ bool VulkanInterface::Init(HWND hwnd)
 	attachmentDesc[1].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	attachmentDesc[1].flags = 0;
 
-	VkAttachmentReference attachmentRefs[2];
-	attachmentRefs[0].attachment = 0;
-	attachmentRefs[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	VkAttachmentReference colorAttachmentRef;
+	colorAttachmentRef.attachment = 0;
+	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	attachmentRefs[1].attachment = 1;
-	attachmentRefs[1].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	VkAttachmentReference depthAttachmentRef;
+	depthAttachmentRef.attachment = 1;
+	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkSubpassDependency dependency{};
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -150,8 +151,16 @@ bool VulkanInterface::Init(HWND hwnd)
 	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
+	VulkanRenderpassCI renderpassCI;
+	renderpassCI.attachments = attachmentDesc;
+	renderpassCI.attachmentCount = 2;
+	renderpassCI.attachmentRefs = &colorAttachmentRef;
+	renderpassCI.depthAttachmentRef = &depthAttachmentRef;
+	renderpassCI.dependencies = &dependency;
+	renderpassCI.dependenciesCount = 1;
+
 	forwardRenderPass = new VulkanRenderpass();
-	if (!forwardRenderPass->Init(vulkanDevice, attachmentDesc, 2, attachmentRefs, 2, 1, &dependency, 1))
+	if (!forwardRenderPass->Init(vulkanDevice, &renderpassCI))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init main render pass!");
 		return false;
@@ -446,7 +455,7 @@ bool VulkanInterface::InitDeferredFramebuffer()
 	std::vector<VkAttachmentDescription> attachmentDescs;
 	std::vector<VkAttachmentReference> attachmentRefs;
 	attachmentDescs.resize(5);
-	attachmentRefs.resize(5);
+	attachmentRefs.resize(4);
 
 	for (unsigned int i = 0; i < attachmentDescs.size(); i++)
 	{
@@ -478,12 +487,20 @@ bool VulkanInterface::InitDeferredFramebuffer()
 	}
 
 	// Overwrite reference for depth
-	attachmentRefs[4].attachment = 4;
-	attachmentRefs[4].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	VkAttachmentReference depthAttachmentRef;
+	depthAttachmentRef.attachment = (uint32_t)attachmentDescs.size() - 1;
+	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VulkanRenderpassCI renderpassCI;
+	renderpassCI.attachments = (VkAttachmentDescription*)attachmentDescs.data();
+	renderpassCI.attachmentCount = 5;
+	renderpassCI.attachmentRefs = (VkAttachmentReference*)attachmentRefs.data();
+	renderpassCI.depthAttachmentRef = &depthAttachmentRef;
+	renderpassCI.dependencies = VK_NULL_HANDLE;
+	renderpassCI.dependenciesCount = 0;
 
 	deferredRenderPass = new VulkanRenderpass();
-	if (!deferredRenderPass->Init(vulkanDevice, (VkAttachmentDescription*)attachmentDescs.data(), 5, (VkAttachmentReference*)attachmentRefs.data(),
-		5, 4, VK_NULL_HANDLE, 0))
+	if (!deferredRenderPass->Init(vulkanDevice, &renderpassCI))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init deferred renderpass!");
 		return false;
@@ -492,11 +509,11 @@ bool VulkanInterface::InitDeferredFramebuffer()
 	std::vector<VkImageView> viewAttachments;
 	viewAttachments.resize(5);
 
-	viewAttachments[0] = positionAtt->GetImageView();
-	viewAttachments[1] = normalAtt->GetImageView();
-	viewAttachments[2] = albedoAtt->GetImageView();
-	viewAttachments[3] = materialAtt->GetImageView();
-	viewAttachments[4] = depthAtt->GetImageView();
+	viewAttachments[0] = *positionAtt->GetImageView();
+	viewAttachments[1] = *normalAtt->GetImageView();
+	viewAttachments[2] = *albedoAtt->GetImageView();
+	viewAttachments[3] = *materialAtt->GetImageView();
+	viewAttachments[4] = *depthAtt->GetImageView();
 
 	VkFramebufferCreateInfo fbCI{};
 	fbCI.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;

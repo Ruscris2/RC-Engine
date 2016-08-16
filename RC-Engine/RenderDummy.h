@@ -43,9 +43,6 @@ class RenderDummy
 		VkBuffer indexBuffer;
 		VkDeviceMemory indexMemory;
 
-		VkDescriptorPool descriptorPool;
-		VkDescriptorSet descriptorSet;
-
 		VkBuffer vsUniformBuffer;
 		VkDeviceMemory vsUniformMemory;
 		VkDescriptorBufferInfo vsUniformBufferInfo;
@@ -61,8 +58,8 @@ class RenderDummy
 		RenderDummy();
 		~RenderDummy();
 
-		bool Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView positionView, VkImageView normalView,
-			VkImageView albedoView, VkImageView materialView, VkImageView depthView);
+		bool Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView * positionView, VkImageView * normalView,
+			VkImageView * albedoView, VkImageView * materialView, VkImageView * depthView);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
 			glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera, int frameBufferId);

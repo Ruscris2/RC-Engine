@@ -6,10 +6,18 @@
 ==========================================================================================*/
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include "VulkanInterface.h"
 
 class Shader
 {
+	private:
+		VkPipelineShaderStageCreateInfo shaderStages[2];
+
 	public:
-		virtual VkPipelineShaderStageCreateInfo * GetShaderStages() = 0;
+		Shader();
+		~Shader();
+
+		bool Init(VulkanDevice * vulkanDevice, std::string shaderName);
+		void Unload(VulkanDevice * vulkanDevice);
+		VkPipelineShaderStageCreateInfo * GetShaderStages();
 };

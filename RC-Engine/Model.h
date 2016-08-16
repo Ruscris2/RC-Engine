@@ -15,6 +15,7 @@
 #include "Light.h"
 #include "Material.h"
 #include "Physics.h"
+#include "ShadowMaps.h"
 
 class Model
 {
@@ -33,7 +34,7 @@ class Model
 			glm::mat4 worldMatrix;
 		};
 		VertexUniformBuffer vertexUniformBuffer;
-		
+
 		VkBuffer vsUniformBuffer;
 		VkDeviceMemory vsUniformMemory;
 		VkDescriptorBufferInfo vsUniformBufferInfo;
@@ -47,14 +48,21 @@ class Model
 		btTriangleMesh * collisionMesh;
 		btRigidBody * rigidBody;
 		btScalar mass;
+	private:
+		bool InitVertexUniformBuffer(VulkanDevice * vulkanDevice);
+		bool ReadRCMFile(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, std::string filename);
+		void ReadCollisionFile(std::string filename);
+		void SetupPhysicsObject(float mass);
+		void UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline, Mesh * mesh);
 	public:
 		Model();
 		~Model();
 
-		bool Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VulkanCommandBuffer * cmdBuffer,
+		bool Init(std::string filename, VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer,
 			Physics * physics, float mass);
 		void Unload(VulkanInterface * vulkan);
-		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera);
+		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
+			Camera * camera, ShadowMaps * shadowMaps);
 		void SetPosition(float x, float y, float z);
 		void SetRotation(float x, float y, float z);
 		void SetVelocity(float x, float y, float z);

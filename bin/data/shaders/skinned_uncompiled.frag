@@ -3,10 +3,10 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout (binding = 1) uniform sampler2D diffuseSampler;
-layout (binding = 2) uniform sampler2D specularSampler;
+layout (binding = 2) uniform sampler2D diffuseSampler;
+layout (binding = 3) uniform sampler2D specularSampler;
 
-layout (binding = 3) uniform UBO
+layout (binding = 4) uniform UBO
 {
 	float materialSpecStrength;
 	float materialShininess;

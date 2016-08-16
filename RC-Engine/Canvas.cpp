@@ -11,7 +11,6 @@
 Canvas::Canvas()
 {
 	vertexBuffer = VK_NULL_HANDLE;
-	descriptorPool = VK_NULL_HANDLE;
 	vsUniformBuffer = VK_NULL_HANDLE;
 
 	posX = posY = 0.0f;
@@ -23,11 +22,10 @@ Canvas::~Canvas()
 	delete[] vertexData;
 
 	vsUniformBuffer = VK_NULL_HANDLE;
-	descriptorPool = VK_NULL_HANDLE;
 	vertexBuffer = VK_NULL_HANDLE;
 }
 
-bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline)
+bool Canvas::Init(VulkanInterface * vulkan)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
@@ -116,44 +114,6 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline)
 	vsUniformBufferInfo.offset = 0;
 	vsUniformBufferInfo.range = sizeof(vertexUniformBuffer);
 
-	// Descriptor pool
-	VkDescriptorPoolSize typeCounts[2];
-	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	typeCounts[0].descriptorCount = 1;
-	typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	typeCounts[1].descriptorCount = 1;
-
-	VkDescriptorPoolCreateInfo descriptorPoolCI{};
-	descriptorPoolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolCI.maxSets = 1;
-	descriptorPoolCI.poolSizeCount = sizeof(typeCounts) / sizeof(typeCounts[0]);
-	descriptorPoolCI.pPoolSizes = typeCounts;
-
-	result = vkCreateDescriptorPool(vulkanDevice->GetDevice(), &descriptorPoolCI, VK_NULL_HANDLE, &descriptorPool);
-	if (result != VK_SUCCESS)
-		return false;
-
-	// Descriptor set
-	VkDescriptorSetAllocateInfo descSetAllocInfo[1];
-	descSetAllocInfo[0].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descSetAllocInfo[0].pNext = NULL;
-	descSetAllocInfo[0].descriptorPool = descriptorPool;
-	descSetAllocInfo[0].descriptorSetCount = 1;
-	descSetAllocInfo[0].pSetLayouts = vulkanPipeline->GetDescriptorLayout();
-	result = vkAllocateDescriptorSets(vulkanDevice->GetDevice(), descSetAllocInfo, &descriptorSet);
-	if (result != VK_SUCCESS)
-		return false;
-
-	write[0] = {};
-	write[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	write[0].pNext = NULL;
-	write[0].dstSet = descriptorSet;
-	write[0].descriptorCount = 1;
-	write[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	write[0].pBufferInfo = &vsUniformBufferInfo;
-	write[0].dstArrayElement = 0;
-	write[0].dstBinding = 0;
-
 	// Init draw command buffers
 	for (size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)
 	{
@@ -164,7 +124,6 @@ bool Canvas::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline)
 		drawCmdBuffers.push_back(cmdBuffer);
 	}
 
-	lastImageView = NULL;
 	updateVertexBuffer = false;
 	return true;
 }
@@ -176,7 +135,6 @@ void Canvas::Unload(VulkanInterface * vulkan)
 	for (size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)
 		SAFE_UNLOAD(drawCmdBuffers[i], vulkanDevice, vulkan->GetVulkanCommandPool());
 
-	vkDestroyDescriptorPool(vulkanDevice->GetDevice(), descriptorPool, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), vsUniformMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), vsUniformBuffer, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), vertexMemory, VK_NULL_HANDLE);
@@ -198,35 +156,14 @@ void Canvas::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 		updateVertexBuffer = false;
 	}
 
+	UpdateDescriptorSet(vulkan, vulkanPipeline, imageView);
+
 	// Update vertex uniform buffer
 	vertexUniformBuffer.MVP = orthoMatrix;
 
 	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);
 	memcpy(pData, &vertexUniformBuffer, sizeof(vertexUniformBuffer));
 	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory);
-
-	// Update texture if needed
-	if (imageView != lastImageView)
-	{
-		VkDescriptorImageInfo positionTextureDesc{};
-		positionTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-		positionTextureDesc.imageView = *imageView;
-		positionTextureDesc.sampler = vulkan->GetColorSampler();
-
-		write[1] = {};
-		write[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		write[1].pNext = NULL;
-		write[1].dstSet = descriptorSet;
-		write[1].descriptorCount = 1;
-		write[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		write[1].pImageInfo = &positionTextureDesc;
-		write[1].dstArrayElement = 0;
-		write[1].dstBinding = 1;
-
-		vkUpdateDescriptorSets(vulkan->GetVulkanDevice()->GetDevice(), sizeof(write) / sizeof(write[0]), write, 0, NULL);
-
-		lastImageView = imageView;
-	}
 
 	// Draw
 	drawCmdBuffers[frameBufferId]->BeginRecordingSecondary(vulkan->GetForwardRenderpass()->GetRenderpass(), vulkan->GetVulkanSwapchain()->GetFramebuffer((int)frameBufferId));
@@ -235,7 +172,6 @@ void Canvas::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 
 	VkDeviceSize offsets[1] = { 0 };
 	vkCmdBindVertexBuffers(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), 0, 1, &vertexBuffer, offsets);
-	vkCmdBindDescriptorSets(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->GetPipelineLayout(), 0, 1, &descriptorSet, 0, NULL);
 
 	vkCmdDraw(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), vertexCount, 1, 0, 0);
 	drawCmdBuffers[frameBufferId]->EndRecording();
@@ -303,4 +239,36 @@ void Canvas::UpdateVertexData()
 	vertexData[5].z = 0.0f;
 	vertexData[5].u = 0.0f;
 	vertexData[5].v = 0.0f;
+}
+
+void Canvas::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView * imageView)
+{
+	VkWriteDescriptorSet write[2];
+
+	write[0] = {};
+	write[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write[0].pNext = NULL;
+	write[0].dstSet = vulkanPipeline->GetDescriptorSet();
+	write[0].descriptorCount = 1;
+	write[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	write[0].pBufferInfo = &vsUniformBufferInfo;
+	write[0].dstArrayElement = 0;
+	write[0].dstBinding = 0;
+
+	VkDescriptorImageInfo positionTextureDesc{};
+	positionTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	positionTextureDesc.imageView = *imageView;
+	positionTextureDesc.sampler = vulkan->GetColorSampler();
+
+	write[1] = {};
+	write[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write[1].pNext = NULL;
+	write[1].dstSet = vulkanPipeline->GetDescriptorSet();
+	write[1].descriptorCount = 1;
+	write[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	write[1].pImageInfo = &positionTextureDesc;
+	write[1].dstArrayElement = 0;
+	write[1].dstBinding = 1;
+
+	vkUpdateDescriptorSets(vulkan->GetVulkanDevice()->GetDevice(), sizeof(write) / sizeof(write[0]), write, 0, NULL);
 }

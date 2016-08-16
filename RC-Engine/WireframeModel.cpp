@@ -12,7 +12,6 @@ WireframeModel::WireframeModel()
 {
 	vertexBuffer = VK_NULL_HANDLE;
 	indexBuffer = VK_NULL_HANDLE;
-	descriptorPool = VK_NULL_HANDLE;
 
 	posX = posY = posZ = 0.0f;
 	rotX = rotY = rotZ = 0.0f;
@@ -20,12 +19,11 @@ WireframeModel::WireframeModel()
 
 WireframeModel::~WireframeModel()
 {
-	descriptorPool = VK_NULL_HANDLE;
 	indexBuffer = VK_NULL_HANDLE;
 	vertexBuffer = VK_NULL_HANDLE;
 }
 
-bool WireframeModel::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, GEOMETRY_GENERATE_INFO generateInfo, glm::vec4 color)
+bool WireframeModel::Init(VulkanInterface * vulkan, GEOMETRY_GENERATE_INFO generateInfo, glm::vec4 color)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
@@ -456,32 +454,6 @@ bool WireframeModel::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipel
 	delete[] vertexData;
 	delete[] indexData;
 
-	// Descriptor pool
-	VkDescriptorPoolSize typeCounts[1];
-	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	typeCounts[0].descriptorCount = 1;
-
-	VkDescriptorPoolCreateInfo descriptorPoolCI{};
-	descriptorPoolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolCI.maxSets = 1;
-	descriptorPoolCI.poolSizeCount = sizeof(typeCounts) / sizeof(typeCounts[0]);
-	descriptorPoolCI.pPoolSizes = typeCounts;
-
-	result = vkCreateDescriptorPool(vulkanDevice->GetDevice(), &descriptorPoolCI, VK_NULL_HANDLE, &descriptorPool);
-	if (result != VK_SUCCESS)
-		return false;
-
-	// Descriptor set
-	VkDescriptorSetAllocateInfo descSetAllocInfo[1];
-	descSetAllocInfo[0].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descSetAllocInfo[0].pNext = NULL;
-	descSetAllocInfo[0].descriptorPool = descriptorPool;
-	descSetAllocInfo[0].descriptorSetCount = 1;
-	descSetAllocInfo[0].pSetLayouts = vulkanPipeline->GetDescriptorLayout();
-	result = vkAllocateDescriptorSets(vulkanDevice->GetDevice(), descSetAllocInfo, &descriptorSet);
-	if (result != VK_SUCCESS)
-		return false;
-
 	// Uniform buffer init
 	vertexUniformBuffer.MVP = glm::mat4();
 
@@ -524,19 +496,6 @@ bool WireframeModel::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipel
 	vsUniformBufferInfo.offset = 0;
 	vsUniformBufferInfo.range = sizeof(vertexUniformBuffer);
 
-	// Write descriptor set
-	descriptorWrite[0] = {};
-	descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	descriptorWrite[0].pNext = NULL;
-	descriptorWrite[0].dstSet = descriptorSet;
-	descriptorWrite[0].descriptorCount = 1;
-	descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descriptorWrite[0].pBufferInfo = &vsUniformBufferInfo;
-	descriptorWrite[0].dstArrayElement = 0;
-	descriptorWrite[0].dstBinding = 0;
-
-	vkUpdateDescriptorSets(vulkan->GetVulkanDevice()->GetDevice(), sizeof(descriptorWrite) / sizeof(descriptorWrite[0]), descriptorWrite, 0, NULL);
-
 	worldMatrix = glm::mat4(1.0f);
 
 	// Init draw command buffers
@@ -561,7 +520,6 @@ void WireframeModel::Unload(VulkanInterface * vulkan)
 
 	vkFreeMemory(vulkanDevice->GetDevice(), vsUniformMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), vsUniformBuffer, VK_NULL_HANDLE);
-	vkDestroyDescriptorPool(vulkanDevice->GetDevice(), descriptorPool, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), indexMemory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), indexBuffer, VK_NULL_HANDLE);
 	vkFreeMemory(vulkanDevice->GetDevice(), vertexMemory, VK_NULL_HANDLE);
@@ -579,11 +537,12 @@ void WireframeModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * comm
 	memcpy(pData, &vertexUniformBuffer, sizeof(vertexUniformBuffer));
 	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory);
 
+	UpdateDescriptorSet(vulkan, pipeline);
+
 	// Render
 	drawCmdBuffers[framebufferId]->BeginRecordingSecondary(vulkan->GetForwardRenderpass()->GetRenderpass(), vulkan->GetVulkanSwapchain()->GetFramebuffer(framebufferId));
 	vulkan->InitViewportAndScissors(drawCmdBuffers[framebufferId]);
 	pipeline->SetActive(drawCmdBuffers[framebufferId]);
-	vkCmdBindDescriptorSets(drawCmdBuffers[framebufferId]->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipelineLayout(), 0, 1, &descriptorSet, 0, NULL);
 
 	VkDeviceSize offsets[1] = { 0 };
 	vkCmdBindVertexBuffers(drawCmdBuffers[framebufferId]->GetCommandBuffer(), 0, 1, &vertexBuffer, offsets);
@@ -617,4 +576,21 @@ void WireframeModel::UpdateWorldMatrix()
 	worldMatrix = glm::rotate(worldMatrix, glm::radians(rotX), glm::vec3(1.0f, 0.0f, 0.0f));
 	worldMatrix = glm::rotate(worldMatrix, glm::radians(rotY), glm::vec3(0.0f, 1.0f, 0.0f));
 	worldMatrix = glm::rotate(worldMatrix, glm::radians(rotZ), glm::vec3(0.0f, 0.0f, 1.0f));
+}
+
+void WireframeModel::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline)
+{
+	VkWriteDescriptorSet descriptorWrite[1];
+
+	descriptorWrite[0] = {};
+	descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrite[0].pNext = NULL;
+	descriptorWrite[0].dstSet = pipeline->GetDescriptorSet();
+	descriptorWrite[0].descriptorCount = 1;
+	descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorWrite[0].pBufferInfo = &vsUniformBufferInfo;
+	descriptorWrite[0].dstArrayElement = 0;
+	descriptorWrite[0].dstBinding = 0;
+
+	vkUpdateDescriptorSets(vulkan->GetVulkanDevice()->GetDevice(), sizeof(descriptorWrite) / sizeof(descriptorWrite[0]), descriptorWrite, 0, NULL);
 }

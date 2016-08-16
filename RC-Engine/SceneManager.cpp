@@ -43,6 +43,8 @@ SceneManager::SceneManager()
 
 	splashScreen = NULL;
 	showSplashScreen = true;
+
+	debugShadowMap = NULL;
 }
 
 SceneManager::~SceneManager()
@@ -98,12 +100,12 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 
 	// Init GUI manager
 	guiManager = new GUIManager();
-	if (!guiManager->Init(vulkan, initCommandBuffer, pipelineManager->GetCanvas()))
+	if (!guiManager->Init(vulkan, initCommandBuffer))
 		return false;
 
 	// Splash screen logo
 	splashScreen = new GUIElement();
-	if (!splashScreen->Init(vulkan, initCommandBuffer, pipelineManager->GetCanvas(), "data/textures/logo.rct"))
+	if (!splashScreen->Init(vulkan, initCommandBuffer, "data/textures/logo.rct"))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init splash screen logo!");
 		return false;
@@ -119,6 +121,14 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 
 bool SceneManager::LoadGame(VulkanInterface * vulkan)
 {
+	// Init shadow maps
+	shadowMaps = new ShadowMaps();
+	if (!shadowMaps->Init(vulkan, initCommandBuffer))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init shadow maps!");
+		return false;
+	}
+
 	// Physics init
 	physics = new Physics();
 	physics->Init();
@@ -137,7 +147,7 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 	light->SetSpecularColor(1.0f, 1.0f, 1.0f, 1.0f);
 	light->SetLightDirection(-0.5f, -0.5f, 1.0f);
 
-	if (!pipelineManager->InitGamePipelines(vulkan))
+	if (!pipelineManager->InitGamePipelines(vulkan, shadowMaps))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init game pipelines!");
 		return false;
@@ -170,7 +180,7 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 
 	// Skinned models and animations
 	male = new SkinnedModel();
-	if (!male->Init("data/models/male.rcs", vulkan, pipelineManager->GetSkinned(), initCommandBuffer))
+	if (!male->Init("data/models/male.rcs", vulkan, initCommandBuffer))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init male model!");
 		return false;
@@ -213,11 +223,19 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 	player->Init(male, physics, animPack);
 	player->SetPosition(0.0f, 5.0f, 0.0f);
 
+	debugShadowMap = new Canvas();
+	if (!debugShadowMap->Init(vulkan))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init debug shadow map canvas!");
+		return false;
+	}
+
 	return true;
 }
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
+	SAFE_UNLOAD(debugShadowMap, vulkan);
 	SAFE_UNLOAD(splashScreen, vulkan);
 
 	SAFE_UNLOAD(male, vulkan);
@@ -227,6 +245,7 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 	SAFE_UNLOAD(skydome, vulkan);
 	SAFE_UNLOAD(renderDummy, vulkan);
 
+	SAFE_UNLOAD(shadowMaps, vulkan);
 	SAFE_UNLOAD(guiManager, vulkan);
 	SAFE_UNLOAD(pipelineManager, vulkan);
 
@@ -272,7 +291,7 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		if (gInput->WasKeyPressed(KEYBOARD_KEY_E))
 		{
 			Model * model = new Model();
-			model->Init("data/models/box.rcm", vulkan, pipelineManager->GetDeferred(), initCommandBuffer, physics, 20.0f);
+			model->Init("data/models/box.rcm", vulkan, initCommandBuffer, physics, 20.0f);
 
 			glm::vec3 pos = camera->GetPosition();
 			glm::vec3 dir = camera->GetDirection();
@@ -313,13 +332,25 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		if (gInput->WasKeyPressed(KEYBOARD_KEY_5))
 			imageIndex = 5;
 
+		player->Update(vulkan, camera);
+
+		// Shadow pass
+		shadowMaps->BeginShadowPass(deferredCommandBuffer);
+
+		for (unsigned int i = 0; i < modelList.size(); i++)
+			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadow(), camera, shadowMaps);
+
+		player->GetModel()->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadowSkinned(), camera, shadowMaps);
+
+		shadowMaps->EndShadowPass(vulkan->GetVulkanDevice(), deferredCommandBuffer);
+		
 		// Deferred rendering
 		vulkan->BeginSceneDeferred(deferredCommandBuffer);
 
 		for (unsigned int i = 0; i < modelList.size(); i++)
-			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetDeferred(), camera);
+			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetDeferred(), camera, NULL);
 
-		player->Update(vulkan, deferredCommandBuffer, pipelineManager->GetSkinned(), camera);
+		player->GetModel()->Render(vulkan, deferredCommandBuffer, pipelineManager->GetSkinned(), camera, shadowMaps);
 
 		vulkan->EndSceneDeferred(deferredCommandBuffer);
 	}
@@ -338,6 +369,8 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		{
 			skydome->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetSkydome(), camera, (int)i);
 			renderDummy->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetDefault(), vulkan->GetOrthoMatrix(), light, imageIndex, camera, (int)i);
+
+			debugShadowMap->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), vulkan->GetOrthoMatrix(), shadowMaps->GetImageView(), (int)i);
 		}
 		else if (currentGameState == GAME_STATE_SPLASH_SCREEN)
 			splashScreen->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), (int)i);
@@ -380,7 +413,7 @@ bool SceneManager::LoadMapFile(std::string filename, VulkanInterface * vulkan)
 		modelPath = "data/models/" + modelName;
 
 		Model * model = new Model();
-		if (!model->Init(modelPath, vulkan, pipelineManager->GetDeferred(), initCommandBuffer, physics, mass))
+		if (!model->Init(modelPath, vulkan, initCommandBuffer, physics, mass))
 		{
 			gLogManager->AddMessage("ERROR: Failed to init model: " + modelName);
 			return false;

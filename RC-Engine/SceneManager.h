@@ -23,6 +23,7 @@
 #include "Canvas.h"
 #include "GameplayTimer.h"
 #include "GUIManager.h"
+#include "ShadowMaps.h"
 
 enum GAME_STATE
 {
@@ -42,6 +43,7 @@ class SceneManager
 		Light * light;
 		PipelineManager * pipelineManager;
 		GUIManager * guiManager;
+		ShadowMaps * shadowMaps;
 
 		VulkanCommandBuffer * initCommandBuffer;
 		VulkanCommandBuffer * deferredCommandBuffer;
@@ -63,6 +65,8 @@ class SceneManager
 		GUIElement * splashScreen;
 		GameplayTimer * splashScreenTimer;
 		bool showSplashScreen;
+
+		Canvas * debugShadowMap;
 	private:
 		bool LoadMapFile(std::string filename, VulkanInterface * vulkan);
 		bool LoadGame(VulkanInterface * vulkan);

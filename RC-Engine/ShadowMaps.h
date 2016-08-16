@@ -1,27 +1,30 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: GUIManager.h                                         |
+|                             File: ShadowMaps.h                                         |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 
-#include "GUIElement.h"
+#include "VulkanInterface.h"
 
 #pragma once
 
-class GUIManager
+class ShadowMaps
 {
 	private:
-		std::string baseDir;
-		bool guiEnabled;
-
-		float cursorPosX, cursorPosY;
-		GUIElement * cursor;
+		VkFramebuffer framebuffer;
+		uint32_t mapWidth, mapHeight;
+		FrameBufferAttachment * depthAttachment;
+		VulkanRenderpass * renderpass;
+		VkSampler sampler;
 	public:
-		GUIManager();
+		ShadowMaps();
 
 		bool Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer);
 		void Unload(VulkanInterface * vulkan);
-		void Update(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline, int frameBufferId);
-		void ToggleGUI(bool toggle);
+		void BeginShadowPass(VulkanCommandBuffer * commandBuffer);
+		void EndShadowPass(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer);
+		VulkanRenderpass * GetShadowRenderpass();
+		VkFramebuffer GetFramebuffer();
+		VkImageView * GetImageView();
 };

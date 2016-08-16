@@ -19,6 +19,7 @@ PipelineManager::PipelineManager()
 	wireframeShader = NULL;
 	skydomeShader = NULL;
 	canvasShader = NULL;
+	shadowShader = NULL;
 
 	defaultPipeline = NULL;
 	skinnedPipeline = NULL;
@@ -26,12 +27,14 @@ PipelineManager::PipelineManager()
 	wireframePipeline = NULL;
 	skydomePipeline = NULL;
 	canvasPipeline = NULL;
+	shadowPipeline = NULL;
+	shadowSkinnedPipeline = NULL;
 }
 
 bool PipelineManager::InitUIPipelines(VulkanInterface * vulkan)
 {
-	canvasShader = new CanvasShader();
-	if (!canvasShader->Init(vulkan->GetVulkanDevice()))
+	canvasShader = new Shader();
+	if (!canvasShader->Init(vulkan->GetVulkanDevice(), "canvas"))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init canvas shader!");
 		return false;
@@ -46,41 +49,55 @@ bool PipelineManager::InitUIPipelines(VulkanInterface * vulkan)
 	return true;
 }
 
-bool PipelineManager::InitGamePipelines(VulkanInterface * vulkan)
+bool PipelineManager::InitGamePipelines(VulkanInterface * vulkan, ShadowMaps * shadowMaps)
 {
 	// Init shaders
-	defaultShader = new DefaultShader();
-	if (!defaultShader->Init(vulkan->GetVulkanDevice()))
+	defaultShader = new Shader();
+	if (!defaultShader->Init(vulkan->GetVulkanDevice(), "default"))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init default shader!");
 		return false;
 	}
 
-	skinnedShader = new SkinnedShader();
-	if (!skinnedShader->Init(vulkan->GetVulkanDevice()))
+	skinnedShader = new Shader();
+	if (!skinnedShader->Init(vulkan->GetVulkanDevice(), "skinned"))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init skinned shader!");
 		return false;
 	}
 
-	deferredShader = new DeferredShader();
-	if (!deferredShader->Init(vulkan->GetVulkanDevice()))
+	deferredShader = new Shader();
+	if (!deferredShader->Init(vulkan->GetVulkanDevice(), "deferred"))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init deferred shader!");
 		return false;
 	}
 
-	wireframeShader = new WireframeShader();
-	if (!wireframeShader->Init(vulkan->GetVulkanDevice()))
+	wireframeShader = new Shader();
+	if (!wireframeShader->Init(vulkan->GetVulkanDevice(), "wireframe"))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init wireframe shader!");
 		return false;
 	}
 
-	skydomeShader = new SkydomeShader();
-	if (!skydomeShader->Init(vulkan->GetVulkanDevice()))
+	skydomeShader = new Shader();
+	if (!skydomeShader->Init(vulkan->GetVulkanDevice(), "skydome"))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init skydome shader!");
+		return false;
+	}
+
+	shadowShader = new Shader();
+	if (!shadowShader->Init(vulkan->GetVulkanDevice(), "shadow"))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init shadow shader!");
+		return false;
+	}
+
+	shadowSkinnedShader = new Shader();
+	if (!shadowSkinnedShader->Init(vulkan->GetVulkanDevice(), "shadowskinned"))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init shadow skinned shader!");
 		return false;
 	}
 
@@ -115,11 +132,19 @@ bool PipelineManager::InitGamePipelines(VulkanInterface * vulkan)
 		return false;
 	}
 
+	if (!BuildShadowPipeline(vulkan, shadowMaps))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init shadow shader!");
+		return false;
+	}
+
 	return true;
 }
 
 void PipelineManager::Unload(VulkanInterface * vulkan)
 {
+	SAFE_UNLOAD(shadowSkinnedPipeline, vulkan->GetVulkanDevice());
+	SAFE_UNLOAD(shadowPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(canvasPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(skydomePipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(wireframePipeline, vulkan->GetVulkanDevice());
@@ -127,6 +152,8 @@ void PipelineManager::Unload(VulkanInterface * vulkan)
 	SAFE_UNLOAD(skinnedPipeline, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(defaultPipeline, vulkan->GetVulkanDevice());
 
+	SAFE_UNLOAD(shadowSkinnedShader, vulkan->GetVulkanDevice());
+	SAFE_UNLOAD(shadowShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(canvasShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(skydomeShader, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(wireframeShader, vulkan->GetVulkanDevice());
@@ -163,6 +190,16 @@ VulkanPipeline * PipelineManager::GetSkydome()
 VulkanPipeline * PipelineManager::GetCanvas()
 {
 	return canvasPipeline;
+}
+
+VulkanPipeline * PipelineManager::GetShadow()
+{
+	return shadowPipeline;
+}
+
+VulkanPipeline * PipelineManager::GetShadowSkinned()
+{
+	return shadowSkinnedPipeline;
 }
 
 bool PipelineManager::BuildDefaultPipeline(VulkanInterface * vulkan)
@@ -225,18 +262,37 @@ bool PipelineManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	layoutBindingsDefault[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	layoutBindingsDefault[6].pImmutableSamplers = VK_NULL_HANDLE;
 
+	// Type counts
+	VkDescriptorPoolSize typeCounts[7];
+	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[0].descriptorCount = 1;
+	typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[1].descriptorCount = 1;
+	typeCounts[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[2].descriptorCount = 1;
+	typeCounts[3].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[3].descriptorCount = 1;
+	typeCounts[4].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[4].descriptorCount = 1;
+	typeCounts[5].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[5].descriptorCount = 1;
+	typeCounts[6].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[6].descriptorCount = 1;
+
 	struct DefaultVertex {
 		float x, y, z;
 		float u, v;
 	};
 
 	VulkanPipelineCI pipelineCI;
+	pipelineCI.pipelineName = "DEFAULT";
 	pipelineCI.shader = defaultShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetForwardRenderpass();
 	pipelineCI.vertexLayout = vertexLayoutDefault;
 	pipelineCI.numVertexLayout = 2;
 	pipelineCI.layoutBindings = layoutBindingsDefault;
 	pipelineCI.numLayoutBindings = 7;
+	pipelineCI.typeCounts = typeCounts;
 	pipelineCI.strideSize = sizeof(DefaultVertex);
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = false;
@@ -286,7 +342,7 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	vertexLayoutSkinned[4].offset = sizeof(float) * 12;
 
 	// Layout bindings
-	VkDescriptorSetLayoutBinding layoutBindingsSkinned[4];
+	VkDescriptorSetLayoutBinding layoutBindingsSkinned[5];
 
 	layoutBindingsSkinned[0].binding = 0;
 	layoutBindingsSkinned[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -295,9 +351,9 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	layoutBindingsSkinned[0].pImmutableSamplers = VK_NULL_HANDLE;
 
 	layoutBindingsSkinned[1].binding = 1;
-	layoutBindingsSkinned[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindingsSkinned[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	layoutBindingsSkinned[1].descriptorCount = 1;
-	layoutBindingsSkinned[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsSkinned[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	layoutBindingsSkinned[1].pImmutableSamplers = VK_NULL_HANDLE;
 
 	layoutBindingsSkinned[2].binding = 2;
@@ -307,10 +363,30 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	layoutBindingsSkinned[2].pImmutableSamplers = VK_NULL_HANDLE;
 
 	layoutBindingsSkinned[3].binding = 3;
-	layoutBindingsSkinned[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsSkinned[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	layoutBindingsSkinned[3].descriptorCount = 1;
 	layoutBindingsSkinned[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	layoutBindingsSkinned[3].pImmutableSamplers = VK_NULL_HANDLE;
+
+	layoutBindingsSkinned[4].binding = 4;
+	layoutBindingsSkinned[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsSkinned[4].descriptorCount = 1;
+	layoutBindingsSkinned[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsSkinned[4].pImmutableSamplers = VK_NULL_HANDLE;
+
+	// Type counts
+	VkDescriptorPoolSize typeCounts[5];
+
+	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[0].descriptorCount = 1;
+	typeCounts[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[1].descriptorCount = 1;
+	typeCounts[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[2].descriptorCount = 1;
+	typeCounts[3].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[3].descriptorCount = 1;
+	typeCounts[4].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[4].descriptorCount = 1;
 
 	struct SkinnedVertex {
 		float x, y, z;
@@ -321,12 +397,14 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	};
 
 	VulkanPipelineCI pipelineCI;
+	pipelineCI.pipelineName = "SKINNED";
 	pipelineCI.shader = skinnedShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetDeferredRenderpass();
 	pipelineCI.vertexLayout = vertexLayoutSkinned;
 	pipelineCI.numVertexLayout = 5;
 	pipelineCI.layoutBindings = layoutBindingsSkinned;
-	pipelineCI.numLayoutBindings = 4;
+	pipelineCI.numLayoutBindings = 5;
+	pipelineCI.typeCounts = typeCounts;
 	pipelineCI.strideSize = sizeof(SkinnedVertex);
 	pipelineCI.numColorAttachments = 4;
 	pipelineCI.wireframeEnabled = false;
@@ -387,6 +465,18 @@ bool PipelineManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	layoutBindingsDeferred[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	layoutBindingsDeferred[3].pImmutableSamplers = VK_NULL_HANDLE;
 
+	// Type counts
+	VkDescriptorPoolSize typeCounts[4];
+
+	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[0].descriptorCount = 1;
+	typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[1].descriptorCount = 1;
+	typeCounts[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[2].descriptorCount = 1;
+	typeCounts[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[3].descriptorCount = 1;
+
 	struct DeferredVertex {
 		float x, y, z;
 		float u, v;
@@ -394,18 +484,20 @@ bool PipelineManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	};
 
 	VulkanPipelineCI pipelineCI;
+	pipelineCI.pipelineName = "DEFERRED";
 	pipelineCI.shader = deferredShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetDeferredRenderpass();
 	pipelineCI.vertexLayout = vertexLayoutDeferred;
 	pipelineCI.numVertexLayout = 3;
 	pipelineCI.layoutBindings = layoutBindingsDeferred;
 	pipelineCI.numLayoutBindings = 4;
+	pipelineCI.typeCounts = typeCounts;
 	pipelineCI.strideSize = sizeof(DeferredVertex);
 	pipelineCI.numColorAttachments = 4;
 	pipelineCI.wireframeEnabled = false;
 	pipelineCI.backFaceCullingEnabled = true;
 	pipelineCI.transparencyEnabled = false;
-
+	
 	deferredPipeline = new VulkanPipeline();
 	if (!deferredPipeline->Init(vulkan, &pipelineCI))
 		return false;
@@ -437,18 +529,25 @@ bool PipelineManager::BuildWireframePipeline(VulkanInterface * vulkan)
 	layoutBindingsWireframe[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	layoutBindingsWireframe[0].pImmutableSamplers = VK_NULL_HANDLE;
 
+	// Type counts
+	VkDescriptorPoolSize typeCounts[1];
+	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[0].descriptorCount = 1;
+
 	struct WireframeVertex {
 		float x, y, z;
 		float r, g, b, a;
 	};
 
 	VulkanPipelineCI pipelineCI;
+	pipelineCI.pipelineName = "WIREFRAME";
 	pipelineCI.shader = wireframeShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetForwardRenderpass();
 	pipelineCI.vertexLayout = vertexLayoutWireframe;
 	pipelineCI.numVertexLayout = 2;
 	pipelineCI.layoutBindings = layoutBindingsWireframe;
 	pipelineCI.numLayoutBindings = 1;
+	pipelineCI.typeCounts = typeCounts;
 	pipelineCI.strideSize = sizeof(WireframeVertex);
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = true;
@@ -487,17 +586,26 @@ bool PipelineManager::BuildSkydomePipeline(VulkanInterface * vulkan)
 	layoutBindingsSkydome[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	layoutBindingsSkydome[1].pImmutableSamplers = VK_NULL_HANDLE;
 
+	// Type counts
+	VkDescriptorPoolSize typeCounts[2];
+	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[0].descriptorCount = 1;
+	typeCounts[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[1].descriptorCount = 1;
+
 	struct SkydomeVertex {
 		float x, y, z;
 	};
 
 	VulkanPipelineCI pipelineCI;
+	pipelineCI.pipelineName = "SKYDOME";
 	pipelineCI.shader = skydomeShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetForwardRenderpass();
 	pipelineCI.vertexLayout = vertexLayoutSkydome;
 	pipelineCI.numVertexLayout = 1;
 	pipelineCI.layoutBindings = layoutBindingsSkydome;
 	pipelineCI.numLayoutBindings = 2;
+	pipelineCI.typeCounts = typeCounts;
 	pipelineCI.strideSize = sizeof(SkydomeVertex);
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = false;
@@ -541,18 +649,27 @@ bool PipelineManager::BuildCanvasPipeline(VulkanInterface * vulkan)
 	layoutBindingsCanvas[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	layoutBindingsCanvas[1].pImmutableSamplers = VK_NULL_HANDLE;
 
+	// Type counts
+	VkDescriptorPoolSize typeCounts[2];
+	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[0].descriptorCount = 1;
+	typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[1].descriptorCount = 1;
+
 	struct CanvasVertex {
 		float x, y, z;
 		float u, v;
 	};
 
 	VulkanPipelineCI pipelineCI;
+	pipelineCI.pipelineName = "CANVAS";
 	pipelineCI.shader = canvasShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetForwardRenderpass();
 	pipelineCI.vertexLayout = vertexLayoutCanvas;
 	pipelineCI.numVertexLayout = 2;
 	pipelineCI.layoutBindings = layoutBindingsCanvas;
 	pipelineCI.numLayoutBindings = 2;
+	pipelineCI.typeCounts = typeCounts;
 	pipelineCI.strideSize = sizeof(CanvasVertex);
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = false;
@@ -561,6 +678,125 @@ bool PipelineManager::BuildCanvasPipeline(VulkanInterface * vulkan)
 
 	canvasPipeline = new VulkanPipeline();
 	if (!canvasPipeline->Init(vulkan, &pipelineCI))
+		return false;
+
+	return true;
+}
+
+bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps * shadowMaps)
+{
+	// Vertex layout
+	VkVertexInputAttributeDescription vertexLayoutShadow[1];
+
+	vertexLayoutShadow[0].binding = 0;
+	vertexLayoutShadow[0].location = 0;
+	vertexLayoutShadow[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexLayoutShadow[0].offset = 0;
+
+	// Layout bindings
+	VkDescriptorSetLayoutBinding layoutBindingsShadow[1];
+
+	layoutBindingsShadow[0].binding = 0;
+	layoutBindingsShadow[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsShadow[0].descriptorCount = 1;
+	layoutBindingsShadow[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	layoutBindingsShadow[0].pImmutableSamplers = VK_NULL_HANDLE;
+
+	// Type counts
+	VkDescriptorPoolSize typeCounts[1];
+	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[0].descriptorCount = 1;
+
+	struct DeferredVertex {
+		float x, y, z;
+		float u, v;
+		float nx, ny, nz;
+	};
+
+	VulkanPipelineCI pipelineCI;
+	pipelineCI.pipelineName = "SHADOW";
+	pipelineCI.shader = shadowShader;
+	pipelineCI.vulkanRenderpass = shadowMaps->GetShadowRenderpass();
+	pipelineCI.vertexLayout = vertexLayoutShadow;
+	pipelineCI.numVertexLayout = 1;
+	pipelineCI.layoutBindings = layoutBindingsShadow;
+	pipelineCI.numLayoutBindings = 1;
+	pipelineCI.typeCounts = typeCounts;
+	pipelineCI.strideSize = sizeof(DeferredVertex);
+	pipelineCI.numColorAttachments = 0;
+	pipelineCI.wireframeEnabled = false;
+	pipelineCI.backFaceCullingEnabled = true;
+	pipelineCI.transparencyEnabled = false;
+
+	shadowPipeline = new VulkanPipeline();
+	if (!shadowPipeline->Init(vulkan, &pipelineCI))
+		return false;
+
+	// Shadow skinned pipeline
+
+	// Vertex layout
+	VkVertexInputAttributeDescription vertexLayoutShadowSkinned[3];
+
+	// Position
+	vertexLayoutShadowSkinned[0].binding = 0;
+	vertexLayoutShadowSkinned[0].location = 0;
+	vertexLayoutShadowSkinned[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexLayoutShadowSkinned[0].offset = 0;
+
+	// Bone weights
+	vertexLayoutShadowSkinned[1].binding = 0;
+	vertexLayoutShadowSkinned[1].location = 3;
+	vertexLayoutShadowSkinned[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	vertexLayoutShadowSkinned[1].offset = sizeof(float) * 8;
+
+	// Bone IDs
+	vertexLayoutShadowSkinned[2].binding = 0;
+	vertexLayoutShadowSkinned[2].location = 4;
+	vertexLayoutShadowSkinned[2].format = VK_FORMAT_R32G32B32A32_SINT;
+	vertexLayoutShadowSkinned[2].offset = sizeof(float) * 12;
+
+	// Layout bindings
+	VkDescriptorSetLayoutBinding layoutBindingsShadowSkinned[2];
+
+	layoutBindingsShadowSkinned[0].binding = 0;
+	layoutBindingsShadowSkinned[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsShadowSkinned[0].descriptorCount = 1;
+	layoutBindingsShadowSkinned[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	layoutBindingsShadowSkinned[0].pImmutableSamplers = VK_NULL_HANDLE;
+
+	layoutBindingsShadowSkinned[1].binding = 1;
+	layoutBindingsShadowSkinned[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsShadowSkinned[1].descriptorCount = 1;
+	layoutBindingsShadowSkinned[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	layoutBindingsShadowSkinned[1].pImmutableSamplers = VK_NULL_HANDLE;
+
+	// Type counts
+	VkDescriptorPoolSize typeCountsSkinned[2];
+	typeCountsSkinned[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCountsSkinned[0].descriptorCount = 1;
+	typeCountsSkinned[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCountsSkinned[1].descriptorCount = 1;
+
+	struct SkinnedVertex {
+		float x, y, z;
+		float u, v;
+		float nx, ny, nz;
+		float boneWeights[4];
+		uint32_t boneIDs[4];
+	};
+
+	
+	pipelineCI.pipelineName = "SHADOWSKINNED";
+	pipelineCI.shader = shadowSkinnedShader;
+	pipelineCI.vertexLayout = vertexLayoutShadowSkinned;
+	pipelineCI.numVertexLayout = 3;
+	pipelineCI.layoutBindings = layoutBindingsShadowSkinned;
+	pipelineCI.numLayoutBindings = 2;
+	pipelineCI.typeCounts = typeCountsSkinned;
+	pipelineCI.strideSize = sizeof(SkinnedVertex);
+	
+	shadowSkinnedPipeline = new VulkanPipeline();
+	if (!shadowSkinnedPipeline->Init(vulkan, &pipelineCI))
 		return false;
 
 	return true;

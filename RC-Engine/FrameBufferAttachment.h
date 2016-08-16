@@ -23,6 +23,6 @@ class FrameBufferAttachment
 		bool Create(VulkanDevice * device, VkFormat format, VkImageUsageFlagBits usage, VulkanCommandBuffer * cmdBuffer);
 		void Unload(VulkanDevice * device);
 		VkFormat GetFormat();
-		VkImageView GetImageView();
+		VkImageView * GetImageView();
 		VkImage GetImage();
 };

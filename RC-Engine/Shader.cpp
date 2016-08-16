@@ -1,42 +1,46 @@
 /*========================================================================================
 |                                   RC-Engine (c) 2016                                   |
 |                             Project: RC-Engine                                         |
-|                             File: DeferredShader.cpp                                   |
+|                             File: Shader.cpp                                           |
 |                             Author: Ruscris2                                           |
 ==========================================================================================*/
 
 #include <fstream>
 
-#include "DeferredShader.h"
+#include "Shader.h"
 #include "LogManager.h"
 
 extern LogManager * gLogManager;
 
-DeferredShader::DeferredShader()
+Shader::Shader()
 {
 	shaderStages[0].module = VK_NULL_HANDLE;
 	shaderStages[1].module = VK_NULL_HANDLE;
 }
 
-DeferredShader::~DeferredShader()
+Shader::~Shader()
 {
 	shaderStages[1].module = VK_NULL_HANDLE;
 	shaderStages[0].module = VK_NULL_HANDLE;
 }
 
-bool DeferredShader::Init(VulkanDevice * vulkanDevice)
+bool Shader::Init(VulkanDevice * vulkanDevice, std::string shaderName)
 {
 	VkResult result;
+
+	std::string shaderDir = "data/shaders/";
 
 	shaderStages[0] = {};
 	shaderStages[1] = {};
 
-	// Vertex shader
 	FILE * file = NULL;
-	file = fopen("data/shaders/deferredVS.spv", "rb");
+
+	// Vertex shader
+	std::string vertexShaderPath = shaderDir + shaderName + "VS.spv";
+	file = fopen(vertexShaderPath.c_str(), "rb");
 	if (file == NULL)
 	{
-		gLogManager->AddMessage("ERROR: Couldn't find vertex shader file: deferredVS.spv");
+		gLogManager->AddMessage("ERROR: Couldn't find vertex shader file: " + shaderName + "VS.spv");
 		return false;
 	}
 
@@ -68,10 +72,11 @@ bool DeferredShader::Init(VulkanDevice * vulkanDevice)
 		return false;
 
 	// Fragment shader
-	file = fopen("data/shaders/deferredFS.spv", "rb");
+	std::string fragmentShaderPath = shaderDir + shaderName + "FS.spv";
+	file = fopen(fragmentShaderPath.c_str(), "rb");
 	if (file == NULL)
 	{
-		gLogManager->AddMessage("ERROR: Couldn't find vertex shader file: deferredFS.spv");
+		gLogManager->AddMessage("ERROR: Couldn't find vertex shader file: " + shaderName + "FS.spv");
 		return false;
 	}
 
@@ -108,13 +113,13 @@ bool DeferredShader::Init(VulkanDevice * vulkanDevice)
 	return true;
 }
 
-void DeferredShader::Unload(VulkanDevice * vulkanDevice)
+void Shader::Unload(VulkanDevice * vulkanDevice)
 {
 	vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderStages[1].module, VK_NULL_HANDLE);
 	vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderStages[0].module, VK_NULL_HANDLE);
 }
 
-VkPipelineShaderStageCreateInfo * DeferredShader::GetShaderStages()
+VkPipelineShaderStageCreateInfo * Shader::GetShaderStages()
 {
 	return shaderStages;
 }

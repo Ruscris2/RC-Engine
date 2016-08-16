@@ -29,27 +29,23 @@ class Canvas
 		VkMemoryRequirements vertexBufferMemReq;
 		Vertex * vertexData;
 
-		VkDescriptorPool descriptorPool;
-		VkDescriptorSet descriptorSet;
-		VkWriteDescriptorSet write[2];
-
 		VkBuffer vsUniformBuffer;
 		VkDeviceMemory vsUniformMemory;
 		VkDescriptorBufferInfo vsUniformBufferInfo;
 		VkMemoryRequirements vsMemReq;
 
-		VkImageView * lastImageView;
 		float posX, posY, width, height;
 		bool updateVertexBuffer;
 
 		std::vector<VulkanCommandBuffer*> drawCmdBuffers;
 	private:
 		void UpdateVertexData();
+		void UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView * imageView);
 	public:
 		Canvas();
 		~Canvas();
 
-		bool Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline);
+		bool Init(VulkanInterface * vulkan);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
 			glm::mat4 orthoMatrix, VkImageView * imageView, int frameBufferId);

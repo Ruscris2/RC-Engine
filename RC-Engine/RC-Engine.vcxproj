@@ -150,13 +150,11 @@
     <ClCompile Include="Animation.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Canvas.cpp" />
-    <ClCompile Include="CanvasShader.cpp" />
     <ClCompile Include="GameplayTimer.cpp" />
     <ClCompile Include="GUIElement.cpp" />
     <ClCompile Include="GUIManager.cpp" />
     <ClCompile Include="PipelineManager.cpp" />
     <ClCompile Include="RenderDummy.cpp" />
-    <ClCompile Include="DeferredShader.cpp" />
     <ClCompile Include="FrameBufferAttachment.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="Light.cpp" />
@@ -169,11 +167,11 @@
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="ShadowMaps.cpp" />
     <ClCompile Include="SkinnedMesh.cpp" />
     <ClCompile Include="SkinnedModel.cpp" />
-    <ClCompile Include="SkinnedShader.cpp" />
     <ClCompile Include="Skydome.cpp" />
-    <ClCompile Include="SkydomeShader.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Timer.cpp" />
     <ClCompile Include="VulkanCommandBuffer.cpp" />
@@ -182,25 +180,21 @@
     <ClCompile Include="VulkanInstance.cpp" />
     <ClCompile Include="VulkanInterface.cpp" />
     <ClCompile Include="VulkanPipeline.cpp" />
-    <ClCompile Include="DefaultShader.cpp" />
     <ClCompile Include="VulkanRenderpass.cpp" />
     <ClCompile Include="VulkanSwapchain.cpp" />
     <ClCompile Include="VulkanTools.cpp" />
     <ClCompile Include="WinWindow.cpp" />
     <ClCompile Include="WireframeModel.cpp" />
-    <ClCompile Include="WireframeShader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Animation.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Canvas.h" />
-    <ClInclude Include="CanvasShader.h" />
     <ClInclude Include="GameplayTimer.h" />
     <ClInclude Include="GUIElement.h" />
     <ClInclude Include="GUIManager.h" />
     <ClInclude Include="PipelineManager.h" />
     <ClInclude Include="RenderDummy.h" />
-    <ClInclude Include="DeferredShader.h" />
     <ClInclude Include="FrameBufferAttachment.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="Light.h" />
@@ -211,11 +205,10 @@
     <ClInclude Include="Player.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="ShadowMaps.h" />
     <ClInclude Include="SkinnedMesh.h" />
     <ClInclude Include="SkinnedModel.h" />
-    <ClInclude Include="SkinnedShader.h" />
     <ClInclude Include="Skydome.h" />
-    <ClInclude Include="SkydomeShader.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="VulkanCommandBuffer.h" />
@@ -227,13 +220,11 @@
     <ClInclude Include="VulkanInstance.h" />
     <ClInclude Include="VulkanInterface.h" />
     <ClInclude Include="VulkanPipeline.h" />
-    <ClInclude Include="DefaultShader.h" />
     <ClInclude Include="VulkanRenderpass.h" />
     <ClInclude Include="VulkanSwapchain.h" />
     <ClInclude Include="VulkanTools.h" />
     <ClInclude Include="WinWindow.h" />
     <ClInclude Include="WireframeModel.h" />
-    <ClInclude Include="WireframeShader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

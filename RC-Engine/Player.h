@@ -65,9 +65,10 @@ class Player
 
 		void Init(SkinnedModel * model, Physics * physics, AnimationPack animPack);
 		void SetPosition(float x, float y, float z);
-		void Update(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera);
+		void Update(VulkanInterface * vulkan, Camera * camera);
 		void TogglePlayerInput(bool toggle);
 		void Jump();
 		glm::vec3 GetPosition();
 		bool IsFalling(float errorMargin = 1.0f);
+		SkinnedModel * GetModel();
 };

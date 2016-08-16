@@ -12,10 +12,12 @@ VulkanPipeline::VulkanPipeline()
 	descriptorLayout = VK_NULL_HANDLE;
 	pipelineLayout = VK_NULL_HANDLE;
 	pipeline = VK_NULL_HANDLE;
+	descriptorPool = VK_NULL_HANDLE;
 }
 
 VulkanPipeline::~VulkanPipeline()
 {
+	descriptorPool = VK_NULL_HANDLE;
 	descriptorLayout = VK_NULL_HANDLE;
 	pipelineLayout = VK_NULL_HANDLE;
 	pipeline = VK_NULL_HANDLE;
@@ -24,6 +26,8 @@ VulkanPipeline::~VulkanPipeline()
 bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineCI)
 {
 	VkResult result;
+	
+	pipelineName = pipelineCI->pipelineName;
 
 	// Vertex layout
 	vertexBinding.binding = 0;
@@ -46,6 +50,29 @@ bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineC
 	pipelineLayoutCI.pSetLayouts = &descriptorLayout;
 
 	result = vkCreatePipelineLayout(vulkan->GetVulkanDevice()->GetDevice(), &pipelineLayoutCI, VK_NULL_HANDLE, &pipelineLayout);
+	if (result != VK_SUCCESS)
+		return false;
+
+	
+	// Descriptor pool
+	VkDescriptorPoolCreateInfo descriptorPoolCI{};
+	descriptorPoolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPoolCI.maxSets = 1;
+	descriptorPoolCI.poolSizeCount = pipelineCI->numLayoutBindings;
+	descriptorPoolCI.pPoolSizes = pipelineCI->typeCounts;
+
+	result = vkCreateDescriptorPool(vulkan->GetVulkanDevice()->GetDevice(), &descriptorPoolCI, VK_NULL_HANDLE, &descriptorPool);
+	if (result != VK_SUCCESS)
+		return false;
+
+	// Descriptor set
+	VkDescriptorSetAllocateInfo descSetAllocInfo[1];
+	descSetAllocInfo[0].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descSetAllocInfo[0].pNext = NULL;
+	descSetAllocInfo[0].descriptorPool = descriptorPool;
+	descSetAllocInfo[0].descriptorSetCount = 1;
+	descSetAllocInfo[0].pSetLayouts = &descriptorLayout;
+	result = vkAllocateDescriptorSets(vulkan->GetVulkanDevice()->GetDevice(), descSetAllocInfo, &descriptorSet);
 	if (result != VK_SUCCESS)
 		return false;
 
@@ -205,6 +232,7 @@ bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineC
 
 void VulkanPipeline::Unload(VulkanDevice * vulkanDevice)
 {
+	vkDestroyDescriptorPool(vulkanDevice->GetDevice(), descriptorPool, VK_NULL_HANDLE);
 	vkDestroyPipelineLayout(vulkanDevice->GetDevice(), pipelineLayout, VK_NULL_HANDLE);
 	vkDestroyDescriptorSetLayout(vulkanDevice->GetDevice(), descriptorLayout, VK_NULL_HANDLE);
 	vkDestroyPipeline(vulkanDevice->GetDevice(), pipeline, VK_NULL_HANDLE);
@@ -213,6 +241,13 @@ void VulkanPipeline::Unload(VulkanDevice * vulkanDevice)
 void VulkanPipeline::SetActive(VulkanCommandBuffer * commandBuffer)
 {
 	vkCmdBindPipeline(commandBuffer->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+	vkCmdBindDescriptorSets(commandBuffer->GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS,
+		pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
+}
+
+VkDescriptorSet VulkanPipeline::GetDescriptorSet()
+{
+	return descriptorSet;
 }
 
 VkDescriptorSetLayout * VulkanPipeline::GetDescriptorLayout()
@@ -223,4 +258,9 @@ VkDescriptorSetLayout * VulkanPipeline::GetDescriptorLayout()
 VkPipelineLayout VulkanPipeline::GetPipelineLayout()
 {
 	return pipelineLayout;
+}
+
+std::string VulkanPipeline::GetPipelineName()
+{
+	return pipelineName;
 }

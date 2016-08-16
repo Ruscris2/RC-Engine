@@ -22,33 +22,31 @@ VulkanRenderpass::~VulkanRenderpass()
 	renderPass = VK_NULL_HANDLE;
 }
 
-bool VulkanRenderpass::Init(VulkanDevice * vulkanDevice, VkAttachmentDescription * attachments, int attachmentCount,
-	VkAttachmentReference * attachmentRefs, int attachRefCount, int depthRefIndex, VkSubpassDependency * dependencies, int dependeciesCount)
+bool VulkanRenderpass::Init(VulkanDevice * vulkanDevice, VulkanRenderpassCI * renderpassCI)
 {
 	VkResult result;
 
 	VkSubpassDescription subpass{};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = attachmentCount - 1;
-	subpass.pColorAttachments = attachmentRefs;
-	subpass.pDepthStencilAttachment = &attachmentRefs[depthRefIndex];
+	subpass.colorAttachmentCount = renderpassCI->attachmentCount - 1;
+	subpass.pColorAttachments = renderpassCI->attachmentRefs;
+	subpass.pDepthStencilAttachment = renderpassCI->depthAttachmentRef;
 
-	VkRenderPassCreateInfo renderpassCI{};
-	renderpassCI.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderpassCI.attachmentCount = attachmentCount;
-	renderpassCI.pAttachments = attachments;
-	renderpassCI.subpassCount = 1;
-	renderpassCI.pSubpasses = &subpass;
-	renderpassCI.dependencyCount = dependeciesCount;
-	renderpassCI.pDependencies = dependencies;
+	VkRenderPassCreateInfo vkRenderpassCI{};
+	vkRenderpassCI.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	vkRenderpassCI.attachmentCount = renderpassCI->attachmentCount;
+	vkRenderpassCI.pAttachments = renderpassCI->attachments;
+	vkRenderpassCI.subpassCount = 1;
+	vkRenderpassCI.pSubpasses = &subpass;
+	vkRenderpassCI.dependencyCount = renderpassCI->dependenciesCount;
+	vkRenderpassCI.pDependencies = renderpassCI->dependencies;
 
-	result = vkCreateRenderPass(vulkanDevice->GetDevice(), &renderpassCI, VK_NULL_HANDLE, &renderPass);
+	result = vkCreateRenderPass(vulkanDevice->GetDevice(), &vkRenderpassCI, VK_NULL_HANDLE, &renderPass);
 	if (result != VK_SUCCESS)
 		return false;
 
-	clear = new VkClearValue[attachmentCount];
-	depthClearIndex = depthRefIndex;
-	clearCount = attachmentCount;
+	clear = new VkClearValue[renderpassCI->attachmentCount];
+	clearCount = renderpassCI->attachmentCount;
 	return true;
 }
 
@@ -67,8 +65,8 @@ void VulkanRenderpass::BeginRenderpass(VulkanCommandBuffer * commandBuffer, floa
 		clear[i].color.float32[3] = a;
 	}
 	
-	clear[depthClearIndex].depthStencil.depth = 1.0f;
-	clear[depthClearIndex].depthStencil.stencil = 0;
+	clear[clearCount - 1].depthStencil.depth = 1.0f;
+	clear[clearCount - 1].depthStencil.stencil = 0;
 
 	VkRenderPassBeginInfo rpBegin{};
 	rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;

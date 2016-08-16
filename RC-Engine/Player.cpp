@@ -94,7 +94,7 @@ void Player::SetPosition(float x, float y, float z)
 	playerOrientation = 0.0f;
 }
 
-void Player::Update(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline, Camera * camera)
+void Player::Update(VulkanInterface * vulkan, Camera * camera)
 {
 	TrackJumpState();
 
@@ -222,8 +222,8 @@ void Player::Update(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 	else if(!isJumping)
 		playerModel->SetAnimation(animPack.idleAnimation);
 
-	// Render
-	playerModel->Render(vulkan, commandBuffer, vulkanPipeline, camera, worldMatrix);
+	playerModel->SetWorldMatrix(worldMatrix);
+	playerModel->UpdateAnimation(vulkan);
 }
 
 void Player::TogglePlayerInput(bool toggle)
@@ -276,6 +276,11 @@ bool Player::IsFalling(float errorMargin)
 		return true;
 
 	return false;
+}
+
+SkinnedModel * Player::GetModel()
+{
+	return playerModel;
 }
 
 btVector3 Player::RotateVec3Quaternion(btVector3 vec, btQuaternion quat)

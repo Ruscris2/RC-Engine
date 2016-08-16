@@ -13,6 +13,7 @@
 #include "Light.h"
 #include "Material.h"
 #include "Animation.h"
+#include "ShadowMaps.h"
 
 class SkinnedModel
 {
@@ -31,21 +32,35 @@ class SkinnedModel
 		{
 			glm::mat4 MVP;
 			glm::mat4 worldMatrix;
-			glm::mat4 bones[MAX_BONES];
 		};
 		VertexUniformBuffer vertexUniformBuffer;
+
+		struct BoneUniformBuffer
+		{
+			glm::mat4 bones[MAX_BONES];
+		};
+		BoneUniformBuffer boneUniformBufferData;
 
 		VkBuffer vsUniformBuffer;
 		VkDeviceMemory vsUniformMemory;
 		VkDescriptorBufferInfo vsUniformBufferInfo;
 		VkMemoryRequirements vsMemReq;
+
+		VkBuffer boneUniformBuffer;
+		VkDeviceMemory boneUniformMemory;
+		VkDescriptorBufferInfo boneUniformBufferInfo;
+		VkMemoryRequirements boneMemReq;
+	private:
+		void UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline, SkinnedMesh * mesh);
 	public:
 		SkinnedModel();
 		~SkinnedModel();
 
-		bool Init(std::string filename, VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VulkanCommandBuffer * cmdBuffer);
+		bool Init(std::string filename, VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
-			Camera * camera, glm::mat4 &worldMatrix);
+			Camera * camera, ShadowMaps * shadowMaps);
+		void UpdateAnimation(VulkanInterface * vulkan);
+		void SetWorldMatrix(glm::mat4 &worldMatrix);
 		void SetAnimation(Animation * anim);
 };

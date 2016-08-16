@@ -18,7 +18,7 @@ class GUIElement
 	public:
 		GUIElement();
 
-		bool Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline, std::string filename);
+		bool Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, std::string filename);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline, int frameBufferId);
 		void SetPosition(float x, float y);
