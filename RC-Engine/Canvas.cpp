@@ -7,6 +7,9 @@
 
 #include "Canvas.h"
 #include "StdInc.h"
+#include "Settings.h"
+
+extern Settings * gSettings;
 
 Canvas::Canvas()
 {
@@ -167,7 +170,8 @@ void Canvas::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 
 	// Draw
 	drawCmdBuffers[frameBufferId]->BeginRecordingSecondary(vulkan->GetForwardRenderpass()->GetRenderpass(), vulkan->GetVulkanSwapchain()->GetFramebuffer((int)frameBufferId));
-	vulkan->InitViewportAndScissors(drawCmdBuffers[frameBufferId]);
+	vulkan->InitViewportAndScissors(drawCmdBuffers[frameBufferId], (float)gSettings->GetWindowWidth(), (float)gSettings->GetWindowHeight(),
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight());
 	vulkanPipeline->SetActive(drawCmdBuffers[frameBufferId]);
 
 	VkDeviceSize offsets[1] = { 0 };

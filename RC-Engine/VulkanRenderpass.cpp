@@ -6,9 +6,6 @@
 ==========================================================================================*/
 
 #include "VulkanRenderpass.h"
-#include "Settings.h"
-
-extern Settings * gSettings;
 
 VulkanRenderpass::VulkanRenderpass()
 {
@@ -55,7 +52,8 @@ void VulkanRenderpass::Unload(VulkanDevice * vulkanDevice)
 	vkDestroyRenderPass(vulkanDevice->GetDevice(), renderPass, VK_NULL_HANDLE);
 }
 
-void VulkanRenderpass::BeginRenderpass(VulkanCommandBuffer * commandBuffer, float r, float g, float b, float a, VkFramebuffer frame, VkSubpassContents contents)
+void VulkanRenderpass::BeginRenderpass(VulkanCommandBuffer * commandBuffer, float r, float g, float b, float a, VkFramebuffer frame,
+	VkSubpassContents contents, uint32_t width, uint32_t height)
 {
 	for (int i = 0; i < clearCount; i++)
 	{
@@ -75,8 +73,8 @@ void VulkanRenderpass::BeginRenderpass(VulkanCommandBuffer * commandBuffer, floa
 	rpBegin.framebuffer = frame;
 	rpBegin.renderArea.offset.x = 0;
 	rpBegin.renderArea.offset.y = 0;
-	rpBegin.renderArea.extent.width = gSettings->GetWindowWidth();
-	rpBegin.renderArea.extent.height = gSettings->GetWindowHeight();
+	rpBegin.renderArea.extent.width = width;
+	rpBegin.renderArea.extent.height = height;
 	rpBegin.clearValueCount = clearCount;
 	rpBegin.pClearValues = clear;
 

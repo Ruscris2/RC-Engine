@@ -15,6 +15,7 @@ ShadowMaps::ShadowMaps()
 {
 	depthAttachment = NULL;
 	renderpass = NULL;
+	camera = NULL;
 }
 
 bool ShadowMaps::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer)
@@ -26,7 +27,7 @@ bool ShadowMaps::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer)
 	// Create framebuffer attachments
 	depthAttachment = new FrameBufferAttachment();
 	if (!depthAttachment->Create(vulkan->GetVulkanDevice(), vulkan->GetDepthAttachment()->GetFormat(),
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, cmdBuffer))
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, cmdBuffer, mapWidth, mapHeight))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create depth framebuffer attachment!");
 		return false;
@@ -88,16 +89,22 @@ bool ShadowMaps::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer)
 	samplerCI.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	samplerCI.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	samplerCI.mipLodBias = 0.0f;
-	samplerCI.compareOp = VK_COMPARE_OP_NEVER;
 	samplerCI.minLod = 0.0f;
 	samplerCI.maxLod = 1.0f;
 	samplerCI.maxAnisotropy = 0.0f;
-	samplerCI.anisotropyEnable = VK_FALSE;
 	samplerCI.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 	result = vkCreateSampler(vulkan->GetVulkanDevice()->GetDevice(), &samplerCI, VK_NULL_HANDLE, &sampler);
 	if (result != VK_SUCCESS)
 		return false;
 
+	// Create camera
+	camera = new Camera();
+	camera->SetCameraState(CAMERA_STATE_LOOK_AT);
+	camera->SetPosition(0.0f, 6.0f, -5.0f);
+	camera->SetLookAt(0.0f, 0.0f, 0.0f);
+
+	
+	orthoMatrix = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, -60.0f, 60.0f);
 	return true;
 }
 
@@ -113,7 +120,8 @@ void ShadowMaps::BeginShadowPass(VulkanCommandBuffer * commandBuffer)
 {
 	commandBuffer->BeginRecording();
 
-	renderpass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 0.0f, framebuffer, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+	renderpass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 0.0f, framebuffer, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,
+		mapWidth, mapHeight);
 }
 
 void ShadowMaps::EndShadowPass(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer)
@@ -123,6 +131,11 @@ void ShadowMaps::EndShadowPass(VulkanDevice * vulkanDevice, VulkanCommandBuffer 
 	commandBuffer->EndRecording();
 
 	commandBuffer->Execute(vulkanDevice, NULL, NULL, NULL, true);
+}
+
+void ShadowMaps::SetDepthBias(VulkanCommandBuffer * cmdBuffer)
+{
+	vkCmdSetDepthBias(cmdBuffer->GetCommandBuffer(), 1.25f, 0.0f, 1.75f);
 }
 
 VulkanRenderpass * ShadowMaps::GetShadowRenderpass()
@@ -138,4 +151,29 @@ VkFramebuffer ShadowMaps::GetFramebuffer()
 VkImageView * ShadowMaps::GetImageView()
 {
 	return depthAttachment->GetImageView();
+}
+
+Camera * ShadowMaps::GetCamera()
+{
+	return camera;
+}
+
+glm::mat4 ShadowMaps::GetOrthoMatrix()
+{
+	return orthoMatrix;
+}
+
+VkSampler ShadowMaps::GetSampler()
+{
+	return sampler;
+}
+
+uint32_t ShadowMaps::GetMapWidth()
+{
+	return mapWidth;
+}
+
+uint32_t ShadowMaps::GetMapHeight()
+{
+	return mapHeight;
 }

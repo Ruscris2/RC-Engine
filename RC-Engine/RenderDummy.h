@@ -10,6 +10,7 @@
 #include "VulkanPipeline.h"
 #include "Light.h"
 #include "Camera.h"
+#include "ShadowMaps.h"
 
 class RenderDummy
 {
@@ -27,6 +28,7 @@ class RenderDummy
 		};
 		struct FragmentUniformBuffer
 		{
+			glm::mat4 lightViewMatrix;
 			glm::vec4 ambientColor;
 			glm::vec4 diffuseColor;
 			glm::vec4 specularColor;
@@ -59,8 +61,8 @@ class RenderDummy
 		~RenderDummy();
 
 		bool Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView * positionView, VkImageView * normalView,
-			VkImageView * albedoView, VkImageView * materialView, VkImageView * depthView);
+			VkImageView * albedoView, VkImageView * materialView, VkImageView * depthView, ShadowMaps * shadowMaps);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
-			glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera, int frameBufferId);
+			glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera, ShadowMaps * shadowMaps, int frameBufferId);
 };

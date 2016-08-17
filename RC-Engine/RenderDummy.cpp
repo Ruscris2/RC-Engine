@@ -7,6 +7,9 @@
 
 #include "RenderDummy.h"
 #include "StdInc.h"
+#include "Settings.h"
+
+extern Settings * gSettings;
 
 RenderDummy::RenderDummy()
 {
@@ -25,7 +28,7 @@ RenderDummy::~RenderDummy()
 }
 
 bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView * positionView, VkImageView * normalView,
-	VkImageView * albedoView, VkImageView * materialView, VkImageView * depthView)
+	VkImageView * albedoView, VkImageView * materialView, VkImageView * depthView, ShadowMaps * shadowMaps)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
@@ -220,6 +223,7 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 	fragmentUniformBuffer.lightDirection = glm::vec3();
 	fragmentUniformBuffer.imageIndex = 5;
 	fragmentUniformBuffer.cameraPosition = glm::vec3();
+	fragmentUniformBuffer.lightViewMatrix = glm::mat4();
 	fragmentUniformBuffer.padding = 0.0f;
 
 	// Vertex shader Uniform buffer
@@ -300,7 +304,7 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 	fsUniformBufferInfo.offset = 0;
 	fsUniformBufferInfo.range = sizeof(fragmentUniformBuffer);
 
-	VkWriteDescriptorSet write[7];
+	VkWriteDescriptorSet write[8];
 
 	write[0] = {};
 	write[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -397,6 +401,21 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 	write[6].dstArrayElement = 0;
 	write[6].dstBinding = 6;
 
+	VkDescriptorImageInfo shadowTextureDesc{};
+	shadowTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	shadowTextureDesc.imageView = *shadowMaps->GetImageView();
+	shadowTextureDesc.sampler = shadowMaps->GetSampler();
+
+	write[7] = {};
+	write[7].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write[7].pNext = NULL;
+	write[7].dstSet = vulkanPipeline->GetDescriptorSet();
+	write[7].descriptorCount = 1;
+	write[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	write[7].pImageInfo = &shadowTextureDesc;
+	write[7].dstArrayElement = 0;
+	write[7].dstBinding = 7;
+
 	vkUpdateDescriptorSets(vulkanDevice->GetDevice(), sizeof(write) / sizeof(write[0]), write, 0, NULL);
 
 	// Init draw command buffers
@@ -430,7 +449,7 @@ void RenderDummy::Unload(VulkanInterface * vulkan)
 }
 
 void RenderDummy::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
-	glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera, int frameBufferId)
+	glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera, ShadowMaps * shadowMaps, int frameBufferId)
 {
 	uint8_t *pData;
 
@@ -448,6 +467,8 @@ void RenderDummy::Render(VulkanInterface * vulkan, VulkanCommandBuffer * command
 	fragmentUniformBuffer.lightDirection = light->GetLightDirection();
 	fragmentUniformBuffer.imageIndex = imageIndex;
 	fragmentUniformBuffer.cameraPosition = camera->GetPosition();
+
+	fragmentUniformBuffer.lightViewMatrix = (shadowMaps->GetOrthoMatrix() * shadowMaps->GetCamera()->GetViewMatrix());
 	fragmentUniformBuffer.padding = 0.0f;
 
 	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), fsUniformMemory, 0, fsMemReq.size, 0, (void**)&pData);
@@ -456,7 +477,8 @@ void RenderDummy::Render(VulkanInterface * vulkan, VulkanCommandBuffer * command
 
 	// Draw
 	drawCmdBuffers[frameBufferId]->BeginRecordingSecondary(vulkan->GetForwardRenderpass()->GetRenderpass(), vulkan->GetVulkanSwapchain()->GetFramebuffer((int)frameBufferId));
-	vulkan->InitViewportAndScissors(drawCmdBuffers[frameBufferId]);
+	vulkan->InitViewportAndScissors(drawCmdBuffers[frameBufferId], (float)gSettings->GetWindowWidth(), (float)gSettings->GetWindowHeight(),
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight());
 	vulkanPipeline->SetActive(drawCmdBuffers[frameBufferId]);
 
 	VkDeviceSize offsets[1] = { 0 };

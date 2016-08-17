@@ -84,7 +84,7 @@ class VulkanInterface
 		void BeginSceneForward(VulkanCommandBuffer * commandBuffer, int frameId);
 		void EndSceneForward(VulkanCommandBuffer * commandBuffer);
 		void Present(std::vector<VulkanCommandBuffer*>& renderCommandBuffers);
-		void InitViewportAndScissors(VulkanCommandBuffer * commandBuffer);
+		void InitViewportAndScissors(VulkanCommandBuffer * commandBuffer, float vWidth, float vHeight, uint32_t sWidth, uint32_t sHeight);
 		VulkanCommandPool * GetVulkanCommandPool();
 		VulkanDevice * GetVulkanDevice();
 		VulkanRenderpass * GetForwardRenderpass();

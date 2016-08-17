@@ -210,7 +210,8 @@ void VulkanInterface::BeginSceneDeferred(VulkanCommandBuffer * commandBuffer)
 {
 	commandBuffer->BeginRecording();
 	
-	deferredRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, deferredFramebuffer, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+	deferredRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, deferredFramebuffer, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight());
 }
 
 void VulkanInterface::EndSceneDeferred(VulkanCommandBuffer * commandBuffer)
@@ -226,7 +227,8 @@ void VulkanInterface::BeginSceneForward(VulkanCommandBuffer * commandBuffer, int
 {
 	commandBuffer->BeginRecording();
 
-	forwardRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, vulkanSwapchain->GetFramebuffer(frameId), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+	forwardRenderPass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 1.0f, vulkanSwapchain->GetFramebuffer(frameId), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight());
 }
 
 void VulkanInterface::EndSceneForward(VulkanCommandBuffer * commandBuffer)
@@ -418,35 +420,40 @@ bool VulkanInterface::InitDeferredFramebuffer()
 	VkResult result;
 
 	positionAtt = new FrameBufferAttachment();
-	if (!positionAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
+	if (!positionAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer,
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight()))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create position framebuffer attachment!");
 		return false;
 	}
 
 	normalAtt = new FrameBufferAttachment();
-	if (!normalAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
+	if (!normalAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer,
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight()))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create normal framebuffer attachment!");
 		return false;
 	}
 
 	albedoAtt = new FrameBufferAttachment();
-	if (!albedoAtt->Create(vulkanDevice, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
+	if (!albedoAtt->Create(vulkanDevice, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer,
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight()))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create albedo framebuffer attachment!");
 		return false;
 	}
 
 	materialAtt = new FrameBufferAttachment();
-	if (!materialAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer))
+	if (!materialAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer,
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight()))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create material framebuffer attachment!");
 		return false;
 	}
 
 	depthAtt = new FrameBufferAttachment();
-	if (!depthAtt->Create(vulkanDevice, depthImage.format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, initCommandBuffer))
+	if (!depthAtt->Create(vulkanDevice, depthImage.format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, initCommandBuffer,
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight()))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create depth framebuffer attachment!");
 		return false;
@@ -562,18 +569,18 @@ bool VulkanInterface::InitColorSampler()
 	return true;
 }
 
-void VulkanInterface::InitViewportAndScissors(VulkanCommandBuffer * commandBuffer)
+void VulkanInterface::InitViewportAndScissors(VulkanCommandBuffer * commandBuffer, float vWidth, float vHeight, uint32_t sWidth, uint32_t sHeight)
 {
-	viewport.width = (float)gSettings->GetWindowWidth();
-	viewport.height = (float)gSettings->GetWindowHeight();
+	viewport.width = vWidth;
+	viewport.height = vHeight;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 	viewport.x = 0;
 	viewport.y = 0;
 	vkCmdSetViewport(commandBuffer->GetCommandBuffer(), 0, 1, &viewport);
 
-	scissor.extent.width = (uint32_t)gSettings->GetWindowWidth();
-	scissor.extent.height = (uint32_t)gSettings->GetWindowHeight();
+	scissor.extent.width = sWidth;
+	scissor.extent.height = sHeight;
 	scissor.offset.x = 0;
 	scissor.offset.y = 0;
 	vkCmdSetScissor(commandBuffer->GetCommandBuffer(), 0, 1, &scissor);

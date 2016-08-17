@@ -6,10 +6,7 @@
 ==========================================================================================*/
 
 #include "FrameBufferAttachment.h"
-#include "Settings.h"
 #include "VulkanTools.h"
-
-extern Settings * gSettings;
 
 FrameBufferAttachment::FrameBufferAttachment()
 {
@@ -25,7 +22,8 @@ FrameBufferAttachment::~FrameBufferAttachment()
 	image = VK_NULL_HANDLE;
 }
 
-bool FrameBufferAttachment::Create(VulkanDevice * device, VkFormat format, VkImageUsageFlagBits usage, VulkanCommandBuffer * cmdBuffer)
+bool FrameBufferAttachment::Create(VulkanDevice * device, VkFormat format, VkImageUsageFlagBits usage, VulkanCommandBuffer * cmdBuffer,
+	uint32_t width, uint32_t height)
 {
 	VkResult result;
 	VkImageAspectFlags aspectMask = 0;
@@ -51,8 +49,8 @@ bool FrameBufferAttachment::Create(VulkanDevice * device, VkFormat format, VkIma
 	imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageCI.imageType = VK_IMAGE_TYPE_2D;
 	imageCI.format = format;
-	imageCI.extent.width = gSettings->GetWindowWidth();
-	imageCI.extent.height = gSettings->GetWindowHeight();
+	imageCI.extent.width = width;
+	imageCI.extent.height = height;
 	imageCI.extent.depth = 1;
 	imageCI.mipLevels = 1;
 	imageCI.arrayLayers = 1;

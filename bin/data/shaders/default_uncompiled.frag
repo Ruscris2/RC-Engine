@@ -11,6 +11,7 @@ layout (binding = 5) uniform sampler2D samplerDepth;
 
 layout (binding = 6) uniform UBO
 {
+	mat4 lightViewMatrix;
 	vec4 ambientColor;
 	vec4 diffuseColor;
 	vec4 specularColor;
@@ -20,9 +21,29 @@ layout (binding = 6) uniform UBO
 	float padding;
 } ubo;
 
+layout (binding = 7) uniform sampler2D samplerShadowMap;
+
 layout (location = 0) in vec2 texCoord;
 
 layout (location = 0) out vec4 outColor;
+
+float textureProj(vec4 coord)
+{
+	float shadow = 1.0f;
+	vec4 shadowCoord = coord / coord.w;
+	shadowCoord.st = shadowCoord.st * 0.5f + 0.5f;
+	
+	if(shadowCoord.z > -1.0f && shadowCoord.z < 1.0f)
+	{
+		float distance = texture(samplerShadowMap, shadowCoord.st).r;
+		if(shadowCoord.w > 0.0f && distance < shadowCoord.z)
+		{			
+			shadow = 0.25f;
+		}
+	}
+	
+	return shadow;
+}
 
 void main()
 {
@@ -47,7 +68,11 @@ void main()
 			spec = vec3(0.0f, 0.0f, 0.0f);
 		
 		fragColor += clamp(diff + spec, 0.0, 1.0);
-		outColor = vec4(fragColor, 1.0f);
+		
+		vec4 shadowClip = ubo.lightViewMatrix * vec4(fragPos, 1.0f);
+		float shadowFactor = textureProj(shadowClip);
+		
+		outColor = vec4(fragColor, 1.0f) * shadowFactor;
 	}
 	else if(ubo.imageIndex == 4)
 	{

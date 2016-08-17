@@ -218,7 +218,7 @@ bool PipelineManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	vertexLayoutDefault[1].offset = sizeof(float) * 3;
 
 	// Layout bindings
-	VkDescriptorSetLayoutBinding layoutBindingsDefault[7];
+	VkDescriptorSetLayoutBinding layoutBindingsDefault[8];
 
 	layoutBindingsDefault[0].binding = 0;
 	layoutBindingsDefault[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -262,8 +262,14 @@ bool PipelineManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	layoutBindingsDefault[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	layoutBindingsDefault[6].pImmutableSamplers = VK_NULL_HANDLE;
 
+	layoutBindingsDefault[7].binding = 7;
+	layoutBindingsDefault[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindingsDefault[7].descriptorCount = 1;
+	layoutBindingsDefault[7].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsDefault[7].pImmutableSamplers = VK_NULL_HANDLE;
+
 	// Type counts
-	VkDescriptorPoolSize typeCounts[7];
+	VkDescriptorPoolSize typeCounts[8];
 	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	typeCounts[0].descriptorCount = 1;
 	typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -278,25 +284,27 @@ bool PipelineManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	typeCounts[5].descriptorCount = 1;
 	typeCounts[6].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	typeCounts[6].descriptorCount = 1;
+	typeCounts[7].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[7].descriptorCount = 1;
 
 	struct DefaultVertex {
 		float x, y, z;
 		float u, v;
 	};
 
-	VulkanPipelineCI pipelineCI;
+	VulkanPipelineCI pipelineCI{};
 	pipelineCI.pipelineName = "DEFAULT";
 	pipelineCI.shader = defaultShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetForwardRenderpass();
 	pipelineCI.vertexLayout = vertexLayoutDefault;
 	pipelineCI.numVertexLayout = 2;
 	pipelineCI.layoutBindings = layoutBindingsDefault;
-	pipelineCI.numLayoutBindings = 7;
+	pipelineCI.numLayoutBindings = 8;
 	pipelineCI.typeCounts = typeCounts;
 	pipelineCI.strideSize = sizeof(DefaultVertex);
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = false;
-	pipelineCI.backFaceCullingEnabled = true;
+	pipelineCI.cullMode = VK_CULL_MODE_BACK_BIT;
 	pipelineCI.transparencyEnabled = false;
 
 	defaultPipeline = new VulkanPipeline();
@@ -396,7 +404,7 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 		uint32_t boneIDs[4];
 	};
 
-	VulkanPipelineCI pipelineCI;
+	VulkanPipelineCI pipelineCI{};
 	pipelineCI.pipelineName = "SKINNED";
 	pipelineCI.shader = skinnedShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetDeferredRenderpass();
@@ -408,7 +416,7 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	pipelineCI.strideSize = sizeof(SkinnedVertex);
 	pipelineCI.numColorAttachments = 4;
 	pipelineCI.wireframeEnabled = false;
-	pipelineCI.backFaceCullingEnabled = true;
+	pipelineCI.cullMode = VK_CULL_MODE_BACK_BIT;
 	pipelineCI.transparencyEnabled = false;
 
 	skinnedPipeline = new VulkanPipeline();
@@ -483,7 +491,7 @@ bool PipelineManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 		float nx, ny, nz;
 	};
 
-	VulkanPipelineCI pipelineCI;
+	VulkanPipelineCI pipelineCI{};
 	pipelineCI.pipelineName = "DEFERRED";
 	pipelineCI.shader = deferredShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetDeferredRenderpass();
@@ -495,7 +503,7 @@ bool PipelineManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	pipelineCI.strideSize = sizeof(DeferredVertex);
 	pipelineCI.numColorAttachments = 4;
 	pipelineCI.wireframeEnabled = false;
-	pipelineCI.backFaceCullingEnabled = true;
+	pipelineCI.cullMode = VK_CULL_MODE_BACK_BIT;
 	pipelineCI.transparencyEnabled = false;
 	
 	deferredPipeline = new VulkanPipeline();
@@ -539,7 +547,7 @@ bool PipelineManager::BuildWireframePipeline(VulkanInterface * vulkan)
 		float r, g, b, a;
 	};
 
-	VulkanPipelineCI pipelineCI;
+	VulkanPipelineCI pipelineCI{};
 	pipelineCI.pipelineName = "WIREFRAME";
 	pipelineCI.shader = wireframeShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetForwardRenderpass();
@@ -551,7 +559,7 @@ bool PipelineManager::BuildWireframePipeline(VulkanInterface * vulkan)
 	pipelineCI.strideSize = sizeof(WireframeVertex);
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = true;
-	pipelineCI.backFaceCullingEnabled = false;
+	pipelineCI.cullMode = VK_CULL_MODE_NONE;
 	pipelineCI.transparencyEnabled = false;
 
 	wireframePipeline = new VulkanPipeline();
@@ -597,7 +605,7 @@ bool PipelineManager::BuildSkydomePipeline(VulkanInterface * vulkan)
 		float x, y, z;
 	};
 
-	VulkanPipelineCI pipelineCI;
+	VulkanPipelineCI pipelineCI{};
 	pipelineCI.pipelineName = "SKYDOME";
 	pipelineCI.shader = skydomeShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetForwardRenderpass();
@@ -609,7 +617,7 @@ bool PipelineManager::BuildSkydomePipeline(VulkanInterface * vulkan)
 	pipelineCI.strideSize = sizeof(SkydomeVertex);
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = false;
-	pipelineCI.backFaceCullingEnabled = false;
+	pipelineCI.cullMode = VK_CULL_MODE_FRONT_BIT;
 	pipelineCI.transparencyEnabled = false;
 
 	skydomePipeline = new VulkanPipeline();
@@ -661,7 +669,7 @@ bool PipelineManager::BuildCanvasPipeline(VulkanInterface * vulkan)
 		float u, v;
 	};
 
-	VulkanPipelineCI pipelineCI;
+	VulkanPipelineCI pipelineCI{};
 	pipelineCI.pipelineName = "CANVAS";
 	pipelineCI.shader = canvasShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetForwardRenderpass();
@@ -673,7 +681,7 @@ bool PipelineManager::BuildCanvasPipeline(VulkanInterface * vulkan)
 	pipelineCI.strideSize = sizeof(CanvasVertex);
 	pipelineCI.numColorAttachments = 1;
 	pipelineCI.wireframeEnabled = false;
-	pipelineCI.backFaceCullingEnabled = true;
+	pipelineCI.cullMode = VK_CULL_MODE_BACK_BIT;
 	pipelineCI.transparencyEnabled = true;
 
 	canvasPipeline = new VulkanPipeline();
@@ -713,7 +721,7 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 		float nx, ny, nz;
 	};
 
-	VulkanPipelineCI pipelineCI;
+	VulkanPipelineCI pipelineCI{};
 	pipelineCI.pipelineName = "SHADOW";
 	pipelineCI.shader = shadowShader;
 	pipelineCI.vulkanRenderpass = shadowMaps->GetShadowRenderpass();
@@ -725,8 +733,9 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 	pipelineCI.strideSize = sizeof(DeferredVertex);
 	pipelineCI.numColorAttachments = 0;
 	pipelineCI.wireframeEnabled = false;
-	pipelineCI.backFaceCullingEnabled = true;
+	pipelineCI.cullMode = VK_CULL_MODE_BACK_BIT;
 	pipelineCI.transparencyEnabled = false;
+	pipelineCI.depthBiasEnabled = true;
 
 	shadowPipeline = new VulkanPipeline();
 	if (!shadowPipeline->Init(vulkan, &pipelineCI))

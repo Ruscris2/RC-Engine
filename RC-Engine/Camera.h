@@ -15,7 +15,8 @@
 enum CAMERA_STATE
 {
 	CAMERA_STATE_FLY,
-	CAMERA_STATE_ORBIT_PLAYER
+	CAMERA_STATE_ORBIT_PLAYER,
+	CAMERA_STATE_LOOK_AT
 };
 
 class Camera
@@ -39,6 +40,7 @@ class Camera
 		void HandleInput();
 		void SetPosition(float x, float y, float z);
 		void SetDirection(float x, float y, float z);
+		void SetLookAt(float x, float y, float z);
 		void SetPitch(float pitch);
 		void SetYaw(float yaw);
 		void SetOrbitParameters(glm::vec3 orbitPoint, glm::vec3 orbitPointOrientation, float radius);

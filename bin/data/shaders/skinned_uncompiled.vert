@@ -38,7 +38,7 @@ void main()
 	
 	// outWorldPos
 	vec4 tempPos = vec4(pos, 1.0f);
-	outWorldPos = vec3(ubo.worldMatrix * tempPos);
+	outWorldPos = vec3(ubo.worldMatrix * boneTransform * tempPos);
 	
 	// outTexCoord
 	outTexCoord = inTexCoord;

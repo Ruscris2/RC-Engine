@@ -6,6 +6,7 @@
 ==========================================================================================*/
 
 #include "VulkanInterface.h"
+#include "Camera.h"
 
 #pragma once
 
@@ -17,6 +18,8 @@ class ShadowMaps
 		FrameBufferAttachment * depthAttachment;
 		VulkanRenderpass * renderpass;
 		VkSampler sampler;
+		Camera * camera;
+		glm::mat4 orthoMatrix;
 	public:
 		ShadowMaps();
 
@@ -24,7 +27,13 @@ class ShadowMaps
 		void Unload(VulkanInterface * vulkan);
 		void BeginShadowPass(VulkanCommandBuffer * commandBuffer);
 		void EndShadowPass(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer);
+		void SetDepthBias(VulkanCommandBuffer * cmdBuffer);
 		VulkanRenderpass * GetShadowRenderpass();
 		VkFramebuffer GetFramebuffer();
 		VkImageView * GetImageView();
+		Camera * GetCamera();
+		glm::mat4 GetOrthoMatrix();
+		VkSampler GetSampler();
+		uint32_t GetMapWidth();
+		uint32_t GetMapHeight();
 };

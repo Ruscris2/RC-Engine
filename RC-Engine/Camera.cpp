@@ -73,6 +73,10 @@ void Camera::HandleInput()
 		// Update direction
 		direction = -glm::normalize(position + lookAt);
 	}
+	else if (currentState == CAMERA_STATE_LOOK_AT)
+	{
+		up = glm::vec3(0.0f, 1.0f, 0.0f);
+	}
 
 	viewMatrix = glm::lookAt(position, lookAt, up);
 }
@@ -86,6 +90,11 @@ void Camera::SetDirection(float x, float y, float z)
 {
 	direction = glm::vec3(x, y, z);
 	lookAt = position + direction;
+}
+
+void Camera::SetLookAt(float x, float y, float z)
+{
+	lookAt = glm::vec3(x, y, z);
 }
 
 void Camera::SetPitch(float pitch)

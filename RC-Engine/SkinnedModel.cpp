@@ -11,9 +11,11 @@
 #include "StdInc.h"
 #include "LogManager.h"
 #include "Timer.h"
+#include "Settings.h"
 
 extern LogManager * gLogManager;
 extern Timer * gTimer;
+extern Settings * gSettings;
 
 SkinnedModel::SkinnedModel()
 {
@@ -266,7 +268,10 @@ void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * comman
 {
 	uint8_t *pData;
 
-	vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
+	if(vulkanPipeline->GetPipelineName() == "SKINNED")
+		vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
+	else if(vulkanPipeline->GetPipelineName() == "SHADOWSKINNED")
+		vertexUniformBuffer.MVP = shadowMaps->GetOrthoMatrix() * shadowMaps->GetCamera()->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
 
 	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);
 	memcpy(pData, &vertexUniformBuffer, sizeof(vertexUniformBuffer));
@@ -282,7 +287,8 @@ void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * comman
 			// Record draw command
 			drawCmdBuffers[i]->BeginRecordingSecondary(vulkan->GetDeferredRenderpass()->GetRenderpass(), vulkan->GetDeferredFramebuffer());
 
-			vulkan->InitViewportAndScissors(drawCmdBuffers[i]);
+			vulkan->InitViewportAndScissors(drawCmdBuffers[i], (float)gSettings->GetWindowWidth(), (float)gSettings->GetWindowHeight(),
+				(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight());
 			vulkanPipeline->SetActive(drawCmdBuffers[i]);
 			meshes[i]->Render(vulkan, drawCmdBuffers[i]);
 
@@ -296,7 +302,9 @@ void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * comman
 			// Record draw command
 			drawCmdBuffers[i]->BeginRecordingSecondary(shadowMaps->GetShadowRenderpass()->GetRenderpass(), shadowMaps->GetFramebuffer());
 
-			vulkan->InitViewportAndScissors(drawCmdBuffers[i]);
+			vulkan->InitViewportAndScissors(drawCmdBuffers[i], (float)shadowMaps->GetMapWidth(), (float)shadowMaps->GetMapHeight(),
+				shadowMaps->GetMapWidth(), shadowMaps->GetMapHeight());
+			shadowMaps->SetDepthBias(drawCmdBuffers[i]);
 			vulkanPipeline->SetActive(drawCmdBuffers[i]);
 			meshes[i]->Render(vulkan, drawCmdBuffers[i]);
 

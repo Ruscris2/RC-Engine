@@ -44,7 +44,7 @@ SceneManager::SceneManager()
 	splashScreen = NULL;
 	showSplashScreen = true;
 
-	debugShadowMap = NULL;
+	debugCameraShadowMap = NULL;
 }
 
 SceneManager::~SceneManager()
@@ -156,7 +156,8 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 	// Init render dummy
 	renderDummy = new RenderDummy();
 	if (!renderDummy->Init(vulkan, pipelineManager->GetDefault(), vulkan->GetPositionAttachment()->GetImageView(), vulkan->GetNormalAttachment()->GetImageView(),
-		vulkan->GetAlbedoAttachment()->GetImageView(), vulkan->GetMaterialAttachment()->GetImageView(), vulkan->GetDepthAttachment()->GetImageView()))
+		vulkan->GetAlbedoAttachment()->GetImageView(), vulkan->GetMaterialAttachment()->GetImageView(), vulkan->GetDepthAttachment()->GetImageView(),
+		shadowMaps))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init render dummy!");
 		return false;
@@ -223,10 +224,16 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 	player->Init(male, physics, animPack);
 	player->SetPosition(0.0f, 5.0f, 0.0f);
 
-	debugShadowMap = new Canvas();
-	if (!debugShadowMap->Init(vulkan))
+	GEOMETRY_GENERATE_INFO sphere;
+	sphere.type = GEOMETRY_TYPE_SPHERE;
+	sphere.radius = 0.25f;
+	sphere.slices = 15;
+	sphere.stacks = 15;
+
+	debugCameraShadowMap = new WireframeModel();
+	if (!debugCameraShadowMap->Init(vulkan, sphere, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)))
 	{
-		gLogManager->AddMessage("ERROR: Failed to init debug shadow map canvas!");
+		gLogManager->AddMessage("ERROR: Failed to init debug camera model");
 		return false;
 	}
 
@@ -235,7 +242,7 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
-	SAFE_UNLOAD(debugShadowMap, vulkan);
+	SAFE_UNLOAD(debugCameraShadowMap, vulkan);
 	SAFE_UNLOAD(splashScreen, vulkan);
 
 	SAFE_UNLOAD(male, vulkan);
@@ -335,12 +342,17 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		player->Update(vulkan, camera);
 
 		// Shadow pass
+		shadowMaps->GetCamera()->HandleInput();
+
+		glm::vec3 pos = shadowMaps->GetCamera()->GetPosition();
+		debugCameraShadowMap->SetPosition(pos.x, pos.y, pos.z);
+
 		shadowMaps->BeginShadowPass(deferredCommandBuffer);
 
 		for (unsigned int i = 0; i < modelList.size(); i++)
-			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadow(), camera, shadowMaps);
+			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadow(), shadowMaps->GetCamera(), shadowMaps);
 
-		player->GetModel()->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadowSkinned(), camera, shadowMaps);
+		player->GetModel()->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadowSkinned(), shadowMaps->GetCamera(), shadowMaps);
 
 		shadowMaps->EndShadowPass(vulkan->GetVulkanDevice(), deferredCommandBuffer);
 		
@@ -348,9 +360,9 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		vulkan->BeginSceneDeferred(deferredCommandBuffer);
 
 		for (unsigned int i = 0; i < modelList.size(); i++)
-			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetDeferred(), camera, NULL);
+			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetDeferred(), camera, shadowMaps);
 
-		player->GetModel()->Render(vulkan, deferredCommandBuffer, pipelineManager->GetSkinned(), camera, shadowMaps);
+		player->GetModel()->Render(vulkan, deferredCommandBuffer, pipelineManager->GetSkinned(), camera, NULL);
 
 		vulkan->EndSceneDeferred(deferredCommandBuffer);
 	}
@@ -368,9 +380,10 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		if (currentGameState == GAME_STATE_INGAME)
 		{
 			skydome->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetSkydome(), camera, (int)i);
-			renderDummy->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetDefault(), vulkan->GetOrthoMatrix(), light, imageIndex, camera, (int)i);
+			renderDummy->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetDefault(), vulkan->GetOrthoMatrix(),
+				light, imageIndex, camera, shadowMaps, (int)i);
 
-			debugShadowMap->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), vulkan->GetOrthoMatrix(), shadowMaps->GetImageView(), (int)i);
+			debugCameraShadowMap->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetWireframe(), camera, (int)i);
 		}
 		else if (currentGameState == GAME_STATE_SPLASH_SCREEN)
 			splashScreen->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), (int)i);

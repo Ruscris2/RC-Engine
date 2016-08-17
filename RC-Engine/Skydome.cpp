@@ -7,6 +7,9 @@
 
 #include "Skydome.h"
 #include "StdInc.h"
+#include "Settings.h"
+
+extern Settings * gSettings;
 
 Skydome::Skydome()
 {
@@ -412,7 +415,8 @@ void Skydome::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuff
 
 	// Render
 	drawCmdBuffers[framebufferId]->BeginRecordingSecondary(vulkan->GetForwardRenderpass()->GetRenderpass(), vulkan->GetVulkanSwapchain()->GetFramebuffer(framebufferId));
-	vulkan->InitViewportAndScissors(drawCmdBuffers[framebufferId]);
+	vulkan->InitViewportAndScissors(drawCmdBuffers[framebufferId], (float)gSettings->GetWindowWidth(), (float)gSettings->GetWindowHeight(),
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight());
 	pipeline->SetActive(drawCmdBuffers[framebufferId]);
 
 	VkDeviceSize offsets[1] = { 0 };

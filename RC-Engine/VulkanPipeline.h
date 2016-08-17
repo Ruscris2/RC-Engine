@@ -22,8 +22,9 @@ struct VulkanPipelineCI
 	VkDescriptorPoolSize * typeCounts;
 	int numColorAttachments;
 	bool wireframeEnabled;
-	bool backFaceCullingEnabled;
+	VkCullModeFlags cullMode;
 	bool transparencyEnabled;
+	bool depthBiasEnabled = false;
 };
 
 class VulkanPipeline

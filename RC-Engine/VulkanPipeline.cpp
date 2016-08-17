@@ -105,11 +105,11 @@ bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineC
 	rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rs.pNext = NULL;
 	rs.polygonMode = (pipelineCI->wireframeEnabled ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL);
-	rs.cullMode = (pipelineCI->backFaceCullingEnabled ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE);
+	rs.cullMode = pipelineCI->cullMode;
 	rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	rs.depthClampEnable = VK_FALSE;
 	rs.rasterizerDiscardEnable = VK_FALSE;
-	rs.depthBiasEnable = VK_FALSE;
+	rs.depthBiasEnable = (pipelineCI->depthBiasEnabled ? VK_TRUE : VK_FALSE);
 	rs.depthBiasConstantFactor = 0;
 	rs.depthBiasClamp = 0;
 	rs.depthBiasSlopeFactor = 0;
@@ -169,6 +169,9 @@ bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineC
 	vp.pViewports = NULL;
 	dynamicStateEnables[dynamicStateCI.dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT;
 	dynamicStateEnables[dynamicStateCI.dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR;
+	
+	if (pipelineCI->depthBiasEnabled)
+		dynamicStateEnables[dynamicStateCI.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
 
 	VkPipelineDepthStencilStateCreateInfo ds{};
 	ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
