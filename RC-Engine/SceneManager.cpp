@@ -263,7 +263,6 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 }
 
 int imageIndex = 5;
-float angle = 0.0f;
 
 void SceneManager::Render(VulkanInterface * vulkan)
 {
@@ -320,12 +319,8 @@ void SceneManager::Render(VulkanInterface * vulkan)
 			player->TogglePlayerInput(false);
 		}
 
-		angle += 0.001f * gTimer->GetDelta();
-		if (angle > 90.0f)
-			angle = 0.0f;
-
 		camera->HandleInput();
-		light->SetLightDirection(glm::sin(angle), -0.5f, 1.0f);
+		light->SetLightDirection(0.0f, -0.5f, 1.0f);
 
 		// Debug deferred shading
 		if (gInput->WasKeyPressed(KEYBOARD_KEY_1))
@@ -342,17 +337,16 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		player->Update(vulkan, camera);
 
 		// Shadow pass
-		shadowMaps->GetCamera()->HandleInput();
+		shadowMaps->UpdatePartitions(vulkan, camera, light);
 
-		glm::vec3 pos = shadowMaps->GetCamera()->GetPosition();
-		debugCameraShadowMap->SetPosition(pos.x, pos.y, pos.z);
-
+		debugCameraShadowMap->SetPosition(10.0f, 10.0f, 0.0f);
+		
 		shadowMaps->BeginShadowPass(deferredCommandBuffer);
 
 		for (unsigned int i = 0; i < modelList.size(); i++)
-			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadow(), shadowMaps->GetCamera(), shadowMaps);
+			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadow(), camera, shadowMaps);
 
-		player->GetModel()->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadowSkinned(), shadowMaps->GetCamera(), shadowMaps);
+		player->GetModel()->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadowSkinned(), camera, shadowMaps);
 
 		shadowMaps->EndShadowPass(vulkan->GetVulkanDevice(), deferredCommandBuffer);
 		
@@ -384,6 +378,7 @@ void SceneManager::Render(VulkanInterface * vulkan)
 				light, imageIndex, camera, shadowMaps, (int)i);
 
 			debugCameraShadowMap->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetWireframe(), camera, (int)i);
+			shadowMaps->RenderDebug(vulkan, renderCommandBuffers[i], pipelineManager->GetWireframe(), camera, (int)i);
 		}
 		else if (currentGameState == GAME_STATE_SPLASH_SCREEN)
 			splashScreen->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), (int)i);

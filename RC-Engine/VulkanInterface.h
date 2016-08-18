@@ -55,7 +55,9 @@ class VulkanInterface
 		FrameBufferAttachment * depthAtt;
 		std::vector<FrameBufferAttachment*> attachmentsPtr;
 
+		int projectionMatrixPartitionCount;
 		glm::mat4 projectionMatrix;
+		glm::mat4 * projectionMatrixPartitions;
 		glm::mat4 orthoMatrix;
 
 		VkSemaphore imageReadySemaphore;
@@ -90,6 +92,8 @@ class VulkanInterface
 		VulkanRenderpass * GetForwardRenderpass();
 		VulkanRenderpass * GetDeferredRenderpass();
 		VulkanSwapchain * GetVulkanSwapchain();
+		int GetProjectionMatrixPartitionCount();
+		glm::mat4 GetProjectionMatrixPartition(int index);
 		glm::mat4 GetProjectionMatrix();
 		glm::mat4 GetOrthoMatrix();
 		VkSampler GetColorSampler();

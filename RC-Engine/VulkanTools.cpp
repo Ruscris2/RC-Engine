@@ -121,3 +121,15 @@ void VulkanTools::SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, V
 		cmdBuffer->Execute(device, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, NULL, NULL, true);
 	}
 }
+
+glm::vec3 VulkanTools::Vec3Transform(glm::vec3 vec, glm::mat4 mat)
+{
+	glm::vec3 output;
+	glm::vec4 temp = mat * glm::vec4(vec, 1.0f);
+
+	output.x = temp.x / temp.w;
+	output.y = temp.y / temp.w;
+	output.z = temp.z / temp.w;
+
+	return output;
+}

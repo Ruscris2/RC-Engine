@@ -91,7 +91,7 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 	if (vulkanPipeline->GetPipelineName() == "DEFERRED")
 		vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
 	else if(vulkanPipeline->GetPipelineName() == "SHADOW")
-		vertexUniformBuffer.MVP = shadowMaps->GetOrthoMatrix() * shadowMaps->GetCamera()->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
+		vertexUniformBuffer.MVP = shadowMaps->GetOrthoMatrix() * shadowMaps->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
 
 	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);
 	memcpy(pData, &vertexUniformBuffer, sizeof(vertexUniformBuffer));

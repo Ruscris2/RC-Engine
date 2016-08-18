@@ -468,7 +468,7 @@ void RenderDummy::Render(VulkanInterface * vulkan, VulkanCommandBuffer * command
 	fragmentUniformBuffer.imageIndex = imageIndex;
 	fragmentUniformBuffer.cameraPosition = camera->GetPosition();
 
-	fragmentUniformBuffer.lightViewMatrix = (shadowMaps->GetOrthoMatrix() * shadowMaps->GetCamera()->GetViewMatrix());
+	fragmentUniformBuffer.lightViewMatrix = (shadowMaps->GetOrthoMatrix() * shadowMaps->GetViewMatrix());
 	fragmentUniformBuffer.padding = 0.0f;
 
 	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), fsUniformMemory, 0, fsMemReq.size, 0, (void**)&pData);
