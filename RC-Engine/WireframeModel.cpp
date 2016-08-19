@@ -13,8 +13,9 @@ extern Settings * gSettings;
 
 WireframeModel::WireframeModel()
 {
-	vertexBuffer = VK_NULL_HANDLE;
-	indexBuffer = VK_NULL_HANDLE;
+	vertexBuffer = NULL;
+	indexBuffer = NULL;
+	vsUBO = NULL;
 
 	posX = posY = posZ = 0.0f;
 	rotX = rotY = rotZ = 0.0f;
@@ -22,19 +23,15 @@ WireframeModel::WireframeModel()
 
 WireframeModel::~WireframeModel()
 {
-	indexBuffer = VK_NULL_HANDLE;
-	vertexBuffer = VK_NULL_HANDLE;
+	vsUBO = NULL;
+	indexBuffer = NULL;
+	vertexBuffer = NULL;
 }
 
 bool WireframeModel::Init(VulkanInterface * vulkan, GEOMETRY_GENERATE_INFO generateInfo, glm::vec4 color)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
-
-	VkResult result;
-	VkMemoryRequirements memReq;
-	VkMemoryAllocateInfo allocInfo{};
-	uint8_t *pData;
 
 	Vertex * vertexData;
 	uint32_t * indexData;
@@ -323,136 +320,29 @@ bool WireframeModel::Init(VulkanInterface * vulkan, GEOMETRY_GENERATE_INFO gener
 		vertexData[i].a = color.a;
 	}
 
-	// Vertex buffer
-	VkBuffer stagingVertexBuffer;
-	VkDeviceMemory stagingVertexMemory;
-
-	VkBufferCreateInfo vertexBufferCI{};
-	vertexBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	vertexBufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	vertexBufferCI.size = sizeof(Vertex) * vertexCount;
-	result = vkCreateBuffer(vulkanDevice->GetDevice(), &vertexBufferCI, VK_NULL_HANDLE, &stagingVertexBuffer);
-	if (result != VK_SUCCESS)
-		return false;
-
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), stagingVertexBuffer, &memReq);
-
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memReq.size;
-	if (!vulkanDevice->MemoryTypeFromProperties(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &allocInfo.memoryTypeIndex))
-		return false;
-
-	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &stagingVertexMemory);
-	if (result != VK_SUCCESS)
-		return false;
-
-	result = vkMapMemory(vulkanDevice->GetDevice(), stagingVertexMemory, 0, memReq.size, 0, (void**)&pData);
-	if (result != VK_SUCCESS)
-		return false;
-
-	memcpy(pData, vertexData, sizeof(Vertex) * vertexCount);
-
-	vkUnmapMemory(vulkanDevice->GetDevice(), stagingVertexMemory);
-
-	result = vkBindBufferMemory(vulkanDevice->GetDevice(), stagingVertexBuffer, stagingVertexMemory, 0);
-	if (result != VK_SUCCESS)
-		return false;
-
-	vertexBufferCI.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	result = vkCreateBuffer(vulkanDevice->GetDevice(), &vertexBufferCI, VK_NULL_HANDLE, &vertexBuffer);
-	if (result != VK_SUCCESS)
-		return false;
-
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), vertexBuffer, &memReq);
-
-	allocInfo.allocationSize = memReq.size;
-	if (!vulkanDevice->MemoryTypeFromProperties(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &allocInfo.memoryTypeIndex))
-		return false;
-
-	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &vertexMemory);
-	if (result != VK_SUCCESS)
-		return false;
-
-	result = vkBindBufferMemory(vulkanDevice->GetDevice(), vertexBuffer, vertexMemory, 0);
-	if (result != VK_SUCCESS)
-		return false;
-
-	// Index buffer
-	VkBuffer stagingIndexBuffer;
-	VkDeviceMemory stagingIndexMemory;
-
-	VkBufferCreateInfo indexBufferCI{};
-	indexBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	indexBufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	indexBufferCI.size = sizeof(uint32_t) * indexCount;
-
-	result = vkCreateBuffer(vulkanDevice->GetDevice(), &indexBufferCI, VK_NULL_HANDLE, &stagingIndexBuffer);
-	if (result != VK_SUCCESS)
-		return false;
-
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), stagingIndexBuffer, &memReq);
-
-	allocInfo.allocationSize = memReq.size;
-	if (!vulkanDevice->MemoryTypeFromProperties(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &allocInfo.memoryTypeIndex))
-		return false;
-
-	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &stagingIndexMemory);
-	if (result != VK_SUCCESS)
-		return false;
-
-	result = vkMapMemory(vulkanDevice->GetDevice(), stagingIndexMemory, 0, memReq.size, 0, (void**)&pData);
-	if (result != VK_SUCCESS)
-		return false;
-
-	memcpy(pData, indexData, sizeof(uint32_t) * indexCount);
-
-	vkUnmapMemory(vulkanDevice->GetDevice(), stagingIndexMemory);
-
-	result = vkBindBufferMemory(vulkanDevice->GetDevice(), stagingIndexBuffer, stagingIndexMemory, 0);
-	if (result != VK_SUCCESS)
-		return false;
-
-	indexBufferCI.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	result = vkCreateBuffer(vulkanDevice->GetDevice(), &indexBufferCI, VK_NULL_HANDLE, &indexBuffer);
-	if (result != VK_SUCCESS)
-		return false;
-
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), indexBuffer, &memReq);
-
-	allocInfo.allocationSize = memReq.size;
-	if (!vulkanDevice->MemoryTypeFromProperties(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &allocInfo.memoryTypeIndex))
-		return false;
-
-	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &indexMemory);
-	if (result != VK_SUCCESS)
-		return false;
-
-	result = vkBindBufferMemory(vulkanDevice->GetDevice(), indexBuffer, indexMemory, 0);
-	if (result != VK_SUCCESS)
-		return false;
-
-	// Copy data to VRAM using command buffer
+	// Command buffer used for creating buffers
 	VulkanCommandBuffer * cmdBuffer = new VulkanCommandBuffer();
 	if (!cmdBuffer->Init(vulkanDevice, cmdPool, true))
 		return false;
 
 	cmdBuffer->BeginRecording();
 
-	VkBufferCopy copyRegion{};
-	copyRegion.size = sizeof(Vertex) * vertexCount;
-	vkCmdCopyBuffer(cmdBuffer->GetCommandBuffer(), stagingVertexBuffer, vertexBuffer, 1, &copyRegion);
-	copyRegion.size = sizeof(uint32_t) * indexCount;
-	vkCmdCopyBuffer(cmdBuffer->GetCommandBuffer(), stagingIndexBuffer, indexBuffer, 1, &copyRegion);
+	// Vertex buffer
+	vertexBuffer = new VulkanBuffer();
+	if (!vertexBuffer->Init(vulkanDevice, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexData,
+		sizeof(Vertex) * vertexCount, true, cmdBuffer))
+		return false;
+
+	// Index buffer
+	indexBuffer = new VulkanBuffer();
+	if (!indexBuffer->Init(vulkanDevice, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexData,
+		sizeof(uint32_t) * indexCount, true, cmdBuffer))
+		return false;
 
 	cmdBuffer->EndRecording();
 	cmdBuffer->Execute(vulkanDevice, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, true);
 
 	SAFE_UNLOAD(cmdBuffer, vulkanDevice, cmdPool);
-
-	vkFreeMemory(vulkanDevice->GetDevice(), stagingVertexMemory, VK_NULL_HANDLE);
-	vkDestroyBuffer(vulkanDevice->GetDevice(), stagingVertexBuffer, VK_NULL_HANDLE);
-	vkFreeMemory(vulkanDevice->GetDevice(), stagingIndexMemory, VK_NULL_HANDLE);
-	vkDestroyBuffer(vulkanDevice->GetDevice(), stagingIndexBuffer, VK_NULL_HANDLE);
 
 	delete[] vertexData;
 	delete[] indexData;
@@ -461,43 +351,10 @@ bool WireframeModel::Init(VulkanInterface * vulkan, GEOMETRY_GENERATE_INFO gener
 	vertexUniformBuffer.MVP = glm::mat4();
 
 	// Vertex shader Uniform buffer
-	VkBufferCreateInfo vsBufferCI{};
-	vsBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	vsBufferCI.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	vsBufferCI.size = sizeof(vertexUniformBuffer);
-	vsBufferCI.queueFamilyIndexCount = 0;
-	vsBufferCI.pQueueFamilyIndices = VK_NULL_HANDLE;
-	vsBufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	result = vkCreateBuffer(vulkanDevice->GetDevice(), &vsBufferCI, VK_NULL_HANDLE, &vsUniformBuffer);
-	if (result != VK_SUCCESS)
+	vsUBO = new VulkanBuffer();
+	if (!vsUBO->Init(vulkanDevice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &vertexUniformBuffer,
+		sizeof(vertexUniformBuffer), false))
 		return false;
-
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), vsUniformBuffer, &vsMemReq);
-
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = vsMemReq.size;
-	if (!vulkanDevice->MemoryTypeFromProperties(vsMemReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &allocInfo.memoryTypeIndex))
-		return false;
-
-	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &vsUniformMemory);
-	if (result != VK_SUCCESS)
-		return false;
-
-	result = vkMapMemory(vulkanDevice->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);
-	if (result != VK_SUCCESS)
-		return false;
-
-	memcpy(pData, &vertexUniformBuffer, sizeof(vertexUniformBuffer));
-
-	vkUnmapMemory(vulkanDevice->GetDevice(), vsUniformMemory);
-
-	result = vkBindBufferMemory(vulkanDevice->GetDevice(), vsUniformBuffer, vsUniformMemory, 0);
-	if (result != VK_SUCCESS)
-		return false;
-
-	vsUniformBufferInfo.buffer = vsUniformBuffer;
-	vsUniformBufferInfo.offset = 0;
-	vsUniformBufferInfo.range = sizeof(vertexUniformBuffer);
 
 	worldMatrix = glm::mat4(1.0f);
 
@@ -516,29 +373,20 @@ bool WireframeModel::Init(VulkanInterface * vulkan, GEOMETRY_GENERATE_INFO gener
 
 void WireframeModel::Unload(VulkanInterface * vulkan)
 {
-	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
-
 	for (size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)
-		SAFE_UNLOAD(drawCmdBuffers[i], vulkanDevice, vulkan->GetVulkanCommandPool());
+		SAFE_UNLOAD(drawCmdBuffers[i], vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
 
-	vkFreeMemory(vulkanDevice->GetDevice(), vsUniformMemory, VK_NULL_HANDLE);
-	vkDestroyBuffer(vulkanDevice->GetDevice(), vsUniformBuffer, VK_NULL_HANDLE);
-	vkFreeMemory(vulkanDevice->GetDevice(), indexMemory, VK_NULL_HANDLE);
-	vkDestroyBuffer(vulkanDevice->GetDevice(), indexBuffer, VK_NULL_HANDLE);
-	vkFreeMemory(vulkanDevice->GetDevice(), vertexMemory, VK_NULL_HANDLE);
-	vkDestroyBuffer(vulkanDevice->GetDevice(), vertexBuffer, VK_NULL_HANDLE);
+	SAFE_UNLOAD(vsUBO, vulkan->GetVulkanDevice());
+	SAFE_UNLOAD(indexBuffer, vulkan->GetVulkanDevice());
+	SAFE_UNLOAD(vertexBuffer, vulkan->GetVulkanDevice());
 }
 
 void WireframeModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline, Camera * camera, int framebufferId)
 {
-	uint8_t *pData;
-
 	// Update vertex uniform buffer
 	vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * worldMatrix;
 
-	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);
-	memcpy(pData, &vertexUniformBuffer, sizeof(vertexUniformBuffer));
-	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory);
+	vsUBO->Update(vulkan->GetVulkanDevice(), &vertexUniformBuffer, sizeof(VertexUniformBuffer));
 
 	UpdateDescriptorSet(vulkan, pipeline);
 
@@ -549,8 +397,8 @@ void WireframeModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * comm
 	pipeline->SetActive(drawCmdBuffers[framebufferId]);
 
 	VkDeviceSize offsets[1] = { 0 };
-	vkCmdBindVertexBuffers(drawCmdBuffers[framebufferId]->GetCommandBuffer(), 0, 1, &vertexBuffer, offsets);
-	vkCmdBindIndexBuffer(drawCmdBuffers[framebufferId]->GetCommandBuffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindVertexBuffers(drawCmdBuffers[framebufferId]->GetCommandBuffer(), 0, 1, vertexBuffer->GetBuffer(), offsets);
+	vkCmdBindIndexBuffer(drawCmdBuffers[framebufferId]->GetCommandBuffer(), *indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 	vkCmdDrawIndexed(drawCmdBuffers[framebufferId]->GetCommandBuffer(), indexCount, 1, 0, 0, 0);
 
@@ -592,7 +440,7 @@ void WireframeModel::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipelin
 	descriptorWrite[0].dstSet = pipeline->GetDescriptorSet();
 	descriptorWrite[0].descriptorCount = 1;
 	descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descriptorWrite[0].pBufferInfo = &vsUniformBufferInfo;
+	descriptorWrite[0].pBufferInfo = vsUBO->GetBufferInfo();
 	descriptorWrite[0].dstArrayElement = 0;
 	descriptorWrite[0].dstBinding = 0;
 

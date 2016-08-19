@@ -7,6 +7,7 @@
 
 #include "VulkanInterface.h"
 #include "VulkanPipeline.h"
+#include "VulkanBuffer.h"
 #include "Camera.h"
 
 #pragma once
@@ -21,10 +22,8 @@ class Skydome
 		unsigned int vertexCount;
 		unsigned int indexCount;
 
-		VkBuffer vertexBuffer;
-		VkDeviceMemory vertexMemory;
-		VkBuffer indexBuffer;
-		VkDeviceMemory indexMemory;
+		VulkanBuffer * vertexBuffer;
+		VulkanBuffer * indexBuffer;
 
 		glm::mat4 worldMatrix;
 		glm::vec4 skyColor;
@@ -38,11 +37,7 @@ class Skydome
 			glm::mat4 MVP;
 		};
 		VertexUniformBuffer vertexUniformBuffer;
-
-		VkBuffer vsUniformBuffer;
-		VkDeviceMemory vsUniformMemory;
-		VkDescriptorBufferInfo vsUniformBufferInfo;
-		VkMemoryRequirements vsMemReq;
+		VulkanBuffer * vsUBO;
 
 		// Fragment shader uniform buffer
 		struct FragmentUniformBuffer
@@ -54,11 +49,7 @@ class Skydome
 			glm::vec3 padding;
 		};
 		FragmentUniformBuffer fragmentUniformBuffer;
-
-		VkBuffer fsUniformBuffer;
-		VkDeviceMemory fsUniformMemory;
-		VkDescriptorBufferInfo fsUniformBufferInfo;
-		VkMemoryRequirements fsMemReq;
+		VulkanBuffer * fsUBO;
 
 		std::vector<VulkanCommandBuffer*> drawCmdBuffers;
 	public:

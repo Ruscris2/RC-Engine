@@ -8,7 +8,6 @@
 
 #include <BulletCollision/Gimpact/btGimpactShape.h>
 
-#include "VulkanPipeline.h"
 #include "Mesh.h"
 #include "Camera.h"
 #include "Texture.h"
@@ -35,10 +34,7 @@ class Model
 		};
 		VertexUniformBuffer vertexUniformBuffer;
 
-		VkBuffer vsUniformBuffer;
-		VkDeviceMemory vsUniformMemory;
-		VkDescriptorBufferInfo vsUniformBufferInfo;
-		VkMemoryRequirements vsMemReq;
+		VulkanBuffer * deferredVS_UBO;
 
 		Physics * physics;
 		bool collisionMeshPresent;

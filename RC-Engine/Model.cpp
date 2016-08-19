@@ -18,12 +18,12 @@ extern Settings * gSettings;
 
 Model::Model()
 {
-	vsUniformBuffer = VK_NULL_HANDLE;
+	deferredVS_UBO = NULL;
 }
 
 Model::~Model()
 {
-	vsUniformBuffer = VK_NULL_HANDLE;
+	deferredVS_UBO = NULL;
 }
 
 bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer,
@@ -62,8 +62,7 @@ void Model::Unload(VulkanInterface * vulkan)
 	else
 		SAFE_DELETE(emptyCollisionShape);
 
-	vkFreeMemory(vulkanDevice->GetDevice(), vsUniformMemory, VK_NULL_HANDLE);
-	vkDestroyBuffer(vulkanDevice->GetDevice(), vsUniformBuffer, VK_NULL_HANDLE);
+	SAFE_UNLOAD(deferredVS_UBO, vulkanDevice);
 
 	for(unsigned int i = 0; i < textures.size(); i++)
 		SAFE_UNLOAD(textures[i], vulkanDevice);
@@ -84,8 +83,6 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 	rigidBody->getMotionState()->getWorldTransform(transform);
 
 	transform.getOpenGLMatrix((btScalar*)&vertexUniformBuffer.worldMatrix);
-	
-	uint8_t *pData;
 
 	// Update vertex uniform buffer
 	if (vulkanPipeline->GetPipelineName() == "DEFERRED")
@@ -93,9 +90,7 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 	else if(vulkanPipeline->GetPipelineName() == "SHADOW")
 		vertexUniformBuffer.MVP = shadowMaps->GetOrthoMatrix() * shadowMaps->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
 
-	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);
-	memcpy(pData, &vertexUniformBuffer, sizeof(vertexUniformBuffer));
-	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory);
+	deferredVS_UBO->Update(vulkan->GetVulkanDevice(), &vertexUniformBuffer, sizeof(vertexUniformBuffer));
 
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
@@ -202,7 +197,7 @@ void Model::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipel
 		descriptorWrite[0].dstSet = pipeline->GetDescriptorSet();
 		descriptorWrite[0].descriptorCount = 1;
 		descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrite[0].pBufferInfo = &vsUniformBufferInfo;
+		descriptorWrite[0].pBufferInfo = deferredVS_UBO->GetBufferInfo();
 		descriptorWrite[0].dstArrayElement = 0;
 		descriptorWrite[0].dstBinding = 0;
 
@@ -261,7 +256,7 @@ void Model::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipel
 		descriptorWrite[0].dstSet = pipeline->GetDescriptorSet();
 		descriptorWrite[0].descriptorCount = 1;
 		descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrite[0].pBufferInfo = &vsUniformBufferInfo;
+		descriptorWrite[0].pBufferInfo = deferredVS_UBO->GetBufferInfo();
 		descriptorWrite[0].dstArrayElement = 0;
 		descriptorWrite[0].dstBinding = 0;
 
@@ -271,52 +266,13 @@ void Model::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipel
 
 bool Model::InitVertexUniformBuffer(VulkanDevice * vulkanDevice)
 {
-	VkResult result;
-	VkMemoryAllocateInfo allocInfo{};
-	uint8_t *pData;
-
-	// Uniform buffer init
-	vertexUniformBuffer.worldMatrix = glm::mat4(1.0f);
-	vertexUniformBuffer.MVP = glm::mat4();
-
-	// Vertex shader Uniform buffer
-	VkBufferCreateInfo vsBufferCI{};
-	vsBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	vsBufferCI.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	vsBufferCI.size = sizeof(vertexUniformBuffer);
-	vsBufferCI.queueFamilyIndexCount = 0;
-	vsBufferCI.pQueueFamilyIndices = VK_NULL_HANDLE;
-	vsBufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	result = vkCreateBuffer(vulkanDevice->GetDevice(), &vsBufferCI, VK_NULL_HANDLE, &vsUniformBuffer);
-	if (result != VK_SUCCESS)
+	deferredVS_UBO = new VulkanBuffer();
+	if (!deferredVS_UBO->Init(vulkanDevice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &vertexUniformBuffer,
+		sizeof(vertexUniformBuffer), false))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init deferred vs uniform buffer!");
 		return false;
-
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), vsUniformBuffer, &vsMemReq);
-
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = vsMemReq.size;
-	if (!vulkanDevice->MemoryTypeFromProperties(vsMemReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &allocInfo.memoryTypeIndex))
-		return false;
-
-	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &vsUniformMemory);
-	if (result != VK_SUCCESS)
-		return false;
-
-	result = vkMapMemory(vulkanDevice->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);
-	if (result != VK_SUCCESS)
-		return false;
-
-	memcpy(pData, &vertexUniformBuffer, sizeof(vertexUniformBuffer));
-
-	vkUnmapMemory(vulkanDevice->GetDevice(), vsUniformMemory);
-
-	result = vkBindBufferMemory(vulkanDevice->GetDevice(), vsUniformBuffer, vsUniformMemory, 0);
-	if (result != VK_SUCCESS)
-		return false;
-
-	vsUniformBufferInfo.buffer = vsUniformBuffer;
-	vsUniformBufferInfo.offset = 0;
-	vsUniformBufferInfo.range = sizeof(vertexUniformBuffer);
+	}
 
 	return true;
 }

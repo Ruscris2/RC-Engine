@@ -8,6 +8,7 @@
 
 #include "VulkanInterface.h"
 #include "VulkanPipeline.h"
+#include "VulkanBuffer.h"
 #include "Material.h"
 
 class Mesh
@@ -30,15 +31,9 @@ class Mesh
 		};
 		MaterialUniformBuffer materialUniformBuffer;
 
-		VkBuffer vertexBuffer;
-		VkDeviceMemory vertexMemory;
-		VkBuffer indexBuffer;
-		VkDeviceMemory indexMemory;
-
-		VkBuffer fsUniformBuffer;
-		VkDeviceMemory fsUniformMemory;
-		VkDescriptorBufferInfo fsUniformBufferInfo;
-		VkMemoryRequirements fsMemReq;
+		VulkanBuffer * vertexBuffer;
+		VulkanBuffer * indexBuffer;
+		VulkanBuffer * materialUBO;
 
 		Material * material;
 	public:

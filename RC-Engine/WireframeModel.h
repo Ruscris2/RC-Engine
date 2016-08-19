@@ -7,6 +7,7 @@
 
 #include "VulkanInterface.h"
 #include "VulkanPipeline.h"
+#include "VulkanBuffer.h"
 #include "Camera.h"
 
 #pragma once
@@ -40,10 +41,8 @@ class WireframeModel
 		unsigned int vertexCount;
 		unsigned int indexCount;
 
-		VkBuffer vertexBuffer;
-		VkDeviceMemory vertexMemory;
-		VkBuffer indexBuffer;
-		VkDeviceMemory indexMemory;
+		VulkanBuffer * vertexBuffer;
+		VulkanBuffer * indexBuffer;
 
 		float posX, posY, posZ;
 		float rotX, rotY, rotZ;
@@ -54,11 +53,7 @@ class WireframeModel
 			glm::mat4 MVP;
 		};
 		VertexUniformBuffer vertexUniformBuffer;
-
-		VkBuffer vsUniformBuffer;
-		VkDeviceMemory vsUniformMemory;
-		VkDescriptorBufferInfo vsUniformBufferInfo;
-		VkMemoryRequirements vsMemReq;
+		VulkanBuffer * vsUBO;
 
 		std::vector<VulkanCommandBuffer*> drawCmdBuffers;
 	private:

@@ -6,7 +6,6 @@
 ==========================================================================================*/
 #pragma once
 
-#include "VulkanPipeline.h"
 #include "SkinnedMesh.h"
 #include "Camera.h"
 #include "Texture.h"
@@ -41,15 +40,8 @@ class SkinnedModel
 		};
 		BoneUniformBuffer boneUniformBufferData;
 
-		VkBuffer vsUniformBuffer;
-		VkDeviceMemory vsUniformMemory;
-		VkDescriptorBufferInfo vsUniformBufferInfo;
-		VkMemoryRequirements vsMemReq;
-
-		VkBuffer boneUniformBuffer;
-		VkDeviceMemory boneUniformMemory;
-		VkDescriptorBufferInfo boneUniformBufferInfo;
-		VkMemoryRequirements boneMemReq;
+		VulkanBuffer * skinnedVS_UBO;
+		VulkanBuffer * skinnedVS_bone_UBO;
 	private:
 		void UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline, SkinnedMesh * mesh);
 	public:

@@ -8,6 +8,7 @@
 
 #include "VulkanInterface.h"
 #include "VulkanPipeline.h"
+#include "VulkanBuffer.h"
 #include "Light.h"
 #include "Camera.h"
 #include "ShadowMaps.h"
@@ -40,20 +41,10 @@ class RenderDummy
 		VertexUniformBuffer vertexUniformBuffer;
 		FragmentUniformBuffer fragmentUniformBuffer;
 
-		VkBuffer vertexBuffer;
-		VkDeviceMemory vertexMemory;
-		VkBuffer indexBuffer;
-		VkDeviceMemory indexMemory;
-
-		VkBuffer vsUniformBuffer;
-		VkDeviceMemory vsUniformMemory;
-		VkDescriptorBufferInfo vsUniformBufferInfo;
-		VkMemoryRequirements vsMemReq;
-
-		VkBuffer fsUniformBuffer;
-		VkDeviceMemory fsUniformMemory;
-		VkDescriptorBufferInfo fsUniformBufferInfo;
-		VkMemoryRequirements fsMemReq;
+		VulkanBuffer * vertexBuffer;
+		VulkanBuffer * indexBuffer;
+		VulkanBuffer * vsUBO;
+		VulkanBuffer * fsUBO;
 
 		std::vector<VulkanCommandBuffer*> drawCmdBuffers;
 	public:

@@ -9,6 +9,30 @@
 #include <Windows.h>
 #include <vector>
 
+class Input
+{
+	private:
+		int cursorRelativeX, cursorRelativeY;
+		std::vector<int> keyStateValues;
+		bool wasKeyPressed[256];
+		bool keyboardState[256];
+		bool inputHandler_cursorRelatives_updated;
+		bool inputHandler_setKeyUp_updated;
+	public:
+		Input();
+		~Input();
+
+		bool Init(HWND hwnd);
+		void InputHandler_SetCursorRelatives(int x, int y);
+		void InputHandler_SetKeyDown(short vKey);
+		void InputHandler_SetKeyUp(short vKey);
+		bool IsKeyPressed(int key);
+		bool WasKeyPressed(int key);
+		void Update();
+		int GetCursorRelativeX();
+		int GetCursorRelativeY();
+};
+
 enum KEY_STATES
 {
 	KEYBOARD_KEY_ESCAPE,
@@ -51,28 +75,4 @@ enum KEY_STATES
 	KEYBOARD_KEY_SPACE,
 	KEYBOARD_KEY_SHIFT,
 	KEY_STATE_COUNT
-};
-
-class Input
-{
-	private:
-		int cursorRelativeX, cursorRelativeY;
-		std::vector<int> keyStateValues;
-		bool wasKeyPressed[256];
-		bool keyboardState[256];
-		bool inputHandler_cursorRelatives_updated;
-		bool inputHandler_setKeyUp_updated;
-	public:
-		Input();
-		~Input();
-
-		bool Init(HWND hwnd);
-		void InputHandler_SetCursorRelatives(int x, int y);
-		void InputHandler_SetKeyDown(short vKey);
-		void InputHandler_SetKeyUp(short vKey);
-		bool IsKeyPressed(int key);
-		bool WasKeyPressed(int key);
-		void Update();
-		int GetCursorRelativeX();
-		int GetCursorRelativeY();
 };

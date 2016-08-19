@@ -8,6 +8,7 @@
 
 #include "VulkanInterface.h"
 #include "VulkanPipeline.h"
+#include "VulkanBuffer.h"
 
 class Canvas
 {
@@ -24,15 +25,9 @@ class Canvas
 		};
 		VertexUniformBuffer vertexUniformBuffer;
 
-		VkBuffer vertexBuffer;
-		VkDeviceMemory vertexMemory;
-		VkMemoryRequirements vertexBufferMemReq;
+		VulkanBuffer * vsUBO;
+		VulkanBuffer * vertexBuffer;
 		Vertex * vertexData;
-
-		VkBuffer vsUniformBuffer;
-		VkDeviceMemory vsUniformMemory;
-		VkDescriptorBufferInfo vsUniformBufferInfo;
-		VkMemoryRequirements vsMemReq;
 
 		float posX, posY, width, height;
 		bool updateVertexBuffer;

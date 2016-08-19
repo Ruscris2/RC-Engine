@@ -13,8 +13,8 @@ extern Settings * gSettings;
 
 Canvas::Canvas()
 {
-	vertexBuffer = VK_NULL_HANDLE;
-	vsUniformBuffer = VK_NULL_HANDLE;
+	vertexBuffer = NULL;
+	vsUBO = NULL;
 
 	posX = posY = 0.0f;
 	width = height = 0.25f;
@@ -24,8 +24,8 @@ Canvas::~Canvas()
 {
 	delete[] vertexData;
 
-	vsUniformBuffer = VK_NULL_HANDLE;
-	vertexBuffer = VK_NULL_HANDLE;
+	vsUBO = NULL;
+	vertexBuffer = NULL;
 }
 
 bool Canvas::Init(VulkanInterface * vulkan)
@@ -33,89 +33,23 @@ bool Canvas::Init(VulkanInterface * vulkan)
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
 
-	VkResult result;
-
 	vertexCount = 6;
 	vertexData = new Vertex[vertexCount];
 	UpdateVertexData();
 
-	uint8_t *pData;
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-
 	// Vertex buffer
-	VkBufferCreateInfo vertexBufferCI{};
-	vertexBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	vertexBufferCI.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	vertexBufferCI.size = sizeof(Vertex) * vertexCount;
-	result = vkCreateBuffer(vulkanDevice->GetDevice(), &vertexBufferCI, VK_NULL_HANDLE, &vertexBuffer);
-	if (result != VK_SUCCESS)
-		return false;
-
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), vertexBuffer, &vertexBufferMemReq);
-
-	allocInfo.allocationSize = vertexBufferMemReq.size;
-	if (!vulkanDevice->MemoryTypeFromProperties(vertexBufferMemReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &allocInfo.memoryTypeIndex))
-		return false;
-
-	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &vertexMemory);
-	if (result != VK_SUCCESS)
-		return false;
-
-	result = vkMapMemory(vulkanDevice->GetDevice(), vertexMemory, 0, vertexBufferMemReq.size, 0, (void**)&pData);
-	if (result != VK_SUCCESS)
-		return false;
-
-	memcpy(pData, vertexData, sizeof(Vertex) * vertexCount);
-
-	vkUnmapMemory(vulkanDevice->GetDevice(), vertexMemory);
-
-	result = vkBindBufferMemory(vulkanDevice->GetDevice(), vertexBuffer, vertexMemory, 0);
-	if (result != VK_SUCCESS)
+	vertexBuffer = new VulkanBuffer();
+	if (!vertexBuffer->Init(vulkanDevice, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexData, sizeof(Vertex) * vertexCount, false))
 		return false;
 
 	// Uniform inits
 	vertexUniformBuffer.MVP = glm::mat4();
 
 	// Vertex shader Uniform buffer
-	VkBufferCreateInfo vsBufferCI{};
-	vsBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	vsBufferCI.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	vsBufferCI.size = sizeof(vertexUniformBuffer);
-	vsBufferCI.queueFamilyIndexCount = 0;
-	vsBufferCI.pQueueFamilyIndices = VK_NULL_HANDLE;
-	vsBufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	result = vkCreateBuffer(vulkanDevice->GetDevice(), &vsBufferCI, VK_NULL_HANDLE, &vsUniformBuffer);
-	if (result != VK_SUCCESS)
+	vsUBO = new VulkanBuffer();
+	if (!vsUBO->Init(vulkanDevice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &vertexUniformBuffer,
+		sizeof(vertexUniformBuffer), false))
 		return false;
-
-	vkGetBufferMemoryRequirements(vulkanDevice->GetDevice(), vsUniformBuffer, &vsMemReq);
-
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = vsMemReq.size;
-	if (!vulkanDevice->MemoryTypeFromProperties(vsMemReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &allocInfo.memoryTypeIndex))
-		return false;
-
-	result = vkAllocateMemory(vulkanDevice->GetDevice(), &allocInfo, VK_NULL_HANDLE, &vsUniformMemory);
-	if (result != VK_SUCCESS)
-		return false;
-
-	result = vkMapMemory(vulkanDevice->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);
-	if (result != VK_SUCCESS)
-		return false;
-
-	memcpy(pData, &vertexUniformBuffer, sizeof(vertexUniformBuffer));
-
-	vkUnmapMemory(vulkanDevice->GetDevice(), vsUniformMemory);
-
-	result = vkBindBufferMemory(vulkanDevice->GetDevice(), vsUniformBuffer, vsUniformMemory, 0);
-	if (result != VK_SUCCESS)
-		return false;
-
-	vsUniformBufferInfo.buffer = vsUniformBuffer;
-	vsUniformBufferInfo.offset = 0;
-	vsUniformBufferInfo.range = sizeof(vertexUniformBuffer);
 
 	// Init draw command buffers
 	for (size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)
@@ -133,29 +67,21 @@ bool Canvas::Init(VulkanInterface * vulkan)
 
 void Canvas::Unload(VulkanInterface * vulkan)
 {
-	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
-
 	for (size_t i = 0; i < vulkan->GetVulkanSwapchain()->GetSwapchainBufferCount(); i++)
-		SAFE_UNLOAD(drawCmdBuffers[i], vulkanDevice, vulkan->GetVulkanCommandPool());
+		SAFE_UNLOAD(drawCmdBuffers[i], vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool());
 
-	vkFreeMemory(vulkanDevice->GetDevice(), vsUniformMemory, VK_NULL_HANDLE);
-	vkDestroyBuffer(vulkanDevice->GetDevice(), vsUniformBuffer, VK_NULL_HANDLE);
-	vkFreeMemory(vulkanDevice->GetDevice(), vertexMemory, VK_NULL_HANDLE);
-	vkDestroyBuffer(vulkanDevice->GetDevice(), vertexBuffer, VK_NULL_HANDLE);
+	SAFE_UNLOAD(vsUBO, vulkan->GetVulkanDevice());
+	SAFE_UNLOAD(vertexBuffer, vulkan->GetVulkanDevice());
 }
 
 void Canvas::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
 	glm::mat4 orthoMatrix, VkImageView * imageView, int frameBufferId)
 {
-	uint8_t *pData;
-
 	// Update vertex buffer if needed
 	if (updateVertexBuffer)
 	{
 		UpdateVertexData();
-		vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), vertexMemory, 0, vertexBufferMemReq.size, 0, (void**)&pData);
-		memcpy(pData, vertexData, sizeof(Vertex) * vertexCount);
-		vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), vertexMemory);
+		vertexBuffer->Update(vulkan->GetVulkanDevice(), vertexData, sizeof(Vertex) * vertexCount);
 		updateVertexBuffer = false;
 	}
 
@@ -164,9 +90,7 @@ void Canvas::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 	// Update vertex uniform buffer
 	vertexUniformBuffer.MVP = orthoMatrix;
 
-	vkMapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory, 0, vsMemReq.size, 0, (void**)&pData);
-	memcpy(pData, &vertexUniformBuffer, sizeof(vertexUniformBuffer));
-	vkUnmapMemory(vulkan->GetVulkanDevice()->GetDevice(), vsUniformMemory);
+	vsUBO->Update(vulkan->GetVulkanDevice(), &vertexUniformBuffer, sizeof(vertexUniformBuffer));
 
 	// Draw
 	drawCmdBuffers[frameBufferId]->BeginRecordingSecondary(vulkan->GetForwardRenderpass()->GetRenderpass(), vulkan->GetVulkanSwapchain()->GetFramebuffer((int)frameBufferId));
@@ -175,7 +99,7 @@ void Canvas::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffe
 	vulkanPipeline->SetActive(drawCmdBuffers[frameBufferId]);
 
 	VkDeviceSize offsets[1] = { 0 };
-	vkCmdBindVertexBuffers(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), 0, 1, &vertexBuffer, offsets);
+	vkCmdBindVertexBuffers(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), 0, 1, vertexBuffer->GetBuffer(), offsets);
 
 	vkCmdDraw(drawCmdBuffers[frameBufferId]->GetCommandBuffer(), vertexCount, 1, 0, 0);
 	drawCmdBuffers[frameBufferId]->EndRecording();
@@ -255,7 +179,7 @@ void Canvas::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * vulk
 	write[0].dstSet = vulkanPipeline->GetDescriptorSet();
 	write[0].descriptorCount = 1;
 	write[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	write[0].pBufferInfo = &vsUniformBufferInfo;
+	write[0].pBufferInfo = vsUBO->GetBufferInfo();
 	write[0].dstArrayElement = 0;
 	write[0].dstBinding = 0;
 
