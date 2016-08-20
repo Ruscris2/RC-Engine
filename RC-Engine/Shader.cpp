@@ -14,24 +14,29 @@ extern LogManager * gLogManager;
 
 Shader::Shader()
 {
-	shaderStages[0].module = VK_NULL_HANDLE;
-	shaderStages[1].module = VK_NULL_HANDLE;
+	shaderStages = NULL;
 }
 
 Shader::~Shader()
 {
-	shaderStages[1].module = VK_NULL_HANDLE;
-	shaderStages[0].module = VK_NULL_HANDLE;
+	shaderStages = NULL;
 }
 
-bool Shader::Init(VulkanDevice * vulkanDevice, std::string shaderName)
+bool Shader::Init(VulkanDevice * vulkanDevice, std::string shaderName, bool hasGeometryShader)
 {
 	VkResult result;
+	uint32_t currentShaderStage = 0;
 
 	std::string shaderDir = "data/shaders/";
 
-	shaderStages[0] = {};
-	shaderStages[1] = {};
+	stageCount = 2;
+	if (hasGeometryShader)
+		stageCount++;
+
+	shaderStages = new VkPipelineShaderStageCreateInfo[stageCount];
+
+	for(uint32_t i = 0; i < stageCount; i++)
+		shaderStages[i] = {};
 
 	FILE * file = NULL;
 
@@ -61,22 +66,25 @@ bool Shader::Init(VulkanDevice * vulkanDevice, std::string shaderName)
 	vertexShaderCI.pNext = VK_NULL_HANDLE;
 	vertexShaderCI.flags = 0;
 
-	shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderStages[0].pName = "main";
-	shaderStages[0].pNext = VK_NULL_HANDLE;
-	shaderStages[0].flags = 0;
+	shaderStages[currentShaderStage].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shaderStages[currentShaderStage].stage = VK_SHADER_STAGE_VERTEX_BIT;
+	shaderStages[currentShaderStage].pName = "main";
+	shaderStages[currentShaderStage].pNext = VK_NULL_HANDLE;
+	shaderStages[currentShaderStage].flags = 0;
 
-	result = vkCreateShaderModule(vulkanDevice->GetDevice(), &vertexShaderCI, VK_NULL_HANDLE, &shaderStages[0].module);
+	result = vkCreateShaderModule(vulkanDevice->GetDevice(), &vertexShaderCI, VK_NULL_HANDLE, &shaderStages[currentShaderStage].module);
 	if (result != VK_SUCCESS)
 		return false;
+
+	currentShaderStage++;
+	delete[] vsBuffer;
 
 	// Fragment shader
 	std::string fragmentShaderPath = shaderDir + shaderName + "FS.spv";
 	file = fopen(fragmentShaderPath.c_str(), "rb");
 	if (file == NULL)
 	{
-		gLogManager->AddMessage("ERROR: Couldn't find vertex shader file: " + shaderName + "FS.spv");
+		gLogManager->AddMessage("ERROR: Couldn't find fragment shader file: " + shaderName + "FS.spv");
 		return false;
 	}
 
@@ -97,29 +105,76 @@ bool Shader::Init(VulkanDevice * vulkanDevice, std::string shaderName)
 	fragmentShaderCI.pNext = VK_NULL_HANDLE;
 	fragmentShaderCI.flags = 0;
 
-	shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderStages[1].pName = "main";
-	shaderStages[1].pNext = VK_NULL_HANDLE;
-	shaderStages[1].flags = 0;
+	shaderStages[currentShaderStage].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shaderStages[currentShaderStage].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	shaderStages[currentShaderStage].pName = "main";
+	shaderStages[currentShaderStage].pNext = VK_NULL_HANDLE;
+	shaderStages[currentShaderStage].flags = 0;
 
-	result = vkCreateShaderModule(vulkanDevice->GetDevice(), &fragmentShaderCI, VK_NULL_HANDLE, &shaderStages[1].module);
+	result = vkCreateShaderModule(vulkanDevice->GetDevice(), &fragmentShaderCI, VK_NULL_HANDLE, &shaderStages[currentShaderStage].module);
 	if (result != VK_SUCCESS)
 		return false;
 
-	delete[] vsBuffer;
+	currentShaderStage++;
 	delete[] fsBuffer;
+
+	// Geometry shader
+	if (hasGeometryShader)
+	{
+		std::string geometryShaderPath = shaderDir + shaderName + "GS.spv";
+		file = fopen(geometryShaderPath.c_str(), "rb");
+		if (file == NULL)
+		{
+			gLogManager->AddMessage("ERROR: Couldn't find geometry shader file: " + shaderName + "GS.spv");
+			return false;
+		}
+
+		fseek(file, 0, SEEK_END);
+		size = ftell(file);
+		rewind(file);
+
+		char * gsBuffer = new char[size];
+		fread(gsBuffer, 1, size, file);
+
+		fclose(file);
+		file = NULL;
+
+		VkShaderModuleCreateInfo geometryShaderCI{};
+		geometryShaderCI.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		geometryShaderCI.codeSize = size;
+		geometryShaderCI.pCode = (uint32_t*)gsBuffer;
+		geometryShaderCI.pNext = VK_NULL_HANDLE;
+		geometryShaderCI.flags = 0;
+
+		shaderStages[currentShaderStage].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shaderStages[currentShaderStage].stage = VK_SHADER_STAGE_GEOMETRY_BIT;
+		shaderStages[currentShaderStage].pName = "main";
+		shaderStages[currentShaderStage].pNext = VK_NULL_HANDLE;
+		shaderStages[currentShaderStage].flags = 0;
+
+		result = vkCreateShaderModule(vulkanDevice->GetDevice(), &geometryShaderCI, VK_NULL_HANDLE, &shaderStages[currentShaderStage].module);
+		if (result != VK_SUCCESS)
+			return false;
+
+		currentShaderStage++;
+		delete[] gsBuffer;
+	}
 
 	return true;
 }
 
 void Shader::Unload(VulkanDevice * vulkanDevice)
 {
-	vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderStages[1].module, VK_NULL_HANDLE);
-	vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderStages[0].module, VK_NULL_HANDLE);
+	for(uint32_t i = 0; i < stageCount; i++)
+		vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderStages[i].module, VK_NULL_HANDLE);
 }
 
 VkPipelineShaderStageCreateInfo * Shader::GetShaderStages()
 {
 	return shaderStages;
+}
+
+uint32_t Shader::GetStageCount()
+{
+	return stageCount;
 }

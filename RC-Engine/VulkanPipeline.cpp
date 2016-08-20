@@ -221,7 +221,7 @@ bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineC
 	graphicsPipelineCI.pViewportState = &vp;
 	graphicsPipelineCI.pDepthStencilState = &ds;
 	graphicsPipelineCI.pStages = pipelineCI->shader->GetShaderStages();
-	graphicsPipelineCI.stageCount = 2;
+	graphicsPipelineCI.stageCount = pipelineCI->shader->GetStageCount();
 	graphicsPipelineCI.renderPass = pipelineCI->vulkanRenderpass->GetRenderpass();
 	graphicsPipelineCI.subpass = 0;
 

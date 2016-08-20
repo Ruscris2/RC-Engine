@@ -34,7 +34,7 @@ PipelineManager::PipelineManager()
 bool PipelineManager::InitUIPipelines(VulkanInterface * vulkan)
 {
 	canvasShader = new Shader();
-	if (!canvasShader->Init(vulkan->GetVulkanDevice(), "canvas"))
+	if (!canvasShader->Init(vulkan->GetVulkanDevice(), "canvas", false))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init canvas shader!");
 		return false;
@@ -53,49 +53,49 @@ bool PipelineManager::InitGamePipelines(VulkanInterface * vulkan, ShadowMaps * s
 {
 	// Init shaders
 	defaultShader = new Shader();
-	if (!defaultShader->Init(vulkan->GetVulkanDevice(), "default"))
+	if (!defaultShader->Init(vulkan->GetVulkanDevice(), "default", false))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init default shader!");
 		return false;
 	}
 
 	skinnedShader = new Shader();
-	if (!skinnedShader->Init(vulkan->GetVulkanDevice(), "skinned"))
+	if (!skinnedShader->Init(vulkan->GetVulkanDevice(), "skinned", false))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init skinned shader!");
 		return false;
 	}
 
 	deferredShader = new Shader();
-	if (!deferredShader->Init(vulkan->GetVulkanDevice(), "deferred"))
+	if (!deferredShader->Init(vulkan->GetVulkanDevice(), "deferred", false))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init deferred shader!");
 		return false;
 	}
 
 	wireframeShader = new Shader();
-	if (!wireframeShader->Init(vulkan->GetVulkanDevice(), "wireframe"))
+	if (!wireframeShader->Init(vulkan->GetVulkanDevice(), "wireframe", false))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init wireframe shader!");
 		return false;
 	}
 
 	skydomeShader = new Shader();
-	if (!skydomeShader->Init(vulkan->GetVulkanDevice(), "skydome"))
+	if (!skydomeShader->Init(vulkan->GetVulkanDevice(), "skydome", false))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init skydome shader!");
 		return false;
 	}
 
 	shadowShader = new Shader();
-	if (!shadowShader->Init(vulkan->GetVulkanDevice(), "shadow"))
+	if (!shadowShader->Init(vulkan->GetVulkanDevice(), "shadow", false))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init shadow shader!");
 		return false;
 	}
 
 	shadowSkinnedShader = new Shader();
-	if (!shadowSkinnedShader->Init(vulkan->GetVulkanDevice(), "shadowskinned"))
+	if (!shadowSkinnedShader->Init(vulkan->GetVulkanDevice(), "shadowskinned", false))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init shadow skinned shader!");
 		return false;
