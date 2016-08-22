@@ -43,8 +43,6 @@ SceneManager::SceneManager()
 
 	splashScreen = NULL;
 	showSplashScreen = true;
-
-	debugCameraShadowMap = NULL;
 }
 
 SceneManager::~SceneManager()
@@ -103,6 +101,13 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 	if (!guiManager->Init(vulkan, initCommandBuffer))
 		return false;
 
+	// Camera setup
+	camera = new Camera();
+	camera->Init();
+	camera->SetPosition(0.0f, 5.0f, -10.0f);
+	camera->SetDirection(0.0f, 0.0f, 1.0f);
+	camera->SetCameraState(CAMERA_STATE_ORBIT_PLAYER);
+
 	// Splash screen logo
 	splashScreen = new GUIElement();
 	if (!splashScreen->Init(vulkan, initCommandBuffer, "data/textures/logo.rct"))
@@ -123,7 +128,7 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 {
 	// Init shadow maps
 	shadowMaps = new ShadowMaps();
-	if (!shadowMaps->Init(vulkan, initCommandBuffer))
+	if (!shadowMaps->Init(vulkan, initCommandBuffer, camera))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init shadow maps!");
 		return false;
@@ -133,19 +138,12 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 	physics = new Physics();
 	physics->Init();
 
-	// Camera setup
-	camera = new Camera();
-	camera->Init();
-	camera->SetPosition(0.0f, 5.0f, -10.0f);
-	camera->SetDirection(0.0f, 0.0f, 1.0f);
-	camera->SetCameraState(CAMERA_STATE_ORBIT_PLAYER);
-
 	// Light setup
 	light = new Light();
-	light->SetAmbientColor(0.45f, 0.45f, 0.5f, 1.0f);
+	light->SetAmbientColor(0.3f, 0.3f, 0.4f, 1.0f);
 	light->SetDiffuseColor(0.6f, 0.6f, 0.6f, 1.0f);
 	light->SetSpecularColor(1.0f, 1.0f, 1.0f, 1.0f);
-	light->SetLightDirection(-0.5f, -0.5f, 1.0f);
+	light->SetLightDirection(-0.5f, -0.8f, 1.0f);
 
 	if (!pipelineManager->InitGamePipelines(vulkan, shadowMaps))
 	{
@@ -224,25 +222,11 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 	player->Init(male, physics, animPack);
 	player->SetPosition(0.0f, 5.0f, 0.0f);
 
-	GEOMETRY_GENERATE_INFO sphere;
-	sphere.type = GEOMETRY_TYPE_SPHERE;
-	sphere.radius = 0.25f;
-	sphere.slices = 15;
-	sphere.stacks = 15;
-
-	debugCameraShadowMap = new WireframeModel();
-	if (!debugCameraShadowMap->Init(vulkan, sphere, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)))
-	{
-		gLogManager->AddMessage("ERROR: Failed to init debug camera model");
-		return false;
-	}
-
 	return true;
 }
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
-	SAFE_UNLOAD(debugCameraShadowMap, vulkan);
 	SAFE_UNLOAD(splashScreen, vulkan);
 
 	SAFE_UNLOAD(male, vulkan);
@@ -297,7 +281,21 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		if (gInput->WasKeyPressed(KEYBOARD_KEY_E))
 		{
 			Model * model = new Model();
-			model->Init("data/models/box.rcm", vulkan, initCommandBuffer, physics, 20.0f);
+			model->Init("data/models/box.rcm", vulkan, initCommandBuffer, physics, 100.0f);
+
+			glm::vec3 pos = camera->GetPosition();
+			glm::vec3 dir = camera->GetDirection();
+			float power = 5.0f;
+			model->SetPosition(pos.x, pos.y, pos.z);
+			model->SetVelocity(dir.x * power, dir.y * power, dir.z * power);
+
+			modelList.push_back(model);
+		}
+
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_R))
+		{
+			Model * model = new Model();
+			model->Init("data/models/teapot.rcm", vulkan, initCommandBuffer, physics, 1.0f);
 
 			glm::vec3 pos = camera->GetPosition();
 			glm::vec3 dir = camera->GetDirection();
@@ -320,7 +318,6 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		}
 
 		camera->HandleInput();
-		light->SetLightDirection(0.0f, -0.5f, 1.0f);
 
 		// Debug deferred shading
 		if (gInput->WasKeyPressed(KEYBOARD_KEY_1))
@@ -338,15 +335,13 @@ void SceneManager::Render(VulkanInterface * vulkan)
 
 		// Shadow pass
 		shadowMaps->UpdatePartitions(vulkan, camera, light);
-
-		debugCameraShadowMap->SetPosition(10.0f, 10.0f, 0.0f);
 		
 		shadowMaps->BeginShadowPass(deferredCommandBuffer);
 
 		for (unsigned int i = 0; i < modelList.size(); i++)
-			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadow(), camera, shadowMaps);
+			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadow(), NULL, shadowMaps);
 
-		player->GetModel()->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadowSkinned(), camera, shadowMaps);
+		player->GetModel()->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadowSkinned(), NULL, shadowMaps);
 
 		shadowMaps->EndShadowPass(vulkan->GetVulkanDevice(), deferredCommandBuffer);
 		
@@ -354,7 +349,7 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		vulkan->BeginSceneDeferred(deferredCommandBuffer);
 
 		for (unsigned int i = 0; i < modelList.size(); i++)
-			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetDeferred(), camera, shadowMaps);
+			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetDeferred(), camera, NULL);
 
 		player->GetModel()->Render(vulkan, deferredCommandBuffer, pipelineManager->GetSkinned(), camera, NULL);
 
@@ -374,21 +369,18 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		if (currentGameState == GAME_STATE_INGAME)
 		{
 			skydome->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetSkydome(), camera, (int)i);
-			renderDummy->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetDefault(), vulkan->GetOrthoMatrix(),
+			renderDummy->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetDefault(), camera->GetOrthoMatrix(),
 				light, imageIndex, camera, shadowMaps, (int)i);
-
-			debugCameraShadowMap->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetWireframe(), camera, (int)i);
-			shadowMaps->RenderDebug(vulkan, renderCommandBuffers[i], pipelineManager->GetWireframe(), camera, (int)i);
 		}
 		else if (currentGameState == GAME_STATE_SPLASH_SCREEN)
-			splashScreen->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), (int)i);
+			splashScreen->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), camera, (int)i);
 		else
 		{
 			gLogManager->AddMessage("ERROR: Unknown game state!");
 			THROW_ERROR();
 		}
 
-		guiManager->Update(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), (int)i);
+		guiManager->Update(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), camera, (int)i);
 
 		vulkan->EndSceneForward(renderCommandBuffers[i]);
 	}

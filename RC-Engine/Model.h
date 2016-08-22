@@ -24,9 +24,6 @@ class Model
 		std::vector<Material*> materials;
 		std::vector<VulkanCommandBuffer*> drawCmdBuffers;
 
-		float posX, posY, posZ;
-		float rotX, rotY, rotZ;
-
 		struct VertexUniformBuffer
 		{
 			glm::mat4 MVP;
@@ -41,15 +38,19 @@ class Model
 		bool physicsStatic;
 		btCollisionShape * emptyCollisionShape;
 		btGImpactMeshShape * collisionShape;
+		btCollisionShape * mainCollisionShape;
 		btTriangleMesh * collisionMesh;
 		btRigidBody * rigidBody;
 		btScalar mass;
+		btVector3 inertia;
 	private:
 		bool InitVertexUniformBuffer(VulkanDevice * vulkanDevice);
 		bool ReadRCMFile(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, std::string filename);
 		void ReadCollisionFile(std::string filename);
 		void SetupPhysicsObject(float mass);
-		void UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline, Mesh * mesh);
+		void CreateRigidBody(btTransform transform);
+		void RemoveRigidBody();
+		void UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline, Mesh * mesh, ShadowMaps * shadowMaps);
 	public:
 		Model();
 		~Model();

@@ -23,7 +23,7 @@ FrameBufferAttachment::~FrameBufferAttachment()
 }
 
 bool FrameBufferAttachment::Create(VulkanDevice * device, VkFormat format, VkImageUsageFlagBits usage, VulkanCommandBuffer * cmdBuffer,
-	uint32_t width, uint32_t height)
+	uint32_t width, uint32_t height, uint32_t layerCount)
 {
 	VkResult result;
 	VkImageAspectFlags aspectMask = 0;
@@ -53,7 +53,7 @@ bool FrameBufferAttachment::Create(VulkanDevice * device, VkFormat format, VkIma
 	imageCI.extent.height = height;
 	imageCI.extent.depth = 1;
 	imageCI.mipLevels = 1;
-	imageCI.arrayLayers = 1;
+	imageCI.arrayLayers = layerCount;
 	imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageCI.usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -87,13 +87,13 @@ bool FrameBufferAttachment::Create(VulkanDevice * device, VkFormat format, VkIma
 
 	VkImageViewCreateInfo viewCI{};
 	viewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	viewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewCI.viewType = (layerCount == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY);
 	viewCI.format = format;
 	viewCI.subresourceRange.aspectMask = aspectMask;
 	viewCI.subresourceRange.baseMipLevel = 0;
 	viewCI.subresourceRange.levelCount = 1;
 	viewCI.subresourceRange.baseArrayLayer = 0;
-	viewCI.subresourceRange.layerCount = 1;
+	viewCI.subresourceRange.layerCount = layerCount;
 	viewCI.image = image;
 
 	result = vkCreateImageView(device->GetDevice(), &viewCI, VK_NULL_HANDLE, &view);

@@ -110,7 +110,6 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 	fragmentUniformBuffer.lightDirection = glm::vec3();
 	fragmentUniformBuffer.imageIndex = 5;
 	fragmentUniformBuffer.cameraPosition = glm::vec3();
-	fragmentUniformBuffer.lightViewMatrix = glm::mat4();
 	fragmentUniformBuffer.padding = 0.0f;
 
 	// Vertex shader Uniform buffer
@@ -278,9 +277,10 @@ void RenderDummy::Render(VulkanInterface * vulkan, VulkanCommandBuffer * command
 	fragmentUniformBuffer.lightDirection = light->GetLightDirection();
 	fragmentUniformBuffer.imageIndex = imageIndex;
 	fragmentUniformBuffer.cameraPosition = camera->GetPosition();
-
-	fragmentUniformBuffer.lightViewMatrix = (shadowMaps->GetOrthoMatrix() * shadowMaps->GetViewMatrix());
 	fragmentUniformBuffer.padding = 0.0f;
+
+	for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
+		fragmentUniformBuffer.lightViewMatrix[i] = shadowMaps->GetLightViewProj(i);
 
 	fsUBO->Update(vulkan->GetVulkanDevice(), &fragmentUniformBuffer, sizeof(fragmentUniformBuffer));
 

@@ -6,7 +6,7 @@
 ==========================================================================================*/
 #pragma once
 
-#define VULKAN_DEBUG_MODE_ENABLED false
+#define VULKAN_DEBUG_MODE_ENABLED true
 
 #define VK_USE_PLATFORM_WIN32_KHR
 
@@ -55,11 +55,6 @@ class VulkanInterface
 		FrameBufferAttachment * depthAtt;
 		std::vector<FrameBufferAttachment*> attachmentsPtr;
 
-		int projectionMatrixPartitionCount;
-		glm::mat4 projectionMatrix;
-		glm::mat4 * projectionMatrixPartitions;
-		glm::mat4 orthoMatrix;
-
 		VkSemaphore imageReadySemaphore;
 		VkSemaphore drawCompleteSemaphore;
 
@@ -92,10 +87,6 @@ class VulkanInterface
 		VulkanRenderpass * GetForwardRenderpass();
 		VulkanRenderpass * GetDeferredRenderpass();
 		VulkanSwapchain * GetVulkanSwapchain();
-		int GetProjectionMatrixPartitionCount();
-		glm::mat4 GetProjectionMatrixPartition(int index);
-		glm::mat4 GetProjectionMatrix();
-		glm::mat4 GetOrthoMatrix();
 		VkSampler GetColorSampler();
 		FrameBufferAttachment * GetPositionAttachment();
 		FrameBufferAttachment * GetNormalAttachment();

@@ -40,7 +40,8 @@ void GUIManager::Unload(VulkanInterface * vulkan)
 	SAFE_UNLOAD(cursor, vulkan);
 }
 
-void GUIManager::Update(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline, int frameBufferId)
+void GUIManager::Update(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline,
+	Camera * camera, int frameBufferId)
 {
 	if (guiEnabled)
 	{
@@ -60,7 +61,7 @@ void GUIManager::Update(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffe
 			cursorPosY = 0.0f;
 
 		cursor->SetPosition(cursorPosX, cursorPosY);
-		cursor->Render(vulkan, cmdBuffer, pipeline, frameBufferId);
+		cursor->Render(vulkan, cmdBuffer, pipeline, camera, frameBufferId);
 	}
 }
 

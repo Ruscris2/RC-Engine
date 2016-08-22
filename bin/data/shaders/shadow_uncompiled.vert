@@ -13,5 +13,5 @@ layout (location = 0) in vec3 pos;
 
 void main()
 {
-	gl_Position = ubo.mvp * vec4(pos, 1.0f);
+	gl_Position = ubo.worldMatrix * vec4(pos, 1.0f);
 }

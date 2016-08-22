@@ -38,8 +38,6 @@ VulkanInterface::~VulkanInterface()
 #endif
 	vkDestroyPipelineCache(vulkanDevice->GetDevice(), pipelineCache, VK_NULL_HANDLE);
 
-	SAFE_DELETE(projectionMatrixPartitions);
-
 	vkDestroySemaphore(vulkanDevice->GetDevice(), drawCompleteSemaphore, VK_NULL_HANDLE);
 	vkDestroySemaphore(vulkanDevice->GetDevice(), imageReadySemaphore, VK_NULL_HANDLE);
 
@@ -187,19 +185,6 @@ bool VulkanInterface::Init(HWND hwnd)
 		return false;
 	}
 
-	// Projection matrices
-	float fov = glm::radians(45.0f);
-	float aspectRatio = (float)gSettings->GetWindowWidth() / gSettings->GetWindowHeight();
-	projectionMatrixPartitionCount = 3;
-	projectionMatrixPartitions = new glm::mat4[projectionMatrixPartitionCount];
-
-	projectionMatrix = glm::perspective(fov, aspectRatio, 0.01f, 100.0f);
-	projectionMatrixPartitions[0] = glm::perspective(fov, aspectRatio, 0.01f, 5.0f);
-	projectionMatrixPartitions[1] = glm::perspective(fov, aspectRatio, 5.0f, 15.0f);
-	projectionMatrixPartitions[2] = glm::perspective(fov, aspectRatio, 15.0f, 50.0f);
-
-	orthoMatrix = glm::ortho(0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f);
-
 	// Semaphores
 	VkSemaphoreCreateInfo semaphoreCI{};
 	semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -282,26 +267,6 @@ VulkanRenderpass * VulkanInterface::GetDeferredRenderpass()
 VulkanSwapchain * VulkanInterface::GetVulkanSwapchain()
 {
 	return vulkanSwapchain;
-}
-
-int VulkanInterface::GetProjectionMatrixPartitionCount()
-{
-	return projectionMatrixPartitionCount;
-}
-
-glm::mat4 VulkanInterface::GetProjectionMatrixPartition(int index)
-{
-	return projectionMatrixPartitions[index];
-}
-
-glm::mat4 VulkanInterface::GetProjectionMatrix()
-{
-	return projectionMatrix;
-}
-
-glm::mat4 VulkanInterface::GetOrthoMatrix()
-{
-	return orthoMatrix;
 }
 
 VkSampler VulkanInterface::GetColorSampler()
@@ -441,8 +406,8 @@ bool VulkanInterface::InitDeferredFramebuffer()
 	VkResult result;
 
 	positionAtt = new FrameBufferAttachment();
-	if (!positionAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer,
-		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight()))
+	if (!positionAtt->Create(vulkanDevice, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer,
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight(), 1))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create position framebuffer attachment!");
 		return false;
@@ -450,7 +415,7 @@ bool VulkanInterface::InitDeferredFramebuffer()
 
 	normalAtt = new FrameBufferAttachment();
 	if (!normalAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer,
-		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight()))
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight(), 1))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create normal framebuffer attachment!");
 		return false;
@@ -458,7 +423,7 @@ bool VulkanInterface::InitDeferredFramebuffer()
 
 	albedoAtt = new FrameBufferAttachment();
 	if (!albedoAtt->Create(vulkanDevice, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer,
-		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight()))
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight(), 1))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create albedo framebuffer attachment!");
 		return false;
@@ -466,7 +431,7 @@ bool VulkanInterface::InitDeferredFramebuffer()
 
 	materialAtt = new FrameBufferAttachment();
 	if (!materialAtt->Create(vulkanDevice, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, initCommandBuffer,
-		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight()))
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight(), 1))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create material framebuffer attachment!");
 		return false;
@@ -474,7 +439,7 @@ bool VulkanInterface::InitDeferredFramebuffer()
 
 	depthAtt = new FrameBufferAttachment();
 	if (!depthAtt->Create(vulkanDevice, depthImage.format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, initCommandBuffer,
-		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight()))
+		(uint32_t)gSettings->GetWindowWidth(), (uint32_t)gSettings->GetWindowHeight(), 1))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create depth framebuffer attachment!");
 		return false;

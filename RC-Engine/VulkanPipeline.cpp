@@ -169,7 +169,7 @@ bool VulkanPipeline::Init(VulkanInterface * vulkan, VulkanPipelineCI * pipelineC
 	vp.pViewports = NULL;
 	dynamicStateEnables[dynamicStateCI.dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT;
 	dynamicStateEnables[dynamicStateCI.dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR;
-	
+
 	if (pipelineCI->depthBiasEnabled)
 		dynamicStateEnables[dynamicStateCI.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
 

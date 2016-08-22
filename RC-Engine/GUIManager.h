@@ -6,6 +6,7 @@
 ==========================================================================================*/
 
 #include "GUIElement.h"
+#include "Camera.h"
 
 #pragma once
 
@@ -22,6 +23,7 @@ class GUIManager
 
 		bool Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer);
 		void Unload(VulkanInterface * vulkan);
-		void Update(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline, int frameBufferId);
+		void Update(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline,
+			Camera * camera, int frameBufferId);
 		void ToggleGUI(bool toggle);
 };

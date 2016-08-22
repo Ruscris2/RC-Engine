@@ -54,7 +54,7 @@ void Player::Init(SkinnedModel * model, Physics * physics, AnimationPack animPac
 
 	btDefaultMotionState * motionState = new btDefaultMotionState(transform);
 
-	btScalar mass = 60.0f;
+	btScalar mass = 100.0f;
 	btVector3 inertia(0.0f, 0.0f, 0.0f);
 	capsuleShape->calculateLocalInertia(mass, inertia);
 
@@ -68,12 +68,14 @@ void Player::Init(SkinnedModel * model, Physics * physics, AnimationPack animPac
 	playerBody->setCcdMotionThreshold(0.00001f);
 	physics->GetDynamicsWorld()->addRigidBody(playerBody);
 
-	walkSpeed = 2.5f;
-	runSpeed = 7.5f;
+	walkSpeed = 2.0f;
+	runSpeed = 5.0f;
 	baseDirection = btVector3(0.0f, 0.0f, 1.0f);
 
-	animPack.walkAnimation->SetAnimationSpeed(0.001f + (0.0005f * walkSpeed));
-	animPack.runAnimation->SetAnimationSpeed(0.001f + (0.0002f * runSpeed));
+	if(animPack.walkAnimation != NULL)
+		animPack.walkAnimation->SetAnimationSpeed(0.001f + (0.0005f * walkSpeed));
+	if(animPack.runAnimation != NULL)
+		animPack.runAnimation->SetAnimationSpeed(0.001f + (0.0002f * runSpeed));
 }
 
 void Player::SetPosition(float x, float y, float z)
@@ -240,7 +242,8 @@ void Player::Jump()
 		isJumping = true;
 		jumpTracking_FallingInitiated = false;
 
-		animPack.jumpAnimation->ResetAnimation();
+		if(animPack.jumpAnimation != NULL)
+			animPack.jumpAnimation->ResetAnimation();
 		playerModel->SetAnimation(animPack.jumpAnimation);
 	}
 }

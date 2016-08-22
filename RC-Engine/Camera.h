@@ -23,6 +23,9 @@ class Camera
 {
 	private:
 		glm::mat4 viewMatrix;
+		glm::mat4 projectionMatrix;
+		glm::mat4 orthoMatrix;
+
 		glm::vec3 position;
 		glm::vec3 lookAt;
 		glm::vec3 up;
@@ -33,6 +36,11 @@ class Camera
 		float orbitRadius;
 		float baseSpeed;
 		float sensitivity;
+
+		float fieldOfView;
+		float aspectRatio;
+		float nearClip;
+		float farClip;
 
 		CAMERA_STATE currentState;
 	public:
@@ -46,8 +54,14 @@ class Camera
 		void SetOrbitParameters(glm::vec3 orbitPoint, glm::vec3 orbitPointOrientation, float radius);
 		void SetCameraState(CAMERA_STATE state);
 		glm::mat4 GetViewMatrix();
+		glm::mat4 GetProjectionMatrix();
+		glm::mat4 GetOrthoMatrix();
 		glm::vec3 GetPosition();
 		glm::vec3 GetDirection();
 		CAMERA_STATE GetCameraState();
 		float GetSensitivity();
+		float GetFieldOfView();
+		float GetAspectRatio();
+		float GetNearClip();
+		float GetFarClip();
 };

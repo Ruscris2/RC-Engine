@@ -24,7 +24,7 @@ struct VulkanPipelineCI
 	bool wireframeEnabled;
 	VkCullModeFlags cullMode;
 	bool transparencyEnabled;
-	bool depthBiasEnabled = false;
+	bool depthBiasEnabled;
 };
 
 class VulkanPipeline

@@ -197,9 +197,7 @@ void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * comman
 	Camera * camera, ShadowMaps * shadowMaps)
 {
 	if(vulkanPipeline->GetPipelineName() == "SKINNED")
-		vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
-	else if(vulkanPipeline->GetPipelineName() == "SHADOWSKINNED")
-		vertexUniformBuffer.MVP = shadowMaps->GetOrthoMatrix() * shadowMaps->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
+		vertexUniformBuffer.MVP = camera->GetProjectionMatrix() * camera->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
 
 	skinnedVS_UBO->Update(vulkan->GetVulkanDevice(), &vertexUniformBuffer, sizeof(vertexUniformBuffer));
 
@@ -208,7 +206,7 @@ void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * comman
 		if (vulkanPipeline->GetPipelineName() == "SKINNED")
 		{
 			meshes[i]->UpdateUniformBuffer(vulkan);
-			UpdateDescriptorSet(vulkan, vulkanPipeline, meshes[i]);
+			UpdateDescriptorSet(vulkan, vulkanPipeline, meshes[i], NULL);
 
 			// Record draw command
 			drawCmdBuffers[i]->BeginRecordingSecondary(vulkan->GetDeferredRenderpass()->GetRenderpass(), vulkan->GetDeferredFramebuffer());
@@ -223,13 +221,14 @@ void SkinnedModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * comman
 		}
 		else if (vulkanPipeline->GetPipelineName() == "SHADOWSKINNED")
 		{
-			UpdateDescriptorSet(vulkan, vulkanPipeline, meshes[i]);
+			UpdateDescriptorSet(vulkan, vulkanPipeline, meshes[i], shadowMaps);
 
 			// Record draw command
 			drawCmdBuffers[i]->BeginRecordingSecondary(shadowMaps->GetShadowRenderpass()->GetRenderpass(), shadowMaps->GetFramebuffer());
 
-			vulkan->InitViewportAndScissors(drawCmdBuffers[i], (float)shadowMaps->GetMapWidth(), (float)shadowMaps->GetMapHeight(),
-				shadowMaps->GetMapWidth(), shadowMaps->GetMapHeight());
+			vulkan->InitViewportAndScissors(drawCmdBuffers[i], (float)shadowMaps->GetMapSize(), (float)shadowMaps->GetMapSize(),
+				shadowMaps->GetMapSize(), shadowMaps->GetMapSize());
+
 			shadowMaps->SetDepthBias(drawCmdBuffers[i]);
 			vulkanPipeline->SetActive(drawCmdBuffers[i]);
 			meshes[i]->Render(vulkan, drawCmdBuffers[i]);
@@ -263,7 +262,7 @@ void SkinnedModel::SetAnimation(Animation * anim)
 	currentAnim = anim;
 }
 
-void SkinnedModel::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline, SkinnedMesh * mesh)
+void SkinnedModel::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline, SkinnedMesh * mesh, ShadowMaps * shadowMaps)
 {
 	if (pipeline->GetPipelineName() == "SKINNED")
 	{
@@ -336,7 +335,7 @@ void SkinnedModel::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline 
 	}
 	else if (pipeline->GetPipelineName() == "SHADOWSKINNED")
 	{
-		VkWriteDescriptorSet descriptorWrite[2];
+		VkWriteDescriptorSet descriptorWrite[3];
 
 		descriptorWrite[0] = {};
 		descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -357,6 +356,16 @@ void SkinnedModel::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline 
 		descriptorWrite[1].pBufferInfo = skinnedVS_bone_UBO->GetBufferInfo();
 		descriptorWrite[1].dstArrayElement = 0;
 		descriptorWrite[1].dstBinding = 1;
+
+		descriptorWrite[2] = {};
+		descriptorWrite[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[2].pNext = NULL;
+		descriptorWrite[2].dstSet = pipeline->GetDescriptorSet();
+		descriptorWrite[2].descriptorCount = 1;
+		descriptorWrite[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite[2].pBufferInfo = shadowMaps->GetBufferInfo();
+		descriptorWrite[2].dstArrayElement = 0;
+		descriptorWrite[2].dstBinding = 2;
 
 		vkUpdateDescriptorSets(vulkan->GetVulkanDevice()->GetDevice(), sizeof(descriptorWrite) / sizeof(descriptorWrite[0]), descriptorWrite, 0, NULL);
 	}

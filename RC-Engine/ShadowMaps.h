@@ -9,52 +9,45 @@
 #include "Camera.h"
 #include "WireframeModel.h"
 #include "Light.h"
+#include "VulkanBuffer.h"
 
 #pragma once
+
+#define SHADOW_CASCADE_COUNT 3
 
 class ShadowMaps
 {
 	private:
 		VkFramebuffer framebuffer;
-		uint32_t mapWidth, mapHeight;
+		uint32_t mapSize;
 		FrameBufferAttachment * depthAttachment;
 		VulkanRenderpass * renderpass;
 		VkSampler sampler;
 		glm::mat4 * orthoMatrices;
 		glm::mat4 * viewMatrices;
 
-		bool render;
-		WireframeModel * debugCascade1Face1;
-		WireframeModel * debugCascade1Face2;
-		WireframeModel * debugCascade1Face3;
-		WireframeModel * debugCascade1Face4;
+		glm::mat4 * projectionMatrixPartitions;
 
-		WireframeModel * debugCascade2Face1;
-		WireframeModel * debugCascade2Face2;
-		WireframeModel * debugCascade2Face3;
-		WireframeModel * debugCascade2Face4;
-
-		WireframeModel * debugCascade3Face1;
-		WireframeModel * debugCascade3Face2;
-		WireframeModel * debugCascade3Face3;
-		WireframeModel * debugCascade3Face4;
+		struct GeometryUniformBuffer
+		{
+			glm::mat4 lightViewProj[SHADOW_CASCADE_COUNT];
+		};
+		GeometryUniformBuffer geometryUniformBuffer;
+		VulkanBuffer * shadowGS_UBO;
 	public:
 		ShadowMaps();
 
-		bool Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer);
+		bool Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, Camera * camera);
 		void Unload(VulkanInterface * vulkan);
 		void BeginShadowPass(VulkanCommandBuffer * commandBuffer);
 		void EndShadowPass(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer);
 		void SetDepthBias(VulkanCommandBuffer * cmdBuffer);
 		void UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera, Light * light);
-		void RenderDebug(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline, Camera * camera,
-			int framebufferId);
 		VulkanRenderpass * GetShadowRenderpass();
 		VkFramebuffer GetFramebuffer();
 		VkImageView * GetImageView();
-		glm::mat4 GetViewMatrix();
-		glm::mat4 GetOrthoMatrix();
+		VkDescriptorBufferInfo * GetBufferInfo();
+		glm::mat4 GetLightViewProj(int index);
 		VkSampler GetSampler();
-		uint32_t GetMapWidth();
-		uint32_t GetMapHeight();
+		uint32_t GetMapSize();
 };

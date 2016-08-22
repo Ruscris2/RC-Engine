@@ -88,14 +88,14 @@ bool PipelineManager::InitGamePipelines(VulkanInterface * vulkan, ShadowMaps * s
 	}
 
 	shadowShader = new Shader();
-	if (!shadowShader->Init(vulkan->GetVulkanDevice(), "shadow", false))
+	if (!shadowShader->Init(vulkan->GetVulkanDevice(), "shadow", true))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init shadow shader!");
 		return false;
 	}
 
 	shadowSkinnedShader = new Shader();
-	if (!shadowSkinnedShader->Init(vulkan->GetVulkanDevice(), "shadowskinned", false))
+	if (!shadowSkinnedShader->Init(vulkan->GetVulkanDevice(), "shadowskinned", true))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init shadow skinned shader!");
 		return false;
@@ -306,6 +306,7 @@ bool PipelineManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	pipelineCI.wireframeEnabled = false;
 	pipelineCI.cullMode = VK_CULL_MODE_BACK_BIT;
 	pipelineCI.transparencyEnabled = false;
+	pipelineCI.depthBiasEnabled = false;
 
 	defaultPipeline = new VulkanPipeline();
 	if (!defaultPipeline->Init(vulkan, &pipelineCI))
@@ -418,6 +419,7 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	pipelineCI.wireframeEnabled = false;
 	pipelineCI.cullMode = VK_CULL_MODE_BACK_BIT;
 	pipelineCI.transparencyEnabled = false;
+	pipelineCI.depthBiasEnabled = false;
 
 	skinnedPipeline = new VulkanPipeline();
 	if (!skinnedPipeline->Init(vulkan, &pipelineCI))
@@ -505,7 +507,8 @@ bool PipelineManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	pipelineCI.wireframeEnabled = false;
 	pipelineCI.cullMode = VK_CULL_MODE_BACK_BIT;
 	pipelineCI.transparencyEnabled = false;
-	
+	pipelineCI.depthBiasEnabled = false;
+
 	deferredPipeline = new VulkanPipeline();
 	if (!deferredPipeline->Init(vulkan, &pipelineCI))
 		return false;
@@ -561,6 +564,7 @@ bool PipelineManager::BuildWireframePipeline(VulkanInterface * vulkan)
 	pipelineCI.wireframeEnabled = true;
 	pipelineCI.cullMode = VK_CULL_MODE_NONE;
 	pipelineCI.transparencyEnabled = false;
+	pipelineCI.depthBiasEnabled = false;
 
 	wireframePipeline = new VulkanPipeline();
 	if (!wireframePipeline->Init(vulkan, &pipelineCI))
@@ -619,6 +623,7 @@ bool PipelineManager::BuildSkydomePipeline(VulkanInterface * vulkan)
 	pipelineCI.wireframeEnabled = false;
 	pipelineCI.cullMode = VK_CULL_MODE_FRONT_BIT;
 	pipelineCI.transparencyEnabled = false;
+	pipelineCI.depthBiasEnabled = false;
 
 	skydomePipeline = new VulkanPipeline();
 	if (!skydomePipeline->Init(vulkan, &pipelineCI))
@@ -683,6 +688,7 @@ bool PipelineManager::BuildCanvasPipeline(VulkanInterface * vulkan)
 	pipelineCI.wireframeEnabled = false;
 	pipelineCI.cullMode = VK_CULL_MODE_BACK_BIT;
 	pipelineCI.transparencyEnabled = true;
+	pipelineCI.depthBiasEnabled = false;
 
 	canvasPipeline = new VulkanPipeline();
 	if (!canvasPipeline->Init(vulkan, &pipelineCI))
@@ -702,7 +708,7 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 	vertexLayoutShadow[0].offset = 0;
 
 	// Layout bindings
-	VkDescriptorSetLayoutBinding layoutBindingsShadow[1];
+	VkDescriptorSetLayoutBinding layoutBindingsShadow[2];
 
 	layoutBindingsShadow[0].binding = 0;
 	layoutBindingsShadow[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -710,10 +716,18 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 	layoutBindingsShadow[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	layoutBindingsShadow[0].pImmutableSamplers = VK_NULL_HANDLE;
 
+	layoutBindingsShadow[1].binding = 1;
+	layoutBindingsShadow[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsShadow[1].descriptorCount = 1;
+	layoutBindingsShadow[1].stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT;
+	layoutBindingsShadow[1].pImmutableSamplers = VK_NULL_HANDLE;
+
 	// Type counts
-	VkDescriptorPoolSize typeCounts[1];
+	VkDescriptorPoolSize typeCounts[2];
 	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	typeCounts[0].descriptorCount = 1;
+	typeCounts[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[1].descriptorCount = 1;
 
 	struct DeferredVertex {
 		float x, y, z;
@@ -728,12 +742,12 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 	pipelineCI.vertexLayout = vertexLayoutShadow;
 	pipelineCI.numVertexLayout = 1;
 	pipelineCI.layoutBindings = layoutBindingsShadow;
-	pipelineCI.numLayoutBindings = 1;
+	pipelineCI.numLayoutBindings = 2;
 	pipelineCI.typeCounts = typeCounts;
 	pipelineCI.strideSize = sizeof(DeferredVertex);
 	pipelineCI.numColorAttachments = 0;
 	pipelineCI.wireframeEnabled = false;
-	pipelineCI.cullMode = VK_CULL_MODE_BACK_BIT;
+	pipelineCI.cullMode = VK_CULL_MODE_FRONT_BIT;
 	pipelineCI.transparencyEnabled = false;
 	pipelineCI.depthBiasEnabled = true;
 
@@ -765,7 +779,7 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 	vertexLayoutShadowSkinned[2].offset = sizeof(float) * 12;
 
 	// Layout bindings
-	VkDescriptorSetLayoutBinding layoutBindingsShadowSkinned[2];
+	VkDescriptorSetLayoutBinding layoutBindingsShadowSkinned[3];
 
 	layoutBindingsShadowSkinned[0].binding = 0;
 	layoutBindingsShadowSkinned[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -779,12 +793,20 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 	layoutBindingsShadowSkinned[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	layoutBindingsShadowSkinned[1].pImmutableSamplers = VK_NULL_HANDLE;
 
+	layoutBindingsShadowSkinned[2].binding = 2;
+	layoutBindingsShadowSkinned[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsShadowSkinned[2].descriptorCount = 1;
+	layoutBindingsShadowSkinned[2].stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT;
+	layoutBindingsShadowSkinned[2].pImmutableSamplers = VK_NULL_HANDLE;
+
 	// Type counts
-	VkDescriptorPoolSize typeCountsSkinned[2];
+	VkDescriptorPoolSize typeCountsSkinned[3];
 	typeCountsSkinned[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	typeCountsSkinned[0].descriptorCount = 1;
 	typeCountsSkinned[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	typeCountsSkinned[1].descriptorCount = 1;
+	typeCountsSkinned[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCountsSkinned[2].descriptorCount = 1;
 
 	struct SkinnedVertex {
 		float x, y, z;
@@ -800,7 +822,7 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 	pipelineCI.vertexLayout = vertexLayoutShadowSkinned;
 	pipelineCI.numVertexLayout = 3;
 	pipelineCI.layoutBindings = layoutBindingsShadowSkinned;
-	pipelineCI.numLayoutBindings = 2;
+	pipelineCI.numLayoutBindings = 3;
 	pipelineCI.typeCounts = typeCountsSkinned;
 	pipelineCI.strideSize = sizeof(SkinnedVertex);
 	

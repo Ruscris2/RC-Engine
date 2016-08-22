@@ -3,6 +3,8 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+#define CASCADE_COUNT 3
+
 layout (binding = 1) uniform sampler2D samplerPosition;
 layout (binding = 2) uniform sampler2D samplerNormal;
 layout (binding = 3) uniform sampler2D samplerAlbedo;
@@ -11,7 +13,7 @@ layout (binding = 5) uniform sampler2D samplerDepth;
 
 layout (binding = 6) uniform UBO
 {
-	mat4 lightViewMatrix;
+	mat4 lightViewMatrix[CASCADE_COUNT];
 	vec4 ambientColor;
 	vec4 diffuseColor;
 	vec4 specularColor;
@@ -21,27 +23,25 @@ layout (binding = 6) uniform UBO
 	float padding;
 } ubo;
 
-layout (binding = 7) uniform sampler2D samplerShadowMap;
+layout (binding = 7) uniform sampler2DArray samplerShadowMap;
 
 layout (location = 0) in vec2 texCoord;
 
 layout (location = 0) out vec4 outColor;
 
-float textureProj(vec4 coord)
-{
+float TextureProjection(vec4 projCoord, int layer)
+{	
 	float shadow = 1.0f;
-	vec4 shadowCoord = coord / coord.w;
-	shadowCoord.st = shadowCoord.st * 0.5f + 0.5f;
 	
-	if(shadowCoord.z > -1.0f && shadowCoord.z < 1.0f)
+	if(clamp(projCoord.x, 0.0f, 1.0f) == projCoord.x && clamp(projCoord.y, 0.0f, 1.0f) == projCoord.y)
 	{
-		float distance = texture(samplerShadowMap, shadowCoord.st).r;
-		if(shadowCoord.w > 0.0f && distance < shadowCoord.z)
-		{			
-			shadow = 0.25f;
+		if(projCoord.z > -1.0f && projCoord.z < 1.0f)
+		{
+			float distance = texture(samplerShadowMap, vec3(projCoord.xy, layer)).r;
+			if(projCoord.w > 0.0f && distance < projCoord.z)
+				shadow = 0.25f;
 		}
 	}
-	
 	return shadow;
 }
 
@@ -56,23 +56,51 @@ void main()
 	
 	if(ubo.imageIndex == 5)
 	{	
+		float shadow = 1.0f;
+		vec2 projectCoords[CASCADE_COUNT];
+		
+		// Find the shadow cascade for this fragment
+		for(int i = 0; i < CASCADE_COUNT; i++)
+		{
+			vec4 shadowClip = ubo.lightViewMatrix[i] * vec4(fragPos, 1.0f);
+			projectCoords[i].x = shadowClip.x / shadowClip.w / 2.0f + 0.5f;
+			projectCoords[i].y = shadowClip.y / shadowClip.w / 2.0f + 0.5f;
+			
+			if(clamp(projectCoords[i].x, 0.0f, 1.0f) == projectCoords[i].x && clamp(projectCoords[i].y, 0.0f, 1.0f) == projectCoords[i].y)
+			{
+				float mapDepth = texture(samplerShadowMap, vec3(projectCoords[i], i)).r;
+				float lightDepth = shadowClip.z / shadowClip.w;
+				if(lightDepth < -1.0f || lightDepth > 1.0f)
+					continue;
+				
+				if(lightDepth > mapDepth)
+				{
+					shadow = 0.25f;
+					break;
+				}
+			}
+		}
+		
 		vec3 viewDir = normalize(ubo.cameraPosition - fragPos);
-		vec3 fragColor = clamp(albedo.rgb * ubo.ambientColor.rgb, 0.0, 1.0);
+		vec4 fragColor = ubo.ambientColor;
+		vec4 spec = vec4(0.0f, 0.0f, 0.0f, 0.0f);
 		vec3 lightDir = -ubo.lightDirection;
+		float lightIntensity = dot(normal, lightDir);
 		
-		vec3 diff = max(dot(normal, lightDir), 0.0f) * albedo.rgb * ubo.diffuseColor.rgb;
+		if(lightIntensity > 0.0f)
+		{
+			vec4 diff = clamp(lightIntensity * ubo.diffuseColor, 0.0f, 1.0f) * shadow;
+			
+			vec3 halfVec = normalize(lightDir + viewDir);
+			spec = ubo.specularColor * pow(max(dot(normal, halfVec), 0.0), specular.g) * specular.b * specular.r;
+			if(specular.g  == 0.0f)
+				spec = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+			
+			fragColor += diff;
+		}
 		
-		vec3 halfVec = normalize(lightDir + viewDir);
-		vec3 spec = ubo.specularColor.rgb * pow(max(dot(normal, halfVec), 0.0), specular.g) * specular.b * specular.r;
-		if(specular.g  == 0.0f)
-			spec = vec3(0.0f, 0.0f, 0.0f);
-		
-		fragColor += clamp(diff + spec, 0.0, 1.0);
-		
-		vec4 shadowClip = ubo.lightViewMatrix * vec4(fragPos, 1.0f);
-		float shadowFactor = textureProj(shadowClip);
-		
-		outColor = vec4(fragColor, 1.0f) * shadowFactor;
+		fragColor = clamp(fragColor, 0.0f, 1.0f);
+		outColor = (fragColor * albedo) + (spec * shadow);
 	}
 	else if(ubo.imageIndex == 4)
 	{

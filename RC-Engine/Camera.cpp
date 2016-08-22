@@ -8,9 +8,11 @@
 #include "Camera.h"
 #include "Input.h"
 #include "Timer.h"
+#include "Settings.h"
 
 extern Input * gInput;
 extern Timer * gTimer;
+extern Settings * gSettings;
 
 void Camera::Init()
 {
@@ -26,6 +28,15 @@ void Camera::Init()
 	currentState = CAMERA_STATE_FLY;
 	baseSpeed = 0.002f;
 	sensitivity = 0.2f;
+
+	fieldOfView = glm::radians(45.0f);
+	aspectRatio = (float)gSettings->GetWindowWidth() / gSettings->GetWindowHeight();
+	nearClip = 0.01f;
+	farClip = 100.0f;
+
+	projectionMatrix = glm::perspective(fieldOfView, aspectRatio, nearClip, farClip);
+	orthoMatrix = glm::ortho(0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f);
+
 	HandleInput();
 }
 
@@ -128,6 +139,16 @@ glm::mat4 Camera::GetViewMatrix()
 	return viewMatrix;
 }
 
+glm::mat4 Camera::GetProjectionMatrix()
+{
+	return projectionMatrix;
+}
+
+glm::mat4 Camera::GetOrthoMatrix()
+{
+	return orthoMatrix;
+}
+
 glm::vec3 Camera::GetPosition()
 {
 	return position;
@@ -146,4 +167,24 @@ CAMERA_STATE Camera::GetCameraState()
 float Camera::GetSensitivity()
 {
 	return sensitivity;
+}
+
+float Camera::GetFieldOfView()
+{
+	return fieldOfView;
+}
+
+float Camera::GetAspectRatio()
+{
+	return aspectRatio;
+}
+
+float Camera::GetNearClip()
+{
+	return nearClip;
+}
+
+float Camera::GetFarClip()
+{
+	return farClip;
 }

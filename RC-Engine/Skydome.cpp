@@ -215,7 +215,7 @@ void Skydome::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuff
 	glm::vec3 camPos = camera->GetPosition();
 	camPos.y -= 0.25f;
 	worldMatrix = glm::translate(glm::mat4(1.0f), camPos);
-	vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * worldMatrix;
+	vertexUniformBuffer.MVP = camera->GetProjectionMatrix() * camera->GetViewMatrix() * worldMatrix;
 
 	vsUBO->Update(vulkan->GetVulkanDevice(), &vertexUniformBuffer, sizeof(vertexUniformBuffer));
 

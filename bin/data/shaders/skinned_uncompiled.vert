@@ -34,10 +34,10 @@ void main()
 	boneTransform += boneUniform.bones[boneIDs[2]] * weights[2];
 	boneTransform += boneUniform.bones[boneIDs[3]] * weights[3];
 
-	gl_Position = ubo.mvp * boneTransform * vec4(pos, 1.0f);
+	vec4 tempPos = vec4(pos, 1.0f);
+	gl_Position = ubo.mvp * boneTransform * tempPos;
 	
 	// outWorldPos
-	vec4 tempPos = vec4(pos, 1.0f);
 	outWorldPos = vec3(ubo.worldMatrix * boneTransform * tempPos);
 	
 	// outTexCoord

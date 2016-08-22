@@ -29,7 +29,7 @@ class RenderDummy
 		};
 		struct FragmentUniformBuffer
 		{
-			glm::mat4 lightViewMatrix;
+			glm::mat4 lightViewMatrix[SHADOW_CASCADE_COUNT];
 			glm::vec4 ambientColor;
 			glm::vec4 diffuseColor;
 			glm::vec4 specularColor;

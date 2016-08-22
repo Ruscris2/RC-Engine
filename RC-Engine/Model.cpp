@@ -48,9 +48,7 @@ void Model::Unload(VulkanInterface * vulkan)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	
-	physics->GetDynamicsWorld()->removeRigidBody(rigidBody);
-	delete rigidBody->getMotionState();
-	SAFE_DELETE(rigidBody);
+	RemoveRigidBody();
 
 	if (physicsStatic == false)
 		SAFE_DELETE(collisionShape);
@@ -86,9 +84,7 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 
 	// Update vertex uniform buffer
 	if (vulkanPipeline->GetPipelineName() == "DEFERRED")
-		vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
-	else if(vulkanPipeline->GetPipelineName() == "SHADOW")
-		vertexUniformBuffer.MVP = shadowMaps->GetOrthoMatrix() * shadowMaps->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
+		vertexUniformBuffer.MVP = camera->GetProjectionMatrix() * camera->GetViewMatrix() * vertexUniformBuffer.worldMatrix;
 
 	deferredVS_UBO->Update(vulkan->GetVulkanDevice(), &vertexUniformBuffer, sizeof(vertexUniformBuffer));
 
@@ -97,7 +93,7 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 		if (vulkanPipeline->GetPipelineName() == "DEFERRED")
 		{
 			meshes[i]->UpdateUniformBuffer(vulkan);
-			UpdateDescriptorSet(vulkan, vulkanPipeline, meshes[i]);
+			UpdateDescriptorSet(vulkan, vulkanPipeline, meshes[i], NULL);
 
 			// Record draw command
 			drawCmdBuffers[i]->BeginRecordingSecondary(vulkan->GetDeferredRenderpass()->GetRenderpass(), vulkan->GetDeferredFramebuffer());
@@ -112,13 +108,14 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 		}
 		else if (vulkanPipeline->GetPipelineName() == "SHADOW")
 		{
-			UpdateDescriptorSet(vulkan, vulkanPipeline, meshes[i]);
+			UpdateDescriptorSet(vulkan, vulkanPipeline, meshes[i], shadowMaps);
 
 			// Record draw command
 			drawCmdBuffers[i]->BeginRecordingSecondary(shadowMaps->GetShadowRenderpass()->GetRenderpass(), shadowMaps->GetFramebuffer());
 
-			vulkan->InitViewportAndScissors(drawCmdBuffers[i], (float)shadowMaps->GetMapWidth(), (float)shadowMaps->GetMapHeight(),
-				shadowMaps->GetMapWidth(), shadowMaps->GetMapHeight());
+			vulkan->InitViewportAndScissors(drawCmdBuffers[i], (float)shadowMaps->GetMapSize(), (float)shadowMaps->GetMapSize(),
+				shadowMaps->GetMapSize(), shadowMaps->GetMapSize());
+
 			shadowMaps->SetDepthBias(drawCmdBuffers[i]);
 			vulkanPipeline->SetActive(drawCmdBuffers[i]);
 			meshes[i]->Render(vulkan, drawCmdBuffers[i]);
@@ -131,19 +128,17 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 
 void Model::SetPosition(float x, float y, float z)
 {
-	physics->GetDynamicsWorld()->removeRigidBody(rigidBody);
 	
 	if (physicsStatic == false)
 	{
-		rigidBody->setLinearVelocity(btVector3(0.0f, 0.0f, 0.0f));
-		rigidBody->setAngularVelocity(btVector3(0.0f, 0.0f, 0.0f));
-
 		btTransform transform;
-		transform.setIdentity();
+		rigidBody->getMotionState()->getWorldTransform(transform);
+
+		RemoveRigidBody();
+
 		transform.setOrigin(btVector3(x, y, z));
 
-		rigidBody->setCenterOfMassTransform(transform);
-		rigidBody->setWorldTransform(transform);
+		CreateRigidBody(transform);
 	}
 	else
 	{
@@ -154,15 +149,31 @@ void Model::SetPosition(float x, float y, float z)
 		rigidBody->setCenterOfMassTransform(transform);
 	}
 
-	rigidBody->activate();
-	physics->GetDynamicsWorld()->addRigidBody(rigidBody);
+	
 }
 
 void Model::SetRotation(float x, float y, float z)
 {
-	rotX = x;
-	rotY = y;
-	rotZ = z;
+	if (physicsStatic == false)
+	{
+		btTransform transform;
+		rigidBody->getMotionState()->getWorldTransform(transform);
+
+		RemoveRigidBody();
+
+		transform.getBasis().setEulerZYX(glm::radians(x), glm::radians(y), glm::radians(z));
+
+		CreateRigidBody(transform);
+	}
+	else
+	{
+		btTransform transform;
+		rigidBody->getMotionState()->getWorldTransform(transform);
+
+		transform.getBasis().setEulerZYX(glm::radians(x), glm::radians(y), glm::radians(z));
+		rigidBody->getMotionState()->setWorldTransform(transform);
+		rigidBody->setCenterOfMassTransform(transform);
+	}
 }
 
 void Model::SetVelocity(float x, float y, float z)
@@ -185,7 +196,7 @@ Material * Model::GetMaterial(int materialId)
 	return materials[materialId];
 }
 
-void Model::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline, Mesh * mesh)
+void Model::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline, Mesh * mesh, ShadowMaps * shadowMaps)
 {
 	if (pipeline->GetPipelineName() == "DEFERRED")
 	{
@@ -248,7 +259,7 @@ void Model::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipel
 	}
 	else if (pipeline->GetPipelineName() == "SHADOW")
 	{
-		VkWriteDescriptorSet descriptorWrite[1];
+		VkWriteDescriptorSet descriptorWrite[2];
 
 		descriptorWrite[0] = {};
 		descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -259,6 +270,16 @@ void Model::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipel
 		descriptorWrite[0].pBufferInfo = deferredVS_UBO->GetBufferInfo();
 		descriptorWrite[0].dstArrayElement = 0;
 		descriptorWrite[0].dstBinding = 0;
+
+		descriptorWrite[1] = {};
+		descriptorWrite[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[1].pNext = NULL;
+		descriptorWrite[1].dstSet = pipeline->GetDescriptorSet();
+		descriptorWrite[1].descriptorCount = 1;
+		descriptorWrite[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite[1].pBufferInfo = shadowMaps->GetBufferInfo();
+		descriptorWrite[1].dstArrayElement = 0;
+		descriptorWrite[1].dstBinding = 1;
 
 		vkUpdateDescriptorSets(vulkan->GetVulkanDevice()->GetDevice(), sizeof(descriptorWrite) / sizeof(descriptorWrite[0]), descriptorWrite, 0, NULL);
 	}
@@ -443,32 +464,43 @@ void Model::SetupPhysicsObject(float mass)
 	btTransform transform;
 	transform.setIdentity();
 
-	btDefaultMotionState * motionState = new btDefaultMotionState(transform);
-	btVector3 inertia(0, 0, 0);
+	inertia = btVector3(0.0f, 0.0f, 0.0f);
 
-	btCollisionShape * colShape;
 	if (physicsStatic == true)
 	{
 		if (collisionMeshPresent)
 		{
 			collisionShape->calculateLocalInertia(mass, inertia);
-			colShape = collisionShape;
+			mainCollisionShape = collisionShape;
 		}
 		else
 		{
 			emptyCollisionShape->calculateLocalInertia(mass, inertia);
-			colShape = emptyCollisionShape;
+			mainCollisionShape = emptyCollisionShape;
 		}
 	}
 	else
 	{
 		collisionShape->calculateLocalInertia(mass, inertia);
-		colShape = collisionShape;
+		mainCollisionShape = collisionShape;
 	}
 
-	btRigidBody::btRigidBodyConstructionInfo rigidBodyCI(mass, motionState, colShape, inertia);
+	CreateRigidBody(transform);
+}
+
+void Model::CreateRigidBody(btTransform transform)
+{
+	btDefaultMotionState * motionState = new btDefaultMotionState(transform);
+	btRigidBody::btRigidBodyConstructionInfo rigidBodyCI(mass, motionState, mainCollisionShape, inertia);
 	rigidBody = new btRigidBody(rigidBodyCI);
 
 	physics->GetDynamicsWorld()->addRigidBody(rigidBody);
 	rigidBody->setFriction(1.0f);
+}
+
+void Model::RemoveRigidBody()
+{
+	physics->GetDynamicsWorld()->removeRigidBody(rigidBody);
+	delete rigidBody->getMotionState();
+	SAFE_DELETE(rigidBody);
 }

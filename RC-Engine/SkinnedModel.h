@@ -43,7 +43,7 @@ class SkinnedModel
 		VulkanBuffer * skinnedVS_UBO;
 		VulkanBuffer * skinnedVS_bone_UBO;
 	private:
-		void UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline, SkinnedMesh * mesh);
+		void UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline, SkinnedMesh * mesh, ShadowMaps * shadowMaps);
 	public:
 		SkinnedModel();
 		~SkinnedModel();

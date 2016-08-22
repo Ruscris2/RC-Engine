@@ -65,8 +65,6 @@ class SceneManager
 		GUIElement * splashScreen;
 		GameplayTimer * splashScreenTimer;
 		bool showSplashScreen;
-
-		WireframeModel * debugCameraShadowMap;
 	private:
 		bool LoadMapFile(std::string filename, VulkanInterface * vulkan);
 		bool LoadGame(VulkanInterface * vulkan);

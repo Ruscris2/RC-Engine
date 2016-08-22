@@ -42,9 +42,10 @@ void GUIElement::Unload(VulkanInterface * vulkan)
 	SAFE_UNLOAD(texture, vulkan->GetVulkanDevice());
 }
 
-void GUIElement::Render(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline, int frameBufferId)
+void GUIElement::Render(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline,
+	Camera * camera, int frameBufferId)
 {
-	canvas->Render(vulkan, cmdBuffer, pipeline, vulkan->GetOrthoMatrix(), texture->GetImageView(), frameBufferId);
+	canvas->Render(vulkan, cmdBuffer, pipeline, camera->GetOrthoMatrix(), texture->GetImageView(), frameBufferId);
 }
 
 void GUIElement::SetPosition(float x, float y)

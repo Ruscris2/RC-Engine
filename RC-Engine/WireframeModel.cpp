@@ -384,7 +384,7 @@ void WireframeModel::Unload(VulkanInterface * vulkan)
 void WireframeModel::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * pipeline, Camera * camera, int framebufferId)
 {
 	// Update vertex uniform buffer
-	vertexUniformBuffer.MVP = vulkan->GetProjectionMatrix() * camera->GetViewMatrix() * worldMatrix;
+	vertexUniformBuffer.MVP = camera->GetProjectionMatrix() * camera->GetViewMatrix() * worldMatrix;
 
 	vsUBO->Update(vulkan->GetVulkanDevice(), &vertexUniformBuffer, sizeof(VertexUniformBuffer));
 

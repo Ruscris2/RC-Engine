@@ -18,20 +18,19 @@ ShadowMaps::ShadowMaps()
 {
 	depthAttachment = NULL;
 	renderpass = NULL;
-
-	render = false;
+	shadowGS_UBO = NULL;
 }
 
-bool ShadowMaps::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer)
+bool ShadowMaps::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, Camera * camera)
 {
 	VkResult result;
 
-	mapWidth = mapHeight = 1024;
+	mapSize = 2048;
 
 	// Create framebuffer attachments
 	depthAttachment = new FrameBufferAttachment();
 	if (!depthAttachment->Create(vulkan->GetVulkanDevice(), vulkan->GetDepthAttachment()->GetFormat(),
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, cmdBuffer, mapWidth, mapHeight))
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, cmdBuffer, mapSize, mapSize, SHADOW_CASCADE_COUNT))
 	{
 		gLogManager->AddMessage("ERROR: Failed to create depth framebuffer attachment!");
 		return false;
@@ -75,9 +74,9 @@ bool ShadowMaps::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer)
 	fbCI.renderPass = renderpass->GetRenderpass();
 	fbCI.pAttachments = depthAttachment->GetImageView();
 	fbCI.attachmentCount = 1;
-	fbCI.width = mapWidth;
-	fbCI.height = mapHeight;
-	fbCI.layers = 1;
+	fbCI.width = mapSize;
+	fbCI.height = mapSize;
+	fbCI.layers = SHADOW_CASCADE_COUNT;
 
 	result = vkCreateFramebuffer(vulkan->GetVulkanDevice()->GetDevice(), &fbCI, VK_NULL_HANDLE, &framebuffer);
 	if (result != VK_SUCCESS)
@@ -101,14 +100,29 @@ bool ShadowMaps::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer)
 	if (result != VK_SUCCESS)
 		return false;
 
-	orthoMatrices = new glm::mat4[vulkan->GetProjectionMatrixPartitionCount()];
-	viewMatrices = new glm::mat4[vulkan->GetProjectionMatrixPartitionCount()];
+	orthoMatrices = new glm::mat4[SHADOW_CASCADE_COUNT];
+	viewMatrices = new glm::mat4[SHADOW_CASCADE_COUNT];
+
+	// Projection matrices
+	projectionMatrixPartitions = new glm::mat4[SHADOW_CASCADE_COUNT];
+
+	projectionMatrixPartitions[0] = glm::perspective(camera->GetFieldOfView(), camera->GetAspectRatio(), camera->GetNearClip(), 5.0f);
+	projectionMatrixPartitions[1] = glm::perspective(camera->GetFieldOfView(), camera->GetAspectRatio(), 5.0f, 15.0f);
+	projectionMatrixPartitions[2] = glm::perspective(camera->GetFieldOfView(), camera->GetAspectRatio(), 15.0f, 50.0f);
+
+	// Create geometry shader uniform buffer
+	shadowGS_UBO = new VulkanBuffer();
+	if (!shadowGS_UBO->Init(vulkan->GetVulkanDevice(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &geometryUniformBuffer,
+		sizeof(geometryUniformBuffer), false))
+		return false;
 
 	return true;
 }
 
 void ShadowMaps::Unload(VulkanInterface * vulkan)
 {
+	SAFE_UNLOAD(shadowGS_UBO, vulkan->GetVulkanDevice());
+	SAFE_DELETE(projectionMatrixPartitions);
 	SAFE_DELETE(viewMatrices);
 	SAFE_DELETE(orthoMatrices);
 	vkDestroySampler(vulkan->GetVulkanDevice()->GetDevice(), sampler, VK_NULL_HANDLE);
@@ -122,7 +136,7 @@ void ShadowMaps::BeginShadowPass(VulkanCommandBuffer * commandBuffer)
 	commandBuffer->BeginRecording();
 
 	renderpass->BeginRenderpass(commandBuffer, 0.0f, 0.0f, 0.0f, 0.0f, framebuffer, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,
-		mapWidth, mapHeight);
+		mapSize, mapSize);
 }
 
 void ShadowMaps::EndShadowPass(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer)
@@ -136,20 +150,16 @@ void ShadowMaps::EndShadowPass(VulkanDevice * vulkanDevice, VulkanCommandBuffer 
 
 void ShadowMaps::SetDepthBias(VulkanCommandBuffer * cmdBuffer)
 {
-	vkCmdSetDepthBias(cmdBuffer->GetCommandBuffer(), 1.25f, 0.0f, 1.75f);
+	vkCmdSetDepthBias(cmdBuffer->GetCommandBuffer(), 0.001f, 0.0f, 1.0f);
 }
 
 void ShadowMaps::UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera, Light * light)
 {
-	for (int i = 0; i < vulkan->GetProjectionMatrixPartitionCount(); i++)
-	{
-		if (gInput->WasKeyPressed(KEYBOARD_KEY_Q))
-		{
-			char msg[32];
-			sprintf(msg, "CASCADE %d", i);
-			gLogManager->AddMessage(msg);
-		}
+	if (gInput->IsKeyPressed(KEYBOARD_KEY_Q))
+		return;
 
+	for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
+	{
 		glm::vec3 frustumCorners[8] =
 		{
 			glm::vec3(-1.0f, 1.0f, -1.0f), // top left near 0
@@ -162,131 +172,26 @@ void ShadowMaps::UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera,
 			glm::vec3(-1.0f, -1.0f, 1.0f) // bottom left far 7
 		};
 
-		glm::mat4 viewProjMatrix = vulkan->GetProjectionMatrixPartition(i) * viewcamera->GetViewMatrix();
+		// Transform partition into light space
+		glm::mat4 viewProjMatrix = projectionMatrixPartitions[i] * viewcamera->GetViewMatrix();
 		viewProjMatrix = glm::inverse(viewProjMatrix);
 
+		// Transorm the coords of the cube into the viewProj frustum
 		for (int j = 0; j < 8; j++)
-		{
 			frustumCorners[j] = VulkanTools::Vec3Transform(frustumCorners[j], viewProjMatrix);
-			if (gInput->WasKeyPressed(KEYBOARD_KEY_Q))
-			{
-				gLogManager->PrintVector(frustumCorners[j]);
 
-				WireframeModel * ptrFace1;
-				WireframeModel * ptrFace2;
-				WireframeModel * ptrFace3;
-				WireframeModel * ptrFace4;
-				glm::vec4 color;
-
-				if (i == 0)
-				{
-					ptrFace1 = debugCascade1Face1;
-					ptrFace2 = debugCascade1Face2;
-					ptrFace3 = debugCascade1Face3;
-					ptrFace4 = debugCascade1Face4;
-					color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
-				}
-				else if (i == 1)
-				{
-					ptrFace1 = debugCascade2Face1;
-					ptrFace2 = debugCascade2Face2;
-					ptrFace3 = debugCascade2Face3;
-					ptrFace4 = debugCascade2Face4;
-					color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
-				}
-				else
-				{
-					ptrFace1 = debugCascade3Face1;
-					ptrFace2 = debugCascade3Face2;
-					ptrFace3 = debugCascade3Face3;
-					ptrFace4 = debugCascade3Face4;
-					color = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
-				}
-
-				if (ptrFace1 != NULL) SAFE_UNLOAD(ptrFace1, vulkan);
-				if (ptrFace2 != NULL) SAFE_UNLOAD(ptrFace2, vulkan);
-				if (ptrFace3 != NULL) SAFE_UNLOAD(ptrFace3, vulkan);
-				if (ptrFace4 != NULL) SAFE_UNLOAD(ptrFace4, vulkan);
-
-				GEOMETRY_GENERATE_INFO info;
-				info.type = GEOMETRY_TYPE_POLYGON;
-				info.v1 = frustumCorners[1];
-				info.v2 = frustumCorners[5];
-				info.v3 = frustumCorners[6];
-				info.v4 = frustumCorners[2];
-
-				ptrFace1 = new WireframeModel();
-				ptrFace1->Init(vulkan, info, color);
-				ptrFace1->SetPosition(0.0f, 0.0f, 0.0f);
-
-				info.v1 = frustumCorners[0];
-				info.v2 = frustumCorners[4];
-				info.v3 = frustumCorners[5];
-				info.v4 = frustumCorners[1];
-
-				ptrFace2 = new WireframeModel();
-				ptrFace2->Init(vulkan, info, color);
-				ptrFace2->SetPosition(0.0f, 0.0f, 0.0f);
-
-				info.v1 = frustumCorners[0];
-				info.v2 = frustumCorners[4];
-				info.v3 = frustumCorners[7];
-				info.v4 = frustumCorners[3];
-
-				ptrFace3 = new WireframeModel();
-				ptrFace3->Init(vulkan, info, color);
-				ptrFace3->SetPosition(0.0f, 0.0f, 0.0f);
-
-				info.v1 = frustumCorners[3];
-				info.v2 = frustumCorners[2];
-				info.v3 = frustumCorners[6];
-				info.v4 = frustumCorners[7];
-
-				ptrFace4 = new WireframeModel();
-				ptrFace4->Init(vulkan, info, color);
-				ptrFace4->SetPosition(0.0f, 0.0f, 0.0f);
-				render = true;
-
-				if (i == 0)
-				{
-					debugCascade1Face1 = ptrFace1;
-					debugCascade1Face2 = ptrFace2;
-					debugCascade1Face3 = ptrFace3;
-					debugCascade1Face4 = ptrFace4;
-				}
-				else if (i == 1)
-				{
-					debugCascade2Face1 = ptrFace1;
-					debugCascade2Face2 = ptrFace2;
-					debugCascade2Face3 = ptrFace3;
-					debugCascade2Face4 = ptrFace4;
-				}
-				else
-				{
-					debugCascade3Face1 = ptrFace1;
-					debugCascade3Face2 = ptrFace2;
-					debugCascade3Face3 = ptrFace3;
-					debugCascade3Face4 = ptrFace4;
-				}
-			}
-		}
-
+		// Calculate the radius
 		float radius = glm::distance(frustumCorners[0], frustumCorners[6]) / 2.0f;
 
-		if (gInput->WasKeyPressed(KEYBOARD_KEY_Q))
-		{
-			char msg[32];
-			sprintf(msg, "RADIUS %f", radius);
-			gLogManager->AddMessage(msg);
-		}
-
+		// Calculate the center
 		glm::vec3 frustumCenter = glm::vec3(0.0f, 0.0f, 0.0f);
 
 		for (int j = 0; j < 8; j++)
 			frustumCenter += frustumCorners[j];
 		frustumCenter /= 8.0f;
 
-		float texelsPerUnit = (float)mapWidth / (radius * 2.0f);
+		// Texel snapping
+		float texelsPerUnit = (float)mapSize / (radius * 4.0f);
 
 		glm::mat4 scalar = glm::scale(glm::mat4(), glm::vec3(texelsPerUnit, texelsPerUnit, texelsPerUnit));
 
@@ -296,40 +201,23 @@ void ShadowMaps::UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera,
 		glm::vec3 baseLookAt = -light->GetLightDirection();
 
 		lookAt = glm::lookAt(zero, baseLookAt, up);
-		lookAt *= scalar;
+		lookAt = scalar * lookAt;
 		lookAtInv = glm::inverse(lookAt);
 
 		frustumCenter = VulkanTools::Vec3Transform(frustumCenter, lookAt);
 		frustumCenter.x = glm::floor(frustumCenter.x);
 		frustumCenter.y = glm::floor(frustumCenter.y);
 		frustumCenter = VulkanTools::Vec3Transform(frustumCenter, lookAtInv);
-
+		
 		glm::vec3 eye = frustumCenter - (light->GetLightDirection() * radius * 2.0f);
 
+		// Create the view matrix and projection matrix
 		viewMatrices[i] = glm::lookAt(eye, frustumCenter, up);
-		orthoMatrices[i] = glm::ortho(-radius, radius, -radius, radius, -radius * 6.0f, radius * 6.0f);
+		orthoMatrices[i] = glm::ortho(-radius * 2.0f, radius * 2.0f, -radius * 2.0f, radius * 2.0f, -radius * 6.0f, radius * 6.0f);
+		geometryUniformBuffer.lightViewProj[i] = orthoMatrices[i] * viewMatrices[i];
 	}
-}
 
-void ShadowMaps::RenderDebug(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline, Camera * camera, int framebufferId)
-{
-	if (render)
-	{
-		debugCascade1Face1->Render(vulkan, cmdBuffer, pipeline, camera, framebufferId);
-		debugCascade1Face2->Render(vulkan, cmdBuffer, pipeline, camera, framebufferId);
-		debugCascade1Face3->Render(vulkan, cmdBuffer, pipeline, camera, framebufferId);
-		debugCascade1Face4->Render(vulkan, cmdBuffer, pipeline, camera, framebufferId);
-
-		debugCascade2Face1->Render(vulkan, cmdBuffer, pipeline, camera, framebufferId);
-		debugCascade2Face2->Render(vulkan, cmdBuffer, pipeline, camera, framebufferId);
-		debugCascade2Face3->Render(vulkan, cmdBuffer, pipeline, camera, framebufferId);
-		debugCascade2Face4->Render(vulkan, cmdBuffer, pipeline, camera, framebufferId);
-
-		debugCascade3Face1->Render(vulkan, cmdBuffer, pipeline, camera, framebufferId);
-		debugCascade3Face2->Render(vulkan, cmdBuffer, pipeline, camera, framebufferId);
-		debugCascade3Face3->Render(vulkan, cmdBuffer, pipeline, camera, framebufferId);
-		debugCascade3Face4->Render(vulkan, cmdBuffer, pipeline, camera, framebufferId);
-	}
+	shadowGS_UBO->Update(vulkan->GetVulkanDevice(), &geometryUniformBuffer, sizeof(geometryUniformBuffer));
 }
 
 VulkanRenderpass * ShadowMaps::GetShadowRenderpass()
@@ -347,14 +235,14 @@ VkImageView * ShadowMaps::GetImageView()
 	return depthAttachment->GetImageView();
 }
 
-glm::mat4 ShadowMaps::GetViewMatrix()
+VkDescriptorBufferInfo * ShadowMaps::GetBufferInfo()
 {
-	return viewMatrices[2];
+	return shadowGS_UBO->GetBufferInfo();
 }
 
-glm::mat4 ShadowMaps::GetOrthoMatrix()
+glm::mat4 ShadowMaps::GetLightViewProj(int index)
 {
-	return orthoMatrices[2];
+	return geometryUniformBuffer.lightViewProj[index];
 }
 
 VkSampler ShadowMaps::GetSampler()
@@ -362,12 +250,7 @@ VkSampler ShadowMaps::GetSampler()
 	return sampler;
 }
 
-uint32_t ShadowMaps::GetMapWidth()
+uint32_t ShadowMaps::GetMapSize()
 {
-	return mapWidth;
-}
-
-uint32_t ShadowMaps::GetMapHeight()
-{
-	return mapHeight;
+	return mapSize;
 }
