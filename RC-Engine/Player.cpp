@@ -69,13 +69,13 @@ void Player::Init(SkinnedModel * model, Physics * physics, AnimationPack animPac
 	physics->GetDynamicsWorld()->addRigidBody(playerBody);
 
 	walkSpeed = 2.0f;
-	runSpeed = 5.0f;
+	runSpeed = 10.0f;
 	baseDirection = btVector3(0.0f, 0.0f, 1.0f);
 
 	if(animPack.walkAnimation != NULL)
 		animPack.walkAnimation->SetAnimationSpeed(0.001f + (0.0005f * walkSpeed));
 	if(animPack.runAnimation != NULL)
-		animPack.runAnimation->SetAnimationSpeed(0.001f + (0.0002f * runSpeed));
+		animPack.runAnimation->SetAnimationSpeed(0.001f + (0.0001f * runSpeed));
 }
 
 void Player::SetPosition(float x, float y, float z)
@@ -181,7 +181,7 @@ void Player::Update(VulkanInterface * vulkan, Camera * camera)
 
 	if ((forwardKeyPressed || leftKeyPressed || rightKeyPressed || backwardsKeyPressed) && inputEnabled)
 	{
-		walkDirection += baseDirection * (runKeyPressed ? runSpeed : walkSpeed) * gTimer->GetDelta();
+		walkDirection += baseDirection * (runKeyPressed ? runSpeed : walkSpeed);
 		walkDirection.setY(velocity.y());
 
 		playerBody->setLinearVelocity(RotateVec3Quaternion(walkDirection, transform.getRotation()));

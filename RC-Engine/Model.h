@@ -23,6 +23,7 @@ class Model
 		std::vector<Texture*> textures;
 		std::vector<Material*> materials;
 		std::vector<VulkanCommandBuffer*> drawCmdBuffers;
+		float frustumCullRadius;
 
 		struct VertexUniformBuffer
 		{
@@ -66,4 +67,6 @@ class Model
 		unsigned int GetMeshCount();
 		Mesh * GetMesh(int meshId);
 		Material * GetMaterial(int materialId);
+		float GetFrustumCullRadius();
+		glm::vec3 GetPosition();
 };

@@ -25,6 +25,12 @@
     <Filter Include="Source Files\GUI">
       <UniqueIdentifier>{f1d1fc6f-9175-407a-83a6-a62af5a40513}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Resource Managers">
+      <UniqueIdentifier>{473e7522-4955-43cd-8c57-f9806c0f26db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Resource Managers">
+      <UniqueIdentifier>{cdc10e57-ec46-4408-ba2d-0eb27c101131}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -144,6 +150,12 @@
     <ClCompile Include="VulkanBuffer.cpp">
       <Filter>Source Files\Vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="FrustumCuller.cpp">
+      <Filter>Source Files\Resource Managers</Filter>
+    </ClCompile>
+    <ClCompile Include="TextureManager.cpp">
+      <Filter>Source Files\Resource Managers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="WinWindow.h">
@@ -262,6 +274,12 @@
     </ClInclude>
     <ClInclude Include="VulkanBuffer.h">
       <Filter>Header Files\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="FrustumCuller.h">
+      <Filter>Header Files\Resource Managers</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureManager.h">
+      <Filter>Header Files\Resource Managers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

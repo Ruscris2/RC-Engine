@@ -13,6 +13,9 @@
 #include "Input.h"
 #include "Timer.h"
 #include "StdInc.h"
+#include "TextureManager.h"
+
+TextureManager * gTextureManager;
 
 extern LogManager * gLogManager;
 extern Input * gInput;
@@ -32,6 +35,8 @@ SceneManager::SceneManager()
 
 	renderDummy = NULL;
 	skydome = NULL;
+	shadowMaps = NULL;
+	frustumCuller = NULL;
 
 	idleAnim = NULL;
 	walkAnim = NULL;
@@ -57,11 +62,16 @@ SceneManager::~SceneManager()
 
 	SAFE_DELETE(light);
 	SAFE_DELETE(camera);
+	SAFE_DELETE(frustumCuller);
 	SAFE_DELETE(physics);
+	SAFE_DELETE(gTextureManager);
 }
 
 bool SceneManager::Init(VulkanInterface * vulkan)
 {
+	// Init resource managers
+	gTextureManager = new TextureManager();
+
 	// Init command buffers
 	initCommandBuffer = new VulkanCommandBuffer();
 	if (!initCommandBuffer->Init(vulkan->GetVulkanDevice(), vulkan->GetVulkanCommandPool(), true))
@@ -137,6 +147,9 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 	// Physics init
 	physics = new Physics();
 	physics->Init();
+
+	// Init frustum culler
+	frustumCuller = new FrustumCuller();
 
 	// Light setup
 	light = new Light();
@@ -272,10 +285,10 @@ void SceneManager::Render(VulkanInterface * vulkan)
 	if (currentGameState == GAME_STATE_INGAME)
 	{
 		physics->Update();
-
+		frustumCuller->BuildFrustum(camera);
 		glm::vec3 playerPos = player->GetPosition();
 
-		if (playerPos.y < -20.0f)
+		if (playerPos.y < -50.0f)
 			player->SetPosition(0.0f, 5.0f, 0.0f);
 
 		if (gInput->WasKeyPressed(KEYBOARD_KEY_E))
@@ -316,7 +329,17 @@ void SceneManager::Render(VulkanInterface * vulkan)
 			camera->SetCameraState(CAMERA_STATE_FLY);
 			player->TogglePlayerInput(false);
 		}
-
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_Q))
+		{
+			char msg[64];
+			sprintf(msg, "OBJ: %zu TXD: %zu", modelList.size(), gTextureManager->GetLoadedTexturesCount());
+			gLogManager->AddMessage(msg);
+		}
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_Y))
+		{
+			SAFE_UNLOAD(modelList[modelList.size() - 1], vulkan);
+			modelList.erase(modelList.end()-1);
+		}
 		camera->HandleInput();
 
 		// Debug deferred shading
@@ -349,7 +372,8 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		vulkan->BeginSceneDeferred(deferredCommandBuffer);
 
 		for (unsigned int i = 0; i < modelList.size(); i++)
-			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetDeferred(), camera, NULL);
+			if (frustumCuller->IsInsideFrustum(modelList[i]))
+				modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetDeferred(), camera, NULL);
 
 		player->GetModel()->Render(vulkan, deferredCommandBuffer, pipelineManager->GetSkinned(), camera, NULL);
 

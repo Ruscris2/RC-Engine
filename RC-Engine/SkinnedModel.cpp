@@ -12,10 +12,12 @@
 #include "LogManager.h"
 #include "Timer.h"
 #include "Settings.h"
+#include "TextureManager.h"
 
 extern LogManager * gLogManager;
 extern Timer * gTimer;
 extern Settings * gSettings;
+extern TextureManager * gTextureManager;
 
 SkinnedModel::SkinnedModel()
 {
@@ -97,12 +99,10 @@ bool SkinnedModel::Init(std::string filename, VulkanInterface * vulkan, VulkanCo
 		else
 			texturePath = "data/textures/" + std::string(diffuseTextureName);
 
-		Texture * diffuse = new Texture();
-		if (!diffuse->Init(vulkan->GetVulkanDevice(), cmdBuffer, texturePath))
-		{
-			gLogManager->AddMessage("ERROR: Couldn't init texture!");
+		Texture * diffuse = gTextureManager->RequestTexture(texturePath, vulkan->GetVulkanDevice(), cmdBuffer);
+		if (diffuse == nullptr)
 			return false;
-		}
+
 		textures.push_back(diffuse);
 
 		// Read specular texture
@@ -112,12 +112,10 @@ bool SkinnedModel::Init(std::string filename, VulkanInterface * vulkan, VulkanCo
 		else
 			texturePath = "data/textures/" + std::string(specularTextureName);
 
-		Texture * specular = new Texture();
-		if (!specular->Init(vulkan->GetVulkanDevice(), cmdBuffer, texturePath))
-		{
-			gLogManager->AddMessage("ERROR: Couldn't init a texture!");
+		Texture * specular = gTextureManager->RequestTexture(texturePath, vulkan->GetVulkanDevice(), cmdBuffer);
+		if (specular == nullptr)
 			return false;
-		}
+		
 		textures.push_back(specular);
 
 		// Init mesh material
@@ -183,7 +181,7 @@ void SkinnedModel::Unload(VulkanInterface * vulkan)
 	SAFE_UNLOAD(skinnedVS_UBO, vulkanDevice);
 
 	for (unsigned int i = 0; i < textures.size(); i++)
-		SAFE_UNLOAD(textures[i], vulkanDevice);
+		gTextureManager->ReleaseTexture(textures[i], vulkanDevice);
 
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{

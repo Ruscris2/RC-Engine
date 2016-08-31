@@ -8,8 +8,10 @@
 #include "GUIElement.h"
 #include "LogManager.h"
 #include "StdInc.h"
+#include "TextureManager.h"
 
 extern LogManager * gLogManager;
+extern TextureManager * gTextureManager;
 
 GUIElement::GUIElement()
 {
@@ -19,12 +21,9 @@ GUIElement::GUIElement()
 
 bool GUIElement::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, std::string filename)
 {
-	texture = new Texture();
-	if (!texture->Init(vulkan->GetVulkanDevice(), cmdBuffer, filename))
-	{
-		gLogManager->AddMessage("ERROR: Failed to init texture!");
+	texture = gTextureManager->RequestTexture(filename, vulkan->GetVulkanDevice(), cmdBuffer);
+	if (texture == nullptr)
 		return false;
-	}
 
 	canvas = new Canvas();
 	if (!canvas->Init(vulkan))
@@ -39,7 +38,7 @@ bool GUIElement::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer,
 void GUIElement::Unload(VulkanInterface * vulkan)
 {
 	SAFE_UNLOAD(canvas, vulkan);
-	SAFE_UNLOAD(texture, vulkan->GetVulkanDevice());
+	gTextureManager->ReleaseTexture(texture, vulkan->GetVulkanDevice());
 }
 
 void GUIElement::Render(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, VulkanPipeline * pipeline,

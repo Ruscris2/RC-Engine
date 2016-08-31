@@ -49,7 +49,7 @@ bool Physics::Init()
 
 void Physics::Update()
 {
-	dynamicsWorld->stepSimulation(gTimer->GetDelta() / 1000.0f);
+	dynamicsWorld->stepSimulation(gTimer->GetDelta() / 1000.0f, 0);
 }
 
 btDiscreteDynamicsWorld * Physics::GetDynamicsWorld()

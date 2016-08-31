@@ -24,6 +24,7 @@
 #include "GameplayTimer.h"
 #include "GUIManager.h"
 #include "ShadowMaps.h"
+#include "FrustumCuller.h"
 
 enum GAME_STATE
 {
@@ -44,6 +45,7 @@ class SceneManager
 		PipelineManager * pipelineManager;
 		GUIManager * guiManager;
 		ShadowMaps * shadowMaps;
+		FrustumCuller * frustumCuller;
 
 		VulkanCommandBuffer * initCommandBuffer;
 		VulkanCommandBuffer * deferredCommandBuffer;

@@ -12,9 +12,11 @@
 #include "StdInc.h"
 #include "LogManager.h"
 #include "Settings.h"
+#include "TextureManager.h"
 
 extern LogManager * gLogManager;
 extern Settings * gSettings;
+extern TextureManager * gTextureManager;
 
 Model::Model()
 {
@@ -62,8 +64,8 @@ void Model::Unload(VulkanInterface * vulkan)
 
 	SAFE_UNLOAD(deferredVS_UBO, vulkanDevice);
 
-	for(unsigned int i = 0; i < textures.size(); i++)
-		SAFE_UNLOAD(textures[i], vulkanDevice);
+	for (unsigned int i = 0; i < textures.size(); i++)
+		gTextureManager->ReleaseTexture(textures[i], vulkanDevice);
 
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
@@ -196,6 +198,20 @@ Material * Model::GetMaterial(int materialId)
 	return materials[materialId];
 }
 
+float Model::GetFrustumCullRadius()
+{
+	return frustumCullRadius;
+}
+
+glm::vec3 Model::GetPosition()
+{
+	btTransform transform;
+	rigidBody->getMotionState()->getWorldTransform(transform);
+	btVector3 origin = transform.getOrigin();
+
+	return glm::vec3(origin.getX(), origin.getY(), origin.getZ());
+}
+
 void Model::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipeline, Mesh * mesh, ShadowMaps * shadowMaps)
 {
 	if (pipeline->GetPipelineName() == "DEFERRED")
@@ -321,6 +337,7 @@ bool Model::ReadRCMFile(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffe
 
 	unsigned int meshCount;
 	fread(&meshCount, sizeof(unsigned int), 1, file);
+	fread(&frustumCullRadius, sizeof(float), 1, file);
 
 	for (unsigned int i = 0; i < meshCount; i++)
 	{
@@ -344,12 +361,10 @@ bool Model::ReadRCMFile(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffe
 		else
 			texturePath = "data/textures/" + std::string(diffuseTextureName);
 
-		Texture * diffuse = new Texture();
-		if (!diffuse->Init(vulkan->GetVulkanDevice(), cmdBuffer, texturePath))
-		{
-			gLogManager->AddMessage("ERROR: Couldn't init texture!");
+		Texture * diffuse = gTextureManager->RequestTexture(texturePath, vulkan->GetVulkanDevice(), cmdBuffer);
+		if (diffuse == nullptr)
 			return false;
-		}
+
 		textures.push_back(diffuse);
 
 		// Read specular texture
@@ -359,12 +374,10 @@ bool Model::ReadRCMFile(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffe
 		else
 			texturePath = "data/textures/" + std::string(specularTextureName);
 
-		Texture * specular = new Texture();
-		if (!specular->Init(vulkan->GetVulkanDevice(), cmdBuffer, texturePath))
-		{
-			gLogManager->AddMessage("ERROR: Couldn't init a texture!");
+		Texture * specular = gTextureManager->RequestTexture(texturePath, vulkan->GetVulkanDevice(), cmdBuffer);
+		if (specular == nullptr)
 			return false;
-		}
+		
 		textures.push_back(specular);
 
 		// Init mesh material
