@@ -18,6 +18,8 @@ class Mesh
 			float x, y, z;
 			float u, v;
 			float nx, ny, nz;
+			float tx, ty, tz;
+			float bx, by, bz;
 		};
 
 		unsigned int vertexCount;
@@ -27,7 +29,8 @@ class Mesh
 		{
 			float materialSpecStrength;
 			float materialShininess;
-			glm::vec2 padding;
+			float hasSpecMap;
+			float hasNormalMap;
 		};
 		MaterialUniformBuffer materialUniformBuffer;
 

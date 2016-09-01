@@ -12,10 +12,13 @@ layout (binding = 0) uniform UBO
 layout (location = 0) in vec3 pos;
 layout (location = 1) in vec2 inTexCoord;
 layout (location = 2) in vec3 inNormals;
+layout (location = 3) in vec3 inTangents;
+layout (location = 4) in vec3 inBitangents;
 
 layout (location = 0) out vec3 outWorldPos;
 layout (location = 1) out vec2 outTexCoord;
 layout (location = 2) out vec3 outNormals;
+layout (location = 3) out mat3 outTangentSpace;
 
 void main()
 {
@@ -30,4 +33,10 @@ void main()
 	
 	// outNormals
 	outNormals = mat3(transpose(inverse(ubo.worldMatrix))) * inNormals;
+	
+	// outTangentSpace
+	vec3 tan = normalize(vec3(ubo.worldMatrix * vec4(inTangents, 0.0f)));
+	vec3 bitan = normalize(vec3(ubo.worldMatrix * vec4(inBitangents, 0.0f)));
+	vec3 norm = normalize(vec3(ubo.worldMatrix * vec4(inNormals, 0.0f)));
+	outTangentSpace = mat3(tan, bitan, norm);
 }

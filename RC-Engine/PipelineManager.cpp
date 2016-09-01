@@ -318,7 +318,7 @@ bool PipelineManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 {
 	// Vertex layout
-	VkVertexInputAttributeDescription vertexLayoutSkinned[5];
+	VkVertexInputAttributeDescription vertexLayoutSkinned[7];
 
 	// Position
 	vertexLayoutSkinned[0].binding = 0;
@@ -350,8 +350,20 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	vertexLayoutSkinned[4].format = VK_FORMAT_R32G32B32A32_SINT;
 	vertexLayoutSkinned[4].offset = sizeof(float) * 12;
 
+	// Tangents
+	vertexLayoutSkinned[5].binding = 0;
+	vertexLayoutSkinned[5].location = 5;
+	vertexLayoutSkinned[5].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexLayoutSkinned[5].offset = sizeof(float) * 12 + sizeof(uint32_t) * 4;
+
+	// Bitangents
+	vertexLayoutSkinned[6].binding = 0;
+	vertexLayoutSkinned[6].location = 6;
+	vertexLayoutSkinned[6].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexLayoutSkinned[6].offset = sizeof(float) * 15 + sizeof(uint32_t) * 4;
+
 	// Layout bindings
-	VkDescriptorSetLayoutBinding layoutBindingsSkinned[5];
+	VkDescriptorSetLayoutBinding layoutBindingsSkinned[6];
 
 	layoutBindingsSkinned[0].binding = 0;
 	layoutBindingsSkinned[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -378,13 +390,19 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	layoutBindingsSkinned[3].pImmutableSamplers = VK_NULL_HANDLE;
 
 	layoutBindingsSkinned[4].binding = 4;
-	layoutBindingsSkinned[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsSkinned[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	layoutBindingsSkinned[4].descriptorCount = 1;
 	layoutBindingsSkinned[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	layoutBindingsSkinned[4].pImmutableSamplers = VK_NULL_HANDLE;
 
+	layoutBindingsSkinned[5].binding = 5;
+	layoutBindingsSkinned[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsSkinned[5].descriptorCount = 1;
+	layoutBindingsSkinned[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsSkinned[5].pImmutableSamplers = VK_NULL_HANDLE;
+
 	// Type counts
-	VkDescriptorPoolSize typeCounts[5];
+	VkDescriptorPoolSize typeCounts[6];
 
 	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	typeCounts[0].descriptorCount = 1;
@@ -394,8 +412,10 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	typeCounts[2].descriptorCount = 1;
 	typeCounts[3].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	typeCounts[3].descriptorCount = 1;
-	typeCounts[4].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[4].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	typeCounts[4].descriptorCount = 1;
+	typeCounts[5].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[5].descriptorCount = 1;
 
 	struct SkinnedVertex {
 		float x, y, z;
@@ -403,6 +423,8 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 		float nx, ny, nz;
 		float boneWeights[4];
 		uint32_t boneIDs[4];
+		float tx, ty, tz;
+		float bx, by, bz;
 	};
 
 	VulkanPipelineCI pipelineCI{};
@@ -410,9 +432,9 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 	pipelineCI.shader = skinnedShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetDeferredRenderpass();
 	pipelineCI.vertexLayout = vertexLayoutSkinned;
-	pipelineCI.numVertexLayout = 5;
+	pipelineCI.numVertexLayout = 7;
 	pipelineCI.layoutBindings = layoutBindingsSkinned;
-	pipelineCI.numLayoutBindings = 5;
+	pipelineCI.numLayoutBindings = 6;
 	pipelineCI.typeCounts = typeCounts;
 	pipelineCI.strideSize = sizeof(SkinnedVertex);
 	pipelineCI.numColorAttachments = 4;
@@ -431,7 +453,7 @@ bool PipelineManager::BuildSkinnedPipeline(VulkanInterface * vulkan)
 bool PipelineManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 {
 	// Vertex layout
-	VkVertexInputAttributeDescription vertexLayoutDeferred[3];
+	VkVertexInputAttributeDescription vertexLayoutDeferred[5];
 
 	vertexLayoutDeferred[0].binding = 0;
 	vertexLayoutDeferred[0].location = 0;
@@ -448,8 +470,18 @@ bool PipelineManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	vertexLayoutDeferred[2].format = VK_FORMAT_R32G32B32_SFLOAT;
 	vertexLayoutDeferred[2].offset = sizeof(float) * 5;
 
+	vertexLayoutDeferred[3].binding = 0;
+	vertexLayoutDeferred[3].location = 3;
+	vertexLayoutDeferred[3].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexLayoutDeferred[3].offset = sizeof(float) * 8;
+
+	vertexLayoutDeferred[4].binding = 0;
+	vertexLayoutDeferred[4].location = 4;
+	vertexLayoutDeferred[4].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexLayoutDeferred[4].offset = sizeof(float) * 11;
+
 	// Layout bindings
-	VkDescriptorSetLayoutBinding layoutBindingsDeferred[4];
+	VkDescriptorSetLayoutBinding layoutBindingsDeferred[5];
 
 	layoutBindingsDeferred[0].binding = 0;
 	layoutBindingsDeferred[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -470,13 +502,19 @@ bool PipelineManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	layoutBindingsDeferred[2].pImmutableSamplers = VK_NULL_HANDLE;
 
 	layoutBindingsDeferred[3].binding = 3;
-	layoutBindingsDeferred[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsDeferred[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	layoutBindingsDeferred[3].descriptorCount = 1;
 	layoutBindingsDeferred[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	layoutBindingsDeferred[3].pImmutableSamplers = VK_NULL_HANDLE;
 
+	layoutBindingsDeferred[4].binding = 4;
+	layoutBindingsDeferred[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsDeferred[4].descriptorCount = 1;
+	layoutBindingsDeferred[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsDeferred[4].pImmutableSamplers = VK_NULL_HANDLE;
+
 	// Type counts
-	VkDescriptorPoolSize typeCounts[4];
+	VkDescriptorPoolSize typeCounts[5];
 
 	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	typeCounts[0].descriptorCount = 1;
@@ -484,13 +522,17 @@ bool PipelineManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	typeCounts[1].descriptorCount = 1;
 	typeCounts[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	typeCounts[2].descriptorCount = 1;
-	typeCounts[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[3].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	typeCounts[3].descriptorCount = 1;
+	typeCounts[4].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[4].descriptorCount = 1;
 
 	struct DeferredVertex {
 		float x, y, z;
 		float u, v;
 		float nx, ny, nz;
+		float tx, ty, tz;
+		float bx, by, bz;
 	};
 
 	VulkanPipelineCI pipelineCI{};
@@ -498,9 +540,9 @@ bool PipelineManager::BuildDeferredPipeline(VulkanInterface * vulkan)
 	pipelineCI.shader = deferredShader;
 	pipelineCI.vulkanRenderpass = vulkan->GetDeferredRenderpass();
 	pipelineCI.vertexLayout = vertexLayoutDeferred;
-	pipelineCI.numVertexLayout = 3;
+	pipelineCI.numVertexLayout = 5;
 	pipelineCI.layoutBindings = layoutBindingsDeferred;
-	pipelineCI.numLayoutBindings = 4;
+	pipelineCI.numLayoutBindings = 5;
 	pipelineCI.typeCounts = typeCounts;
 	pipelineCI.strideSize = sizeof(DeferredVertex);
 	pipelineCI.numColorAttachments = 4;
@@ -733,6 +775,8 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 		float x, y, z;
 		float u, v;
 		float nx, ny, nz;
+		float tx, ty, tz;
+		float bx, by, bz;
 	};
 
 	VulkanPipelineCI pipelineCI{};
@@ -814,6 +858,8 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 		float nx, ny, nz;
 		float boneWeights[4];
 		uint32_t boneIDs[4];
+		float tx, ty, tz;
+		float bx, by, bz;
 	};
 
 	

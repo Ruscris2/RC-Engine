@@ -8,7 +8,7 @@
 layout (binding = 1) uniform sampler2D samplerPosition;
 layout (binding = 2) uniform sampler2D samplerNormal;
 layout (binding = 3) uniform sampler2D samplerAlbedo;
-layout (binding = 4) uniform sampler2D samplerSpecular;
+layout (binding = 4) uniform sampler2D samplerMaterial;
 layout (binding = 5) uniform sampler2D samplerDepth;
 
 layout (binding = 6) uniform UBO
@@ -50,7 +50,7 @@ void main()
 	vec3 fragPos = texture(samplerPosition, texCoord).rgb;
 	vec3 normal = texture(samplerNormal, texCoord).rgb;
 	vec4 albedo = texture(samplerAlbedo, texCoord);
-	vec4 specular = texture(samplerSpecular, texCoord);
+	vec4 material = texture(samplerMaterial, texCoord);
 	
 	gl_FragDepth = texture(samplerDepth, texCoord).b;
 	
@@ -92,8 +92,8 @@ void main()
 			vec4 diff = clamp(lightIntensity * ubo.diffuseColor, 0.0f, 1.0f) * shadow;
 			
 			vec3 halfVec = normalize(lightDir + viewDir);
-			spec = ubo.specularColor * pow(max(dot(normal, halfVec), 0.0), specular.g) * specular.b * specular.r;
-			if(specular.g  == 0.0f)
+			spec = ubo.specularColor * pow(max(dot(normal, halfVec), 0.0), material.g) * material.b * material.r;
+			if(material.g  == 0.0f)
 				spec = vec4(0.0f, 0.0f, 0.0f, 0.0f);
 			
 			fragColor += diff;
@@ -104,7 +104,7 @@ void main()
 	}
 	else if(ubo.imageIndex == 4)
 	{
-		outColor = specular;
+		outColor = material;
 	}
 	else if(ubo.imageIndex == 3)
 		outColor = albedo;

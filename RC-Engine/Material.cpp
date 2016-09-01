@@ -8,16 +8,17 @@
 
 Material::Material()
 {
-	diffuseTexture = NULL;
-	specularTexture = NULL;
+	diffuseTexture = nullptr;
+	specularTexture = nullptr;
+	normalTexture = nullptr;
 	specularShininess = 32.0f;
 	specularStrength = 1.0f;
 }
 
 Material::~Material()
 {
-	specularTexture = NULL;
-	diffuseTexture = NULL;
+	specularTexture = nullptr;
+	diffuseTexture = nullptr;
 }
 
 void Material::SetDiffuseTexture(Texture * texture)
@@ -28,6 +29,11 @@ void Material::SetDiffuseTexture(Texture * texture)
 void Material::SetSpecularTexture(Texture * texture)
 {
 	specularTexture = texture;
+}
+
+void Material::SetNormalTexture(Texture * texture)
+{
+	normalTexture = texture;
 }
 
 void Material::SetSpecularStrength(float value)
@@ -50,6 +56,11 @@ Texture * Material::GetSpecularTexture()
 	return specularTexture;
 }
 
+Texture * Material::GetNormalTexture()
+{
+	return normalTexture;
+}
+
 float Material::GetSpecularShininess()
 {
 	return specularShininess;
@@ -58,4 +69,20 @@ float Material::GetSpecularShininess()
 float Material::GetSpecularStrength()
 {
 	return specularStrength;
+}
+
+bool Material::HasSpecularMap()
+{
+	if (specularTexture != nullptr)
+		return true;
+
+	return false;
+}
+
+bool Material::HasNormalMap()
+{
+	if (normalTexture != nullptr)
+		return true;
+
+	return false;
 }

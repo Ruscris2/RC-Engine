@@ -20,6 +20,8 @@ class SkinnedMesh
 			float nx, ny, nz;
 			float boneWeights[4];
 			uint32_t boneIDs[4];
+			float tx, ty, tz;
+			float bx, by, bz;
 		};
 
 		unsigned int vertexCount;
@@ -29,7 +31,8 @@ class SkinnedMesh
 		{
 			float materialSpecStrength;
 			float materialShininess;
-			glm::vec2 padding;
+			float hasSpecularMap;
+			float hasNormalMap;
 		};
 		MaterialUniformBuffer materialUniformBuffer;
 

@@ -335,6 +335,7 @@ void SceneManager::Render(VulkanInterface * vulkan)
 			sprintf(msg, "OBJ: %zu TXD: %zu", modelList.size(), gTextureManager->GetLoadedTexturesCount());
 			gLogManager->AddMessage(msg);
 		}
+
 		if (gInput->WasKeyPressed(KEYBOARD_KEY_Y))
 		{
 			SAFE_UNLOAD(modelList[modelList.size() - 1], vulkan);

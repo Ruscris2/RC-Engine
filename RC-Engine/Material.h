@@ -13,6 +13,7 @@ class Material
 	private:
 		Texture * diffuseTexture;
 		Texture * specularTexture;
+		Texture * normalTexture;
 		float specularShininess;
 		float specularStrength;
 	public:
@@ -21,10 +22,14 @@ class Material
 
 		void SetDiffuseTexture(Texture * texture);
 		void SetSpecularTexture(Texture * texture);
+		void SetNormalTexture(Texture * texture);
 		void SetSpecularStrength(float value);
 		void SetSpecularShininess(float value);
 		Texture * GetDiffuseTexture();
 		Texture * GetSpecularTexture();
+		Texture * GetNormalTexture();
 		float GetSpecularShininess();
 		float GetSpecularStrength();
+		bool HasSpecularMap();
+		bool HasNormalMap();
 };
