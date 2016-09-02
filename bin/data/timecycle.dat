@@ -1,0 +1,97 @@
+begin sunny
+	entry
+		time 0 0
+		skycolor 0.0 0.0 0.0
+		atmcolor 0.05 0.05 0.05
+		skyheight 0.0
+		ambient 0.01 0.01 0.01
+		diffuse 0.2 0.2 0.2
+		specular 0.0 0.0 0.0
+		lightdir 0.5 -0.5 1.0
+		shadow 0.0
+	endentry
+	
+	entry
+		time 4 0
+		skycolor 0.0 0.0 0.0
+		atmcolor 0.1 0.1 0.1
+		skyheight 0.0
+		ambient 0.01 0.01 0.01
+		diffuse 0.2 0.2 0.2
+		specular 0.0 0.0 0.0
+		lightdir 0.0 -0.5 1.0
+		shadow 0.0
+	endentry
+	
+	entry
+		time 6 30
+		skycolor 0.70 0.75 0.87
+		atmcolor 1.0 0.70 0.57
+		skyheight -0.3
+		ambient 0.2 0.2 0.3
+		diffuse 0.9 0.6 0.5
+		specular 0.0 0.0 0.0
+		lightdir -1.0 -0.5 1.0
+		shadow 0.2
+	endentry
+	
+	entry
+		time 12 0
+		skycolor 0.42 0.7 1.0
+		atmcolor 1.0 1.0 0.94
+		skyheight 0.2
+		ambient 0.3 0.3 0.4
+		diffuse 0.6 0.6 0.6
+		specular 1.0 1.0 1.0
+		lightdir 0.0 -0.9 0.3
+		shadow 1.0
+	endentry
+	
+	entry
+		time 16 0
+		skycolor 0.42 0.7 1.0
+		atmcolor 1.0 1.0 0.94
+		skyheight 0.0
+		ambient 0.3 0.3 0.4
+		diffuse 0.6 0.6 0.6
+		specular 1.0 1.0 1.0
+		lightdir 0.5 -0.7 -0.5
+		shadow 1.0
+	endentry
+	
+	entry
+		time 20 0
+		skycolor 0.31 0.39 0.40
+		atmcolor 0.86 0.63 0.24
+		skyheight -0.5
+		ambient 0.2 0.2 0.3
+		diffuse 0.8 0.4 0.5
+		specular 0.3 0.3 0.3
+		lightdir 1.0 -0.5 -1.0
+		shadow 0.2
+	endentry
+	
+	entry
+		time 21 45
+		skycolor 0.075 0.075 0.075
+		atmcolor 0.12 0.1 0.12
+		skyheight -1.0
+		ambient 0.075 0.075 0.075
+		diffuse 0.12 0.12 0.2
+		specular 0.0 0.0 0.0
+		lightdir 1.0 -0.5 -1.0
+		shadow 0.0
+	endentry
+	
+	entry
+		time 23 59
+		skycolor 0.0 0.0 0.0
+		atmcolor 0.05 0.05 0.05
+		skyheight 0.0
+		ambient 0.01 0.01 0.01
+		diffuse 0.2 0.2 0.2
+		specular 0.0 0.0 0.0
+		lightdir 0.5 -0.5 1.0
+		shadow 0.0
+	endentry
+end

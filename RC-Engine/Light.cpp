@@ -13,6 +13,7 @@ Light::Light()
 	diffuseColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	specularColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	lightDirection = glm::vec3(0.0f, 0.0f, 1.0f);
+	shadowStrength = 1.0f;
 }
 
 void Light::SetAmbientColor(float r, float g, float b, float a)
@@ -35,6 +36,11 @@ void Light::SetLightDirection(float x, float y, float z)
 	lightDirection = glm::vec3(x, y, z);
 }
 
+void Light::SetShadowStrength(float strength)
+{
+	shadowStrength = strength;
+}
+
 glm::vec4 Light::GetAmbientColor()
 {
 	return ambientColor;
@@ -53,4 +59,9 @@ glm::vec4 Light::GetSpecularColor()
 glm::vec3 Light::GetLightDirection()
 {
 	return lightDirection;
+}
+
+float Light::GetShadowStrength()
+{
+	return shadowStrength;
 }

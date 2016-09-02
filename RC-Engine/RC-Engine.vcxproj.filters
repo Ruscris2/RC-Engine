@@ -156,6 +156,9 @@
     <ClCompile Include="TextureManager.cpp">
       <Filter>Source Files\Resource Managers</Filter>
     </ClCompile>
+    <ClCompile Include="TimeCycle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="WinWindow.h">
@@ -280,6 +283,9 @@
     </ClInclude>
     <ClInclude Include="TextureManager.h">
       <Filter>Header Files\Resource Managers</Filter>
+    </ClInclude>
+    <ClInclude Include="TimeCycle.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

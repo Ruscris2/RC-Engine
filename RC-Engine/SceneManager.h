@@ -25,6 +25,7 @@
 #include "GUIManager.h"
 #include "ShadowMaps.h"
 #include "FrustumCuller.h"
+#include "TimeCycle.h"
 
 enum GAME_STATE
 {
@@ -41,6 +42,7 @@ class SceneManager
 
 		Physics * physics;
 		Camera * camera;
+		TimeCycle * timeCycle;
 		Light * light;
 		PipelineManager * pipelineManager;
 		GUIManager * guiManager;

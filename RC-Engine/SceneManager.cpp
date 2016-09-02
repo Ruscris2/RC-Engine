@@ -63,6 +63,7 @@ SceneManager::~SceneManager()
 	SAFE_DELETE(light);
 	SAFE_DELETE(camera);
 	SAFE_DELETE(frustumCuller);
+	SAFE_DELETE(timeCycle);
 	SAFE_DELETE(physics);
 	SAFE_DELETE(gTextureManager);
 }
@@ -153,10 +154,6 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 
 	// Light setup
 	light = new Light();
-	light->SetAmbientColor(0.3f, 0.3f, 0.4f, 1.0f);
-	light->SetDiffuseColor(0.6f, 0.6f, 0.6f, 1.0f);
-	light->SetSpecularColor(1.0f, 1.0f, 1.0f, 1.0f);
-	light->SetLightDirection(-0.5f, -0.8f, 1.0f);
 
 	if (!pipelineManager->InitGamePipelines(vulkan, shadowMaps))
 	{
@@ -181,10 +178,17 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 		gLogManager->AddMessage("ERROR: Failed to init skydome!");
 		return false;
 	}
-	skydome->SetSkyColor(0.42f, 0.7f, 1.0f, 1.0f);
-	skydome->SetAtmosphereColor(1.0f, 1.0f, 0.94f, 1.0f);
 	skydome->SetGroundColor(0.2f, 0.2f, 0.2f, 1.0f);
-	skydome->SetAtmosphereHeight(0.2f);
+	
+	// Init timecycle
+	timeCycle = new TimeCycle();
+	if (!timeCycle->Init(skydome, light))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init timecycle!");
+		return false;
+	}
+	timeCycle->SetTime(16, 0);
+	timeCycle->SetWeather("sunny");
 
 	// Load map files
 	if (!LoadMapFile("data/testmap.map", vulkan))
@@ -286,6 +290,8 @@ void SceneManager::Render(VulkanInterface * vulkan)
 	{
 		physics->Update();
 		frustumCuller->BuildFrustum(camera);
+		timeCycle->Update();
+
 		glm::vec3 playerPos = player->GetPosition();
 
 		if (playerPos.y < -50.0f)
@@ -336,11 +342,6 @@ void SceneManager::Render(VulkanInterface * vulkan)
 			gLogManager->AddMessage(msg);
 		}
 
-		if (gInput->WasKeyPressed(KEYBOARD_KEY_Y))
-		{
-			SAFE_UNLOAD(modelList[modelList.size() - 1], vulkan);
-			modelList.erase(modelList.end()-1);
-		}
 		camera->HandleInput();
 
 		// Debug deferred shading

@@ -871,7 +871,8 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 	pipelineCI.numLayoutBindings = 3;
 	pipelineCI.typeCounts = typeCountsSkinned;
 	pipelineCI.strideSize = sizeof(SkinnedVertex);
-	
+	pipelineCI.cullMode = VK_CULL_MODE_BACK_BIT;
+
 	shadowSkinnedPipeline = new VulkanPipeline();
 	if (!shadowSkinnedPipeline->Init(vulkan, &pipelineCI))
 		return false;

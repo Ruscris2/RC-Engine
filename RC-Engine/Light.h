@@ -18,6 +18,7 @@ class Light
 		glm::vec4 diffuseColor;
 		glm::vec4 specularColor;
 		glm::vec3 lightDirection;
+		float shadowStrength;
 	public:
 		Light();
 
@@ -25,8 +26,10 @@ class Light
 		void SetDiffuseColor(float r, float g, float b, float a);
 		void SetSpecularColor(float r, float g, float b, float a);
 		void SetLightDirection(float x, float y, float z);
+		void SetShadowStrength(float strength);
 		glm::vec4 GetAmbientColor();
 		glm::vec4 GetDiffuseColor();
 		glm::vec4 GetSpecularColor();
 		glm::vec3 GetLightDirection();
+		float GetShadowStrength();
 };

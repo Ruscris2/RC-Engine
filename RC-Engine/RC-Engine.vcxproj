@@ -175,6 +175,7 @@
     <ClCompile Include="Skydome.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="TextureManager.cpp" />
+    <ClCompile Include="TimeCycle.cpp" />
     <ClCompile Include="Timer.cpp" />
     <ClCompile Include="VulkanBuffer.cpp" />
     <ClCompile Include="VulkanCommandBuffer.cpp" />
@@ -215,6 +216,7 @@
     <ClInclude Include="Skydome.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="TextureManager.h" />
+    <ClInclude Include="TimeCycle.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="VulkanBuffer.h" />
     <ClInclude Include="VulkanCommandBuffer.h" />

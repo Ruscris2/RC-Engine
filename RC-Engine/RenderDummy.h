@@ -36,7 +36,7 @@ class RenderDummy
 			glm::vec3 lightDirection;
 			int imageIndex;
 			glm::vec3 cameraPosition;
-			float padding;
+			float shadowStrength;
 		};
 		VertexUniformBuffer vertexUniformBuffer;
 		FragmentUniformBuffer fragmentUniformBuffer;

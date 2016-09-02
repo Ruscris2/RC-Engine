@@ -37,8 +37,8 @@ bool Skydome::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline)
 
 	// Generate sphere
 	float radius = 2.0f;
-	unsigned int slices = 20;
-	unsigned int stacks = 20;
+	unsigned int slices = 25;
+	unsigned int stacks = 25;
 
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;

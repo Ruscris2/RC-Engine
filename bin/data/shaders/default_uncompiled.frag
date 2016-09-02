@@ -20,7 +20,7 @@ layout (binding = 6) uniform UBO
 	vec3 lightDirection;
 	int imageIndex;
 	vec3 cameraPosition;
-	float padding;
+	float shadowStrength;
 } ubo;
 
 layout (binding = 7) uniform sampler2DArray samplerShadowMap;
@@ -80,6 +80,8 @@ void main()
 				}
 			}
 		}
+		
+		shadow = mix(shadow, 1.0f, abs(1.0f - ubo.shadowStrength));
 		
 		vec3 viewDir = normalize(ubo.cameraPosition - fragPos);
 		vec4 fragColor = ubo.ambientColor;
