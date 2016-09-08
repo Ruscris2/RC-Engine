@@ -11,7 +11,7 @@
 
 extern LogManager * gLogManager;
 
-bool TimeCycle::Init(Skydome * skydome, Light * light)
+bool TimeCycle::Init(Skydome * skydome, Sunlight * light)
 {
 	skydomePtr = skydome;
 	lightPtr = light;

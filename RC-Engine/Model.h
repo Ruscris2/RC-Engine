@@ -11,7 +11,6 @@
 #include "Mesh.h"
 #include "Camera.h"
 #include "Texture.h"
-#include "Light.h"
 #include "Material.h"
 #include "Physics.h"
 #include "ShadowMaps.h"

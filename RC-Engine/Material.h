@@ -12,24 +12,23 @@ class Material
 {
 	private:
 		Texture * diffuseTexture;
-		Texture * specularTexture;
+		Texture * materialTexture;
 		Texture * normalTexture;
-		float specularShininess;
-		float specularStrength;
+		float metallicOffset;
+		float roughnessOffset;
 	public:
 		Material();
 		~Material();
 
 		void SetDiffuseTexture(Texture * texture);
-		void SetSpecularTexture(Texture * texture);
+		void SetMaterialTexture(Texture * texture);
 		void SetNormalTexture(Texture * texture);
-		void SetSpecularStrength(float value);
-		void SetSpecularShininess(float value);
+		void SetMetallicOffset(float value);
+		void SetRoughnessOffset(float value);
 		Texture * GetDiffuseTexture();
-		Texture * GetSpecularTexture();
+		Texture * GetMaterialTexture();
 		Texture * GetNormalTexture();
-		float GetSpecularShininess();
-		float GetSpecularStrength();
-		bool HasSpecularMap();
 		bool HasNormalMap();
+		float GetMetallicOffset();
+		float GetRoughnessOffset();
 };

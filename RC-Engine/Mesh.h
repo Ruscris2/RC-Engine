@@ -27,10 +27,10 @@ class Mesh
 
 		struct MaterialUniformBuffer
 		{
-			float materialSpecStrength;
-			float materialShininess;
-			float hasSpecMap;
 			float hasNormalMap;
+			float metallicOffset;
+			float roughnessOffset;
+			float padding;
 		};
 		MaterialUniformBuffer materialUniformBuffer;
 

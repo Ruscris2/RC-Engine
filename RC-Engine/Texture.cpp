@@ -40,9 +40,6 @@ bool Texture::Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::
 	VkResult result;
 	void * pData;
 
-	unsigned char * imageData;
-	unsigned int imageSize;
-	unsigned int width, height;
 	std::vector<MipMap> mipMaps;
 
 	FILE * file = fopen(filename.c_str(), "rb");
@@ -52,13 +49,17 @@ bool Texture::Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::
 		return false;
 	}
 
-	fread(&width, sizeof(unsigned int), 1, file);
-	fread(&height, sizeof(unsigned int), 1, file);
-	fread(&imageSize, sizeof(unsigned int), 1, file);
+	// Read original image (as mipmap level 0)
+	MipMap originalImage;
+	fread(&originalImage.width, sizeof(unsigned int), 1, file);
+	fread(&originalImage.height, sizeof(unsigned int), 1, file);
+	fread(&originalImage.size, sizeof(unsigned int), 1, file);
 
-	imageData = new unsigned char[imageSize];
-	fread(imageData, sizeof(unsigned char), imageSize, file);
+	originalImage.data = new unsigned char[originalImage.size];
+	fread(originalImage.data, sizeof(unsigned char), originalImage.size, file);
+	mipMaps.push_back(originalImage);
 
+	// Read mipmaps
 	fread(&mipMapsCount, sizeof(int), 1, file);
 
 	for (int i = 0; i < mipMapsCount; i++)
@@ -76,19 +77,17 @@ bool Texture::Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::
 
 	fclose(file);
 
-	unsigned int totalTextureSize = imageSize;
-	for (int i = 0; i < mipMapsCount; i++)
+	unsigned int totalTextureSize = 0;
+	for (unsigned int i = 0; i < mipMaps.size(); i++)
 		totalTextureSize += mipMaps[i].size;
 
+	// Create an array of bits which stores all of the texture data
 	std::vector<unsigned char> textureData;
-	for (unsigned int i = 0; i < imageSize; i++)
-		textureData.push_back(imageData[i]);
-	for (int i = 0; i < mipMapsCount; i++)
+	for (unsigned int i = 0; i < mipMaps.size(); i++)
 		for (unsigned int j = 0; j < mipMaps[i].size; j++)
 			textureData.push_back(mipMaps[i].data[j]);
 
-	delete[] imageData;
-	for (int i = 0; i < mipMapsCount; i++)
+	for (int i = 0; i < mipMaps.size(); i++)
 		delete[] mipMaps[i].data;
 
 	VkMemoryRequirements memReq{};
@@ -133,28 +132,18 @@ bool Texture::Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::
 	std::vector<VkBufferImageCopy> bufferCopyRegions;
 	uint32_t offset = 0;
 
-	for (int i = 0; i < mipMapsCount + 1; i++)
+	for (unsigned int level = 0; level < mipMaps.size(); level++)
 	{
 		VkBufferImageCopy bufferCopyRegion{};
 		bufferCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		bufferCopyRegion.imageSubresource.mipLevel = i;
+		bufferCopyRegion.imageSubresource.mipLevel = level;
 		bufferCopyRegion.imageSubresource.baseArrayLayer = 0;
 		bufferCopyRegion.imageSubresource.layerCount = 1;
 		bufferCopyRegion.imageExtent.depth = 1;
 		bufferCopyRegion.bufferOffset = offset;
-
-		if (i == 0)
-		{
-			bufferCopyRegion.imageExtent.width = width;
-			bufferCopyRegion.imageExtent.height = height;
-			offset += (uint32_t)imageSize;
-		}
-		else
-		{
-			bufferCopyRegion.imageExtent.width = mipMaps[i - 1].width;
-			bufferCopyRegion.imageExtent.height = mipMaps[i - 1].height;
-			offset += (uint32_t)mipMaps[i - 1].size;
-		}
+		bufferCopyRegion.imageExtent.width = mipMaps[level].width;
+		bufferCopyRegion.imageExtent.height = mipMaps[level].height;
+		offset += (uint32_t)mipMaps[level].size;
 
 		bufferCopyRegions.push_back(bufferCopyRegion);
 	}
@@ -163,15 +152,15 @@ bool Texture::Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::
 	imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageCI.imageType = VK_IMAGE_TYPE_2D;
 	imageCI.format = VK_FORMAT_R8G8B8A8_UNORM;
-	imageCI.mipLevels = mipMapsCount + 1;
+	imageCI.mipLevels = (uint32_t)mipMaps.size();
 	imageCI.arrayLayers = 1;
 	imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageCI.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	imageCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageCI.extent.width = width;
-	imageCI.extent.height = height;
+	imageCI.extent.width = mipMaps[0].width;
+	imageCI.extent.height = mipMaps[0].height;
 	imageCI.extent.depth = 1;
 
 	result = vkCreateImage(device->GetDevice(), &imageCI, VK_NULL_HANDLE, &textureImage);
@@ -198,7 +187,7 @@ bool Texture::Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::
 	VkImageSubresourceRange range{};
 	range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	range.baseMipLevel = 0;
-	range.levelCount = mipMapsCount + 1;
+	range.levelCount = (uint32_t)mipMaps.size();
 	range.layerCount = 1;
 
 	cmdBuffer->BeginRecording();
@@ -230,7 +219,7 @@ bool Texture::Init(VulkanDevice * device, VulkanCommandBuffer * cmdBuffer, std::
 	viewCI.subresourceRange.baseMipLevel = 0;
 	viewCI.subresourceRange.baseArrayLayer = 0;
 	viewCI.subresourceRange.layerCount = 1;
-	viewCI.subresourceRange.levelCount = mipMapsCount + 1;
+	viewCI.subresourceRange.levelCount = (uint32_t)mipMaps.size();
 	result = vkCreateImageView(device->GetDevice(), &viewCI, VK_NULL_HANDLE, &textureImageView);
 	if (result != VK_SUCCESS)
 		return false;

@@ -1,4 +1,4 @@
-skin.rct 16 2
-eye.rct 32 1
-clothes.rct 0 0
-shoes.rct 0 0
+skin.rct skin_mat.rct 0.0 0.0
+eye.rct eye_mat.rct 0.0 0.0
+clothes.rct clothes_mat.rct 0.0 0.0
+shoes.rct shoes_mat.rct 0.0 0.0

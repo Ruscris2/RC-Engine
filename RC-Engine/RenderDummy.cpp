@@ -28,7 +28,8 @@ RenderDummy::~RenderDummy()
 }
 
 bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView * positionView, VkImageView * normalView,
-	VkImageView * albedoView, VkImageView * materialView, VkImageView * depthView, ShadowMaps * shadowMaps)
+	VkImageView * albedoView, VkImageView * materialView, VkImageView * depthView, ShadowMaps * shadowMaps,
+	LightManager * lightManager, VkImageView * cubemapView)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
@@ -124,7 +125,7 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 		sizeof(fragmentUniformBuffer), false))
 		return false;
 
-	VkWriteDescriptorSet write[8];
+	VkWriteDescriptorSet write[10];
 
 	write[0] = {};
 	write[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -236,6 +237,31 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 	write[7].dstArrayElement = 0;
 	write[7].dstBinding = 7;
 
+	write[8] = {};
+	write[8].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write[8].pNext = NULL;
+	write[8].dstSet = vulkanPipeline->GetDescriptorSet();
+	write[8].descriptorCount = 1;
+	write[8].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	write[8].pBufferInfo = lightManager->GetBufferInfo();
+	write[8].dstArrayElement = 0;
+	write[8].dstBinding = 8;
+
+	VkDescriptorImageInfo cubemapTextureDesc{};
+	cubemapTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	cubemapTextureDesc.imageView = *cubemapView;
+	cubemapTextureDesc.sampler = vulkan->GetColorSampler();
+
+	write[9] = {};
+	write[9].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write[9].pNext = NULL;
+	write[9].dstSet = vulkanPipeline->GetDescriptorSet();
+	write[9].descriptorCount = 1;
+	write[9].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	write[9].pImageInfo = &cubemapTextureDesc;
+	write[9].dstArrayElement = 0;
+	write[9].dstBinding = 9;
+
 	vkUpdateDescriptorSets(vulkanDevice->GetDevice(), sizeof(write) / sizeof(write[0]), write, 0, NULL);
 
 	// Init draw command buffers
@@ -263,7 +289,7 @@ void RenderDummy::Unload(VulkanInterface * vulkan)
 }
 
 void RenderDummy::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
-	glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera, ShadowMaps * shadowMaps, int frameBufferId)
+	glm::mat4 orthoMatrix, Sunlight * light, int imageIndex, Camera * camera, ShadowMaps * shadowMaps, int frameBufferId)
 {
 	// Update vertex uniform buffer
 	vertexUniformBuffer.MVP = orthoMatrix;

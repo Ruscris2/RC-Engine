@@ -153,19 +153,22 @@ void ShadowMaps::SetDepthBias(VulkanCommandBuffer * cmdBuffer)
 	vkCmdSetDepthBias(cmdBuffer->GetCommandBuffer(), 0.001f, 0.0f, 1.0f);
 }
 
-void ShadowMaps::UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera, Light * light)
+void ShadowMaps::UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera, Sunlight * light)
 {
 	if (gInput->IsKeyPressed(KEYBOARD_KEY_Q))
 		return;
 
 	for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
 	{
+		// A cube (-1, 1 on z axis) generates a proper representation of the frustum
+		// In practice (0, 1 on z axis) shows no difference in shadow map cascade bounds when projected
+		// Cheap way to increase resolution
 		glm::vec3 frustumCorners[8] =
 		{
-			glm::vec3(-1.0f, 1.0f, -1.0f), // top left near 0
-			glm::vec3(1.0f, 1.0f, -1.0f), // top right near 1
-			glm::vec3(1.0f, -1.0f, -1.0f), // bottom right near 2
-			glm::vec3(-1.0f, -1.0f, -1.0f), // bottom left near 3
+			glm::vec3(-1.0f, 1.0f, 0.0f), // top left near 0
+			glm::vec3(1.0f, 1.0f, 0.0f), // top right near 1
+			glm::vec3(1.0f, -1.0f, 0.0f), // bottom right near 2
+			glm::vec3(-1.0f, -1.0f, 0.0f), // bottom left near 3
 			glm::vec3(-1.0f, 1.0f, 1.0f), // top left far 4
 			glm::vec3(1.0f, 1.0f, 1.0f), // top right far 5
 			glm::vec3(1.0f, -1.0f, 1.0f), // bottom right far 6
@@ -191,7 +194,7 @@ void ShadowMaps::UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera,
 		frustumCenter /= 8.0f;
 
 		// Texel snapping
-		float texelsPerUnit = (float)mapSize / (radius * 4.0f);
+		float texelsPerUnit = (float)mapSize / (radius * 2.0f);
 
 		glm::mat4 scalar = glm::scale(glm::mat4(), glm::vec3(texelsPerUnit, texelsPerUnit, texelsPerUnit));
 
@@ -209,11 +212,11 @@ void ShadowMaps::UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera,
 		frustumCenter.y = glm::floor(frustumCenter.y);
 		frustumCenter = VulkanTools::Vec3Transform(frustumCenter, lookAtInv);
 		
-		glm::vec3 eye = frustumCenter - (light->GetLightDirection() * radius * 2.0f);
+		glm::vec3 eye = frustumCenter - (light->GetLightDirection() * radius * 6.0f);
 
 		// Create the view matrix and projection matrix
 		viewMatrices[i] = glm::lookAt(eye, frustumCenter, up);
-		orthoMatrices[i] = glm::ortho(-radius * 2.0f, radius * 2.0f, -radius * 2.0f, radius * 2.0f, -radius * 6.0f, radius * 6.0f);
+		orthoMatrices[i] = glm::ortho(-radius, radius, -radius, radius, -radius * 12.0f, radius * 12.0f);
 		geometryUniformBuffer.lightViewProj[i] = orthoMatrices[i] * viewMatrices[i];
 	}
 

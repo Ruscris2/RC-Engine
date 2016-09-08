@@ -9,9 +9,10 @@
 #include "VulkanInterface.h"
 #include "VulkanPipeline.h"
 #include "VulkanBuffer.h"
-#include "Light.h"
+#include "Sunlight.h"
 #include "Camera.h"
 #include "ShadowMaps.h"
+#include "LightManager.h"
 
 class RenderDummy
 {
@@ -52,8 +53,9 @@ class RenderDummy
 		~RenderDummy();
 
 		bool Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline, VkImageView * positionView, VkImageView * normalView,
-			VkImageView * albedoView, VkImageView * materialView, VkImageView * depthView, ShadowMaps * shadowMaps);
+			VkImageView * albedoView, VkImageView * materialView, VkImageView * depthView, ShadowMaps * shadowMaps,
+			LightManager * lightManager, VkImageView * cubemapView);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer, VulkanPipeline * vulkanPipeline,
-			glm::mat4 orthoMatrix, Light * light, int imageIndex, Camera * camera, ShadowMaps * shadowMaps, int frameBufferId);
+			glm::mat4 orthoMatrix, Sunlight * light, int imageIndex, Camera * camera, ShadowMaps * shadowMaps, int frameBufferId);
 };

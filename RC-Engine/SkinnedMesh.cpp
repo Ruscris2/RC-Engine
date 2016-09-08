@@ -62,10 +62,10 @@ bool SkinnedMesh::Init(VulkanInterface * vulkan, FILE * modelFile)
 	delete[] indexData;
 
 	// Material uniform buffer
-	materialUniformBuffer.materialSpecStrength = 0.0f;
-	materialUniformBuffer.materialShininess = 0.0f;
-	materialUniformBuffer.hasSpecularMap = 0.0f;
 	materialUniformBuffer.hasNormalMap = 0.0f;
+	materialUniformBuffer.metallicOffset = 0.0f;
+	materialUniformBuffer.roughnessOffset = 0.0f;
+	materialUniformBuffer.padding = 0.0f;
 
 	// Fragment shader uniform buffer
 	materialUBO = new VulkanBuffer();
@@ -94,10 +94,9 @@ void SkinnedMesh::Render(VulkanInterface * vulkan, VulkanCommandBuffer * command
 
 void SkinnedMesh::UpdateUniformBuffer(VulkanInterface * vulkan)
 {
-	materialUniformBuffer.materialSpecStrength = material->GetSpecularStrength();
-	materialUniformBuffer.materialShininess = material->GetSpecularShininess();
-	materialUniformBuffer.hasSpecularMap = (material->HasSpecularMap() ? 1.0f : 0.0f);
 	materialUniformBuffer.hasNormalMap = (material->HasNormalMap() ? 1.0f : 0.0f);
+	materialUniformBuffer.metallicOffset = material->GetMetallicOffset();
+	materialUniformBuffer.roughnessOffset = material->GetRoughnessOffset();
 
 	materialUBO->Update(vulkan->GetVulkanDevice(), &materialUniformBuffer, sizeof(materialUniformBuffer));
 }

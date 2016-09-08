@@ -9,15 +9,16 @@
 Material::Material()
 {
 	diffuseTexture = nullptr;
-	specularTexture = nullptr;
+	materialTexture = nullptr;
 	normalTexture = nullptr;
-	specularShininess = 32.0f;
-	specularStrength = 1.0f;
+	metallicOffset = 0.0f;
+	roughnessOffset = 0.0f;
 }
 
 Material::~Material()
 {
-	specularTexture = nullptr;
+	normalTexture = nullptr;
+	materialTexture = nullptr;
 	diffuseTexture = nullptr;
 }
 
@@ -26,9 +27,9 @@ void Material::SetDiffuseTexture(Texture * texture)
 	diffuseTexture = texture;
 }
 
-void Material::SetSpecularTexture(Texture * texture)
+void Material::SetMaterialTexture(Texture * texture)
 {
-	specularTexture = texture;
+	materialTexture = texture;
 }
 
 void Material::SetNormalTexture(Texture * texture)
@@ -36,14 +37,14 @@ void Material::SetNormalTexture(Texture * texture)
 	normalTexture = texture;
 }
 
-void Material::SetSpecularStrength(float value)
+void Material::SetMetallicOffset(float value)
 {
-	specularStrength = value;
+	metallicOffset = value;
 }
 
-void Material::SetSpecularShininess(float value)
+void Material::SetRoughnessOffset(float value)
 {
-	specularShininess = value;
+	roughnessOffset = value;
 }
 
 Texture * Material::GetDiffuseTexture()
@@ -51,32 +52,14 @@ Texture * Material::GetDiffuseTexture()
 	return diffuseTexture;
 }
 
-Texture * Material::GetSpecularTexture()
+Texture * Material::GetMaterialTexture()
 {
-	return specularTexture;
+	return materialTexture;
 }
 
 Texture * Material::GetNormalTexture()
 {
 	return normalTexture;
-}
-
-float Material::GetSpecularShininess()
-{
-	return specularShininess;
-}
-
-float Material::GetSpecularStrength()
-{
-	return specularStrength;
-}
-
-bool Material::HasSpecularMap()
-{
-	if (specularTexture != nullptr)
-		return true;
-
-	return false;
 }
 
 bool Material::HasNormalMap()
@@ -85,4 +68,14 @@ bool Material::HasNormalMap()
 		return true;
 
 	return false;
+}
+
+float Material::GetMetallicOffset()
+{
+	return metallicOffset;
+}
+
+float Material::GetRoughnessOffset()
+{
+	return roughnessOffset;
 }

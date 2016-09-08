@@ -4,15 +4,15 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 layout (binding = 2) uniform sampler2D diffuseSampler;
-layout (binding = 3) uniform sampler2D specularSampler;
+layout (binding = 3) uniform sampler2D materialSampler;
 layout (binding = 4) uniform sampler2D normalSampler;
 
 layout (binding = 5) uniform UBO
 {
-	float materialSpecStrength;
-	float materialShininess;
-	float hasSpecularMap;
 	float hasNormalMap;
+	float metallicOffset;
+	float roughnessOffset;
+	float padding;
 } ubo;
 
 layout (location = 0) in vec3 worldPos;
@@ -31,13 +31,9 @@ void main()
 	outNormal = vec4(normals, 1.0f);
 	outAlbedo = texture(diffuseSampler, texCoord);
 	
-	if(ubo.hasSpecularMap == 1.0f)
-		outMaterial = texture(specularSampler, texCoord);
-	else
-		outMaterial = vec4(1.0f, 1.0f, 1.0f, 1.0f);
-		
-	outMaterial.g = ubo.materialShininess;
-	outMaterial.b = ubo.materialSpecStrength;
+	outMaterial = texture(materialSampler, texCoord);
+	outMaterial.r = clamp(outMaterial.r + ubo.metallicOffset, 0.0f, 1.0f);
+	outMaterial.g = clamp(outMaterial.g + ubo.roughnessOffset, 0.0f, 1.0f);
 	
 	// If there is a normal map available overwrite normals
 	if(ubo.hasNormalMap == 1.0f)

@@ -1,1 +1,1 @@
-grass_diff.rct 256 0.5
+grass_diff.rct ground_mat.rct -1.0 1.0

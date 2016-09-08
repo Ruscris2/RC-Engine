@@ -29,10 +29,10 @@ class SkinnedMesh
 
 		struct MaterialUniformBuffer
 		{
-			float materialSpecStrength;
-			float materialShininess;
-			float hasSpecularMap;
 			float hasNormalMap;
+			float metallicOffset;
+			float roughnessOffset;
+			float padding;
 		};
 		MaterialUniformBuffer materialUniformBuffer;
 

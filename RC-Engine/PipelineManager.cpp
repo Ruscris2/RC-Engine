@@ -218,7 +218,7 @@ bool PipelineManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	vertexLayoutDefault[1].offset = sizeof(float) * 3;
 
 	// Layout bindings
-	VkDescriptorSetLayoutBinding layoutBindingsDefault[8];
+	VkDescriptorSetLayoutBinding layoutBindingsDefault[10];
 
 	layoutBindingsDefault[0].binding = 0;
 	layoutBindingsDefault[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -268,8 +268,20 @@ bool PipelineManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	layoutBindingsDefault[7].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	layoutBindingsDefault[7].pImmutableSamplers = VK_NULL_HANDLE;
 
+	layoutBindingsDefault[8].binding = 8;
+	layoutBindingsDefault[8].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsDefault[8].descriptorCount = 1;
+	layoutBindingsDefault[8].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsDefault[8].pImmutableSamplers = VK_NULL_HANDLE;
+
+	layoutBindingsDefault[9].binding = 9;
+	layoutBindingsDefault[9].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindingsDefault[9].descriptorCount = 1;
+	layoutBindingsDefault[9].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindingsDefault[9].pImmutableSamplers = VK_NULL_HANDLE;
+
 	// Type counts
-	VkDescriptorPoolSize typeCounts[8];
+	VkDescriptorPoolSize typeCounts[10];
 	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	typeCounts[0].descriptorCount = 1;
 	typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -286,6 +298,10 @@ bool PipelineManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	typeCounts[6].descriptorCount = 1;
 	typeCounts[7].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	typeCounts[7].descriptorCount = 1;
+	typeCounts[8].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[8].descriptorCount = 1;
+	typeCounts[9].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	typeCounts[9].descriptorCount = 1;
 
 	struct DefaultVertex {
 		float x, y, z;
@@ -299,7 +315,7 @@ bool PipelineManager::BuildDefaultPipeline(VulkanInterface * vulkan)
 	pipelineCI.vertexLayout = vertexLayoutDefault;
 	pipelineCI.numVertexLayout = 2;
 	pipelineCI.layoutBindings = layoutBindingsDefault;
-	pipelineCI.numLayoutBindings = 8;
+	pipelineCI.numLayoutBindings = 10;
 	pipelineCI.typeCounts = typeCounts;
 	pipelineCI.strideSize = sizeof(DefaultVertex);
 	pipelineCI.numColorAttachments = 1;

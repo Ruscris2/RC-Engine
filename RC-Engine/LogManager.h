@@ -22,4 +22,5 @@ class LogManager
 		void PrintVector(glm::vec2 vec);
 		void PrintVector(glm::vec3 vec);
 		void PrintVector(glm::vec4 vec);
+		void PrintValue(float val);
 };

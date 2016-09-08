@@ -52,3 +52,10 @@ void LogManager::PrintVector(glm::vec4 vec)
 	sprintf(msg, "X: %f Y: %f Z: %f W: %f", vec.x, vec.y, vec.z, vec.w);
 	AddMessage(msg);
 }
+
+void LogManager::PrintValue(float val)
+{
+	char msg[32];
+	sprintf(msg, "VAL: %f", val);
+	AddMessage(msg);
+}

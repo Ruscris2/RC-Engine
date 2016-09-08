@@ -8,7 +8,7 @@
 #include "VulkanInterface.h"
 #include "Camera.h"
 #include "WireframeModel.h"
-#include "Light.h"
+#include "Sunlight.h"
 #include "VulkanBuffer.h"
 
 #pragma once
@@ -42,7 +42,7 @@ class ShadowMaps
 		void BeginShadowPass(VulkanCommandBuffer * commandBuffer);
 		void EndShadowPass(VulkanDevice * vulkanDevice, VulkanCommandBuffer * commandBuffer);
 		void SetDepthBias(VulkanCommandBuffer * cmdBuffer);
-		void UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera, Light * light);
+		void UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera, Sunlight * light);
 		VulkanRenderpass * GetShadowRenderpass();
 		VkFramebuffer GetFramebuffer();
 		VkImageView * GetImageView();

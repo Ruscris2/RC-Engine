@@ -14,7 +14,7 @@
 #include "Model.h"
 #include "SkinnedModel.h"
 #include "WireframeModel.h"
-#include "Light.h"
+#include "Sunlight.h"
 #include "RenderDummy.h"
 #include "Animation.h"
 #include "Physics.h"
@@ -26,6 +26,8 @@
 #include "ShadowMaps.h"
 #include "FrustumCuller.h"
 #include "TimeCycle.h"
+#include "LightManager.h"
+#include "Cubemap.h"
 
 enum GAME_STATE
 {
@@ -43,8 +45,9 @@ class SceneManager
 		Physics * physics;
 		Camera * camera;
 		TimeCycle * timeCycle;
-		Light * light;
+		Sunlight * sunlight;
 		PipelineManager * pipelineManager;
+		LightManager * lightManager;
 		GUIManager * guiManager;
 		ShadowMaps * shadowMaps;
 		FrustumCuller * frustumCuller;
@@ -69,6 +72,8 @@ class SceneManager
 		GUIElement * splashScreen;
 		GameplayTimer * splashScreenTimer;
 		bool showSplashScreen;
+
+		Cubemap * testCubemap;
 	private:
 		bool LoadMapFile(std::string filename, VulkanInterface * vulkan);
 		bool LoadGame(VulkanInterface * vulkan);

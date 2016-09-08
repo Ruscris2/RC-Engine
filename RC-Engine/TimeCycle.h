@@ -9,7 +9,7 @@
 #include <string>
 #include <glm.hpp>
 #include "Skydome.h"
-#include "Light.h"
+#include "Sunlight.h"
 #include "GameplayTimer.h"
 
 #pragma once
@@ -38,7 +38,7 @@ class TimeCycle
 		unsigned short hour, minute;
 		Weather currentWeather;
 		Skydome * skydomePtr;
-		Light * lightPtr;
+		Sunlight * lightPtr;
 		GameplayTimer * timer;
 		bool freezeTime;
 		float timePassSpeed;
@@ -46,7 +46,7 @@ class TimeCycle
 		int ConvertToMinutes(unsigned short hour, unsigned short minutes);
 		float ConvertToMixValue(unsigned short hour, unsigned short minutes, Entry first, Entry second);
 	public:
-		bool Init(Skydome * skydome, Light * light);
+		bool Init(Skydome * skydome, Sunlight * light);
 		void Update();
 		void SetTime(unsigned short hour, unsigned short minute);
 		void SetWeather(std::string weatherName);

@@ -27,7 +27,7 @@ SceneManager::SceneManager()
 
 	physics = NULL;
 	camera = NULL;
-	light = NULL;
+	sunlight = NULL;
 	pipelineManager = NULL;
 
 	initCommandBuffer = NULL;
@@ -60,7 +60,7 @@ SceneManager::~SceneManager()
 	SAFE_DELETE(walkAnim);
 	SAFE_DELETE(idleAnim);
 
-	SAFE_DELETE(light);
+	SAFE_DELETE(sunlight);
 	SAFE_DELETE(camera);
 	SAFE_DELETE(frustumCuller);
 	SAFE_DELETE(timeCycle);
@@ -145,6 +145,14 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 		return false;
 	}
 
+	// Init light manager
+	lightManager = new LightManager();
+	if (!lightManager->Init(vulkan->GetVulkanDevice()))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init light manager!");
+		return false;
+	}
+
 	// Physics init
 	physics = new Physics();
 	physics->Init();
@@ -153,7 +161,15 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 	frustumCuller = new FrustumCuller();
 
 	// Light setup
-	light = new Light();
+	sunlight = new Sunlight();
+
+	// Init test cubemap
+	testCubemap = new Cubemap();
+	if (!testCubemap->Init(vulkan->GetVulkanDevice(), initCommandBuffer, "data/cubemaps/testcubemap"))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init cubemap!");
+		return false;
+	}
 
 	if (!pipelineManager->InitGamePipelines(vulkan, shadowMaps))
 	{
@@ -165,7 +181,7 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 	renderDummy = new RenderDummy();
 	if (!renderDummy->Init(vulkan, pipelineManager->GetDefault(), vulkan->GetPositionAttachment()->GetImageView(), vulkan->GetNormalAttachment()->GetImageView(),
 		vulkan->GetAlbedoAttachment()->GetImageView(), vulkan->GetMaterialAttachment()->GetImageView(), vulkan->GetDepthAttachment()->GetImageView(),
-		shadowMaps))
+		shadowMaps, lightManager, testCubemap->GetImageView()))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init render dummy!");
 		return false;
@@ -182,12 +198,12 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 	
 	// Init timecycle
 	timeCycle = new TimeCycle();
-	if (!timeCycle->Init(skydome, light))
+	if (!timeCycle->Init(skydome, sunlight))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init timecycle!");
 		return false;
 	}
-	timeCycle->SetTime(16, 0);
+	timeCycle->SetTime(9, 0);
 	timeCycle->SetWeather("sunny");
 
 	// Load map files
@@ -244,6 +260,7 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
+	SAFE_UNLOAD(testCubemap, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(splashScreen, vulkan);
 
 	SAFE_UNLOAD(male, vulkan);
@@ -253,6 +270,7 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 	SAFE_UNLOAD(skydome, vulkan);
 	SAFE_UNLOAD(renderDummy, vulkan);
 
+	SAFE_UNLOAD(lightManager, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(shadowMaps, vulkan);
 	SAFE_UNLOAD(guiManager, vulkan);
 	SAFE_UNLOAD(pipelineManager, vulkan);
@@ -264,6 +282,9 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 }
 
 int imageIndex = 5;
+
+float metallic = 0.0f;
+float roughness = 0.0f;
 
 void SceneManager::Render(VulkanInterface * vulkan)
 {
@@ -296,6 +317,29 @@ void SceneManager::Render(VulkanInterface * vulkan)
 
 		if (playerPos.y < -50.0f)
 			player->SetPosition(0.0f, 5.0f, 0.0f);
+
+		if (gInput->IsKeyPressed(KEYBOARD_KEY_T))
+			metallic -= 0.005f;
+		if (gInput->IsKeyPressed(KEYBOARD_KEY_Y))
+			metallic += 0.005f;
+		if (gInput->IsKeyPressed(KEYBOARD_KEY_U))
+			roughness -= 0.005f;
+		if (gInput->IsKeyPressed(KEYBOARD_KEY_I))
+			roughness += 0.005f;
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_G))
+		{
+			gLogManager->AddMessage("METALLIC:");
+			gLogManager->PrintValue(metallic);
+			gLogManager->AddMessage("ROUGHNESS:");
+			gLogManager->PrintValue(roughness);
+		}
+
+		if (metallic < 0.0f) metallic = 0.0f;
+		if (metallic > 1.0f) metallic = 1.0f;
+		if (roughness < 0.0f) roughness = 0.0f;
+		if (roughness > 1.0f) roughness = 1.0f;
+
+		sunlight->SetSpecularColor(metallic, roughness, 0.0f, 0.0f);
 
 		if (gInput->WasKeyPressed(KEYBOARD_KEY_E))
 		{
@@ -341,7 +385,15 @@ void SceneManager::Render(VulkanInterface * vulkan)
 			sprintf(msg, "OBJ: %zu TXD: %zu", modelList.size(), gTextureManager->GetLoadedTexturesCount());
 			gLogManager->AddMessage(msg);
 		}
-
+		if (gInput->WasKeyPressed(KEYBOARD_KEY_Z))
+		{
+			Light * light = new Light();
+			light->SetLightRadius(15.0f);
+			light->SetLightColor(glm::vec4(20.0f, 0.0f, 0.0f, 1.0f));
+			light->SetLightPosition(camera->GetPosition());
+			lightManager->AddLightToScene(vulkan->GetVulkanDevice(), light);
+			gLogManager->AddMessage("LIGHT ADDED");
+		}
 		camera->HandleInput();
 
 		// Debug deferred shading
@@ -359,7 +411,7 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		player->Update(vulkan, camera);
 
 		// Shadow pass
-		shadowMaps->UpdatePartitions(vulkan, camera, light);
+		shadowMaps->UpdatePartitions(vulkan, camera, sunlight);
 		
 		shadowMaps->BeginShadowPass(deferredCommandBuffer);
 
@@ -396,7 +448,7 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		{
 			skydome->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetSkydome(), camera, (int)i);
 			renderDummy->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetDefault(), camera->GetOrthoMatrix(),
-				light, imageIndex, camera, shadowMaps, (int)i);
+				sunlight, imageIndex, camera, shadowMaps, (int)i);
 		}
 		else if (currentGameState == GAME_STATE_SPLASH_SCREEN)
 			splashScreen->Render(vulkan, renderCommandBuffers[i], pipelineManager->GetCanvas(), camera, (int)i);

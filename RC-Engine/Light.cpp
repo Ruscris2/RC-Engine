@@ -9,59 +9,37 @@
 
 Light::Light()
 {
-	ambientColor = glm::vec4(0.25f, 0.25f, 0.25f, 1.0f);
-	diffuseColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-	specularColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-	lightDirection = glm::vec3(0.0f, 0.0f, 1.0f);
-	shadowStrength = 1.0f;
+	lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	lightPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+	radius = 1.0f;
 }
 
-void Light::SetAmbientColor(float r, float g, float b, float a)
+void Light::SetLightColor(glm::vec4 color)
 {
-	ambientColor = glm::vec4(r, g, b, a);
+	lightColor = color;
 }
 
-void Light::SetDiffuseColor(float r, float g, float b, float a)
+void Light::SetLightPosition(glm::vec3 pos)
 {
-	diffuseColor = glm::vec4(r, g, b, a);
+	lightPosition = pos;
 }
 
-void Light::SetSpecularColor(float r, float g, float b, float a)
+void Light::SetLightRadius(float radius)
 {
-	specularColor = glm::vec4(r, g, b, a);
+	this->radius = radius;
 }
 
-void Light::SetLightDirection(float x, float y, float z)
+glm::vec4 Light::GetLightColor()
 {
-	lightDirection = glm::vec3(x, y, z);
+	return lightColor;
 }
 
-void Light::SetShadowStrength(float strength)
+glm::vec3 Light::GetLightPosition()
 {
-	shadowStrength = strength;
+	return lightPosition;
 }
 
-glm::vec4 Light::GetAmbientColor()
+float Light::GetLightRadius()
 {
-	return ambientColor;
-}
-
-glm::vec4 Light::GetDiffuseColor()
-{
-	return diffuseColor;
-}
-
-glm::vec4 Light::GetSpecularColor()
-{
-	return specularColor;
-}
-
-glm::vec3 Light::GetLightDirection()
-{
-	return lightDirection;
-}
-
-float Light::GetShadowStrength()
-{
-	return shadowStrength;
+	return radius;
 }

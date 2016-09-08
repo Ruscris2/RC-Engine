@@ -244,14 +244,11 @@ void Model::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipel
 		descriptorWrite[1].dstArrayElement = 0;
 		descriptorWrite[1].dstBinding = 1;
 
-		// Write mesh specular texture if available
-		VkDescriptorImageInfo specularTextureDesc{};
-		if (mesh->GetMaterial()->HasSpecularMap())
-		{
-			specularTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-			specularTextureDesc.imageView = *mesh->GetMaterial()->GetSpecularTexture()->GetImageView();
-			specularTextureDesc.sampler = vulkan->GetColorSampler();
-		}
+		// Write mesh material texture
+		VkDescriptorImageInfo materialTextureDesc{};
+		materialTextureDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+		materialTextureDesc.imageView = *mesh->GetMaterial()->GetMaterialTexture()->GetImageView();
+		materialTextureDesc.sampler = vulkan->GetColorSampler();
 
 		descriptorWrite[2] = {};
 		descriptorWrite[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -259,7 +256,7 @@ void Model::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipel
 		descriptorWrite[2].dstSet = pipeline->GetDescriptorSet();
 		descriptorWrite[2].descriptorCount = 1;
 		descriptorWrite[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrite[2].pImageInfo = (mesh->GetMaterial()->HasSpecularMap() ? &specularTextureDesc : &diffuseTextureDesc);
+		descriptorWrite[2].pImageInfo = &materialTextureDesc;
 		descriptorWrite[2].dstArrayElement = 0;
 		descriptorWrite[2].dstBinding = 2;
 
@@ -374,7 +371,6 @@ bool Model::ReadRCMFile(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffe
 
 		std::string texturePath;
 		char diffuseTextureName[64];
-		char specularTextureName[64];
 		char normalTextureName[64];
 
 		// Init mesh material
@@ -395,21 +391,6 @@ bool Model::ReadRCMFile(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffe
 
 		material->SetDiffuseTexture(diffuse);
 
-		// Read specular texture if it's available
-		fread(specularTextureName, sizeof(char), 64, file);
-		if (strcmp(specularTextureName, "NONE") != 0)
-		{
-			texturePath = "data/textures/" + std::string(specularTextureName);
-
-			Texture * specular = gTextureManager->RequestTexture(texturePath, vulkan->GetVulkanDevice(), cmdBuffer);
-			if (specular == nullptr)
-				return false;
-
-			textures.push_back(specular);
-
-			material->SetSpecularTexture(specular);
-		}
-
 		// Read normal texture if it's available
 		fread(normalTextureName, sizeof(char), 64, file);
 		if (strcmp(normalTextureName, "NONE") != 0)
@@ -425,12 +406,21 @@ bool Model::ReadRCMFile(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffe
 			material->SetNormalTexture(normal);
 		}
 
-		std::string matName;
-		float specularStrength, specularShininess;
-		matFile >> matName >> specularShininess >> specularStrength;
+		std::string matName, matTextureName;
+		float metallicOffset, roughnessOffset;
+		matFile >> matName >> matTextureName >> metallicOffset >> roughnessOffset;
 
-		material->SetSpecularShininess(specularShininess);
-		material->SetSpecularStrength(specularStrength);
+		// Read material texture
+		texturePath = "data/textures/" + matTextureName;
+		Texture * matTexture = gTextureManager->RequestTexture(texturePath, vulkan->GetVulkanDevice(), cmdBuffer);
+		if (matTexture == nullptr)
+			return false;
+
+		textures.push_back(matTexture);
+
+		material->SetMaterialTexture(matTexture);
+		material->SetMetallicOffset(metallicOffset);
+		material->SetRoughnessOffset(roughnessOffset);
 
 		materials.push_back(material);
 		meshes[i]->SetMaterial(material);
