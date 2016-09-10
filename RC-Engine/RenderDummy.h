@@ -31,13 +31,10 @@ class RenderDummy
 		struct FragmentUniformBuffer
 		{
 			glm::mat4 lightViewMatrix[SHADOW_CASCADE_COUNT];
-			glm::vec4 ambientColor;
-			glm::vec4 diffuseColor;
-			glm::vec4 specularColor;
 			glm::vec3 lightDirection;
 			int imageIndex;
 			glm::vec3 cameraPosition;
-			float shadowStrength;
+			float lightStrength;
 		};
 		VertexUniformBuffer vertexUniformBuffer;
 		FragmentUniformBuffer fragmentUniformBuffer;

@@ -25,6 +25,7 @@ class ShadowMaps
 		VkSampler sampler;
 		glm::mat4 * orthoMatrices;
 		glm::mat4 * viewMatrices;
+		float depthRadius;
 
 		glm::mat4 * projectionMatrixPartitions;
 

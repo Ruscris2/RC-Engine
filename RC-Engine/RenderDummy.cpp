@@ -105,13 +105,10 @@ bool RenderDummy::Init(VulkanInterface * vulkan, VulkanPipeline * vulkanPipeline
 
 	// Uniform inits
 	vertexUniformBuffer.MVP = glm::mat4();
-	fragmentUniformBuffer.ambientColor = glm::vec4();
-	fragmentUniformBuffer.diffuseColor = glm::vec4();
-	fragmentUniformBuffer.specularColor = glm::vec4();
 	fragmentUniformBuffer.lightDirection = glm::vec3();
 	fragmentUniformBuffer.imageIndex = 5;
 	fragmentUniformBuffer.cameraPosition = glm::vec3();
-	fragmentUniformBuffer.shadowStrength = 0.0f;
+	fragmentUniformBuffer.lightStrength = 0.0f;
 
 	// Vertex shader Uniform buffer
 	vsUBO = new VulkanBuffer();
@@ -297,13 +294,10 @@ void RenderDummy::Render(VulkanInterface * vulkan, VulkanCommandBuffer * command
 	vsUBO->Update(vulkan->GetVulkanDevice(), &vertexUniformBuffer, sizeof(vertexUniformBuffer));
 
 	// Update fragment uniform buffer
-	fragmentUniformBuffer.ambientColor = light->GetAmbientColor();
-	fragmentUniformBuffer.diffuseColor = light->GetDiffuseColor();
-	fragmentUniformBuffer.specularColor = light->GetSpecularColor();
 	fragmentUniformBuffer.lightDirection = light->GetLightDirection();
 	fragmentUniformBuffer.imageIndex = imageIndex;
 	fragmentUniformBuffer.cameraPosition = camera->GetPosition();
-	fragmentUniformBuffer.shadowStrength = light->GetShadowStrength();
+	fragmentUniformBuffer.lightStrength = light->GetLightStrength();
 
 	for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
 		fragmentUniformBuffer.lightViewMatrix[i] = shadowMaps->GetLightViewProj(i);

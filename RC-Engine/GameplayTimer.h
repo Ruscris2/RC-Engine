@@ -19,4 +19,5 @@ class GameplayTimer
 		void ResetTimer();
 		bool TimePassed(float timeInMs);
 		bool IsTimerRunning();
+		float GetTimeProgress();
 };

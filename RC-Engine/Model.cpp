@@ -379,7 +379,7 @@ bool Model::ReadRCMFile(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffe
 		// Read diffuse texture
 		fread(diffuseTextureName, sizeof(char), 64, file);
 		if (strcmp(diffuseTextureName, "NONE") == 0)
-			texturePath = "data/textures/test.rct";
+			texturePath = "data/textures/default_diffuse.rct";
 		else
 			texturePath = "data/textures/" + std::string(diffuseTextureName);
 
@@ -411,7 +411,11 @@ bool Model::ReadRCMFile(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffe
 		matFile >> matName >> matTextureName >> metallicOffset >> roughnessOffset;
 
 		// Read material texture
-		texturePath = "data/textures/" + matTextureName;
+		if (matTextureName == "NONE")
+			texturePath = "data/textures/default_material.rct";
+		else
+			texturePath = "data/textures/" + matTextureName;
+
 		Texture * matTexture = gTextureManager->RequestTexture(texturePath, vulkan->GetVulkanDevice(), cmdBuffer);
 		if (matTexture == nullptr)
 			return false;

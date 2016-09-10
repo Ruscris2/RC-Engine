@@ -283,9 +283,6 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 
 int imageIndex = 5;
 
-float metallic = 0.0f;
-float roughness = 0.0f;
-
 void SceneManager::Render(VulkanInterface * vulkan)
 {
 	// Splash screen
@@ -317,29 +314,6 @@ void SceneManager::Render(VulkanInterface * vulkan)
 
 		if (playerPos.y < -50.0f)
 			player->SetPosition(0.0f, 5.0f, 0.0f);
-
-		if (gInput->IsKeyPressed(KEYBOARD_KEY_T))
-			metallic -= 0.005f;
-		if (gInput->IsKeyPressed(KEYBOARD_KEY_Y))
-			metallic += 0.005f;
-		if (gInput->IsKeyPressed(KEYBOARD_KEY_U))
-			roughness -= 0.005f;
-		if (gInput->IsKeyPressed(KEYBOARD_KEY_I))
-			roughness += 0.005f;
-		if (gInput->WasKeyPressed(KEYBOARD_KEY_G))
-		{
-			gLogManager->AddMessage("METALLIC:");
-			gLogManager->PrintValue(metallic);
-			gLogManager->AddMessage("ROUGHNESS:");
-			gLogManager->PrintValue(roughness);
-		}
-
-		if (metallic < 0.0f) metallic = 0.0f;
-		if (metallic > 1.0f) metallic = 1.0f;
-		if (roughness < 0.0f) roughness = 0.0f;
-		if (roughness > 1.0f) roughness = 1.0f;
-
-		sunlight->SetSpecularColor(metallic, roughness, 0.0f, 0.0f);
 
 		if (gInput->WasKeyPressed(KEYBOARD_KEY_E))
 		{

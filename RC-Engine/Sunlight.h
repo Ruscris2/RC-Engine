@@ -14,22 +14,13 @@
 class Sunlight
 {
 	private:
-		glm::vec4 ambientColor;
-		glm::vec4 diffuseColor;
-		glm::vec4 specularColor;
 		glm::vec3 lightDirection;
-		float shadowStrength;
+		float lightStrength;
 	public:
 		Sunlight();
 
-		void SetAmbientColor(float r, float g, float b, float a);
-		void SetDiffuseColor(float r, float g, float b, float a);
-		void SetSpecularColor(float r, float g, float b, float a);
 		void SetLightDirection(float x, float y, float z);
-		void SetShadowStrength(float strength);
-		glm::vec4 GetAmbientColor();
-		glm::vec4 GetDiffuseColor();
-		glm::vec4 GetSpecularColor();
+		void SetLightStrength(float strength);
 		glm::vec3 GetLightDirection();
-		float GetShadowStrength();
+		float GetLightStrength();
 };

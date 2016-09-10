@@ -106,9 +106,10 @@ bool ShadowMaps::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer,
 	// Projection matrices
 	projectionMatrixPartitions = new glm::mat4[SHADOW_CASCADE_COUNT];
 
-	projectionMatrixPartitions[0] = glm::perspective(camera->GetFieldOfView(), camera->GetAspectRatio(), camera->GetNearClip(), 5.0f);
-	projectionMatrixPartitions[1] = glm::perspective(camera->GetFieldOfView(), camera->GetAspectRatio(), 5.0f, 15.0f);
-	projectionMatrixPartitions[2] = glm::perspective(camera->GetFieldOfView(), camera->GetAspectRatio(), 15.0f, 50.0f);
+	projectionMatrixPartitions[0] = glm::perspective(camera->GetFieldOfView(), camera->GetAspectRatio(), camera->GetNearClip(), 1.5f);
+	projectionMatrixPartitions[1] = glm::perspective(camera->GetFieldOfView(), camera->GetAspectRatio(), 1.5f, 10.0f);
+	projectionMatrixPartitions[2] = glm::perspective(camera->GetFieldOfView(), camera->GetAspectRatio(), 10.0f, 50.0f);
+	depthRadius = camera->GetFarClip();
 
 	// Create geometry shader uniform buffer
 	shadowGS_UBO = new VulkanBuffer();
@@ -212,11 +213,11 @@ void ShadowMaps::UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera,
 		frustumCenter.y = glm::floor(frustumCenter.y);
 		frustumCenter = VulkanTools::Vec3Transform(frustumCenter, lookAtInv);
 		
-		glm::vec3 eye = frustumCenter - (light->GetLightDirection() * radius * 6.0f);
+		glm::vec3 eye = frustumCenter - (light->GetLightDirection() * depthRadius / 2.0f);
 
 		// Create the view matrix and projection matrix
 		viewMatrices[i] = glm::lookAt(eye, frustumCenter, up);
-		orthoMatrices[i] = glm::ortho(-radius, radius, -radius, radius, -radius * 12.0f, radius * 12.0f);
+		orthoMatrices[i] = glm::ortho(-radius, radius, -radius, radius, -depthRadius, depthRadius);
 		geometryUniformBuffer.lightViewProj[i] = orthoMatrices[i] * viewMatrices[i];
 	}
 

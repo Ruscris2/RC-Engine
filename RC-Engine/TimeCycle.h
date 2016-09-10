@@ -23,11 +23,8 @@ class TimeCycle
 			glm::vec3 skyColor;
 			glm::vec3 atmosphereColor;
 			float skyHeight;
-			glm::vec3 ambientColor;
-			glm::vec3 diffuseColor;
-			glm::vec3 specularColor;
 			glm::vec3 lightDirection;
-			float shadowStrength;
+			float lightStrength;
 		};
 		struct Weather
 		{
@@ -44,7 +41,7 @@ class TimeCycle
 		float timePassSpeed;
 	private:
 		int ConvertToMinutes(unsigned short hour, unsigned short minutes);
-		float ConvertToMixValue(unsigned short hour, unsigned short minutes, Entry first, Entry second);
+		float ConvertToMixValue(unsigned short hour, unsigned short minutes, Entry first, Entry second, float minuteInterpValue);
 	public:
 		bool Init(Skydome * skydome, Sunlight * light);
 		void Update();

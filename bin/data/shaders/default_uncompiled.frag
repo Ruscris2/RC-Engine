@@ -17,13 +17,10 @@ layout (binding = 5) uniform sampler2D samplerDepth;
 layout (binding = 6) uniform UBO
 {
 	mat4 lightViewMatrix[CASCADE_COUNT];
-	vec4 ambientColor;
-	vec4 diffuseColor;
-	vec4 specularColor;
 	vec3 lightDirection;
 	int imageIndex;
 	vec3 cameraPosition;
-	float shadowStrength;
+	float lightStrength;
 } ubo;
 
 layout (binding = 7) uniform sampler2DArray samplerShadowMap;
@@ -120,7 +117,7 @@ void main()
 		if(lightDepth > mapDepth)
 			shadow = 0.25f;
 		
-		shadow = mix(shadow, 1.0f, abs(1.0f - ubo.shadowStrength));
+		shadow = mix(1.0f, shadow, ubo.lightStrength);
 		
 		// ----- PHYISCALLY BASED RENDERING CALCULATIONS -----
 		vec3 ambientComponent;
@@ -143,13 +140,13 @@ void main()
 		specularComponent = CalculateFresnelReflectance(viewDir, halfVec, vec3(roughness)) *
 					CalculateSmithGGXGeometryTerm(roughness, nDotL, dot(normal, viewDir)) *
 					CalculateNormalDistributionTrowReitz(roughness, normal, halfVec) *
-					shadow * nDotL;
-		
-		// Calculate diffuse component
-		diffuseComponent = albedo.rgb * nDotL * shadow * (1.0f - metallic);
+					shadow * nDotL * ubo.lightStrength;
 		
 		// Calculate ambient component
-		ambientComponent = ubo.ambientColor.rgb * albedo.rgb;
+		ambientComponent = albedo.rgb * max(ubo.lightStrength * 0.35f, 0.05f);
+		
+		// Calculate diffuse component
+		diffuseComponent = (albedo.rgb * nDotL * shadow * (1.0f - metallic) * max(ubo.lightStrength, 0.2f));
 		
 		// Calculate the environment component
 		vec3 R = reflect(-viewDir, normal);
@@ -159,7 +156,7 @@ void main()
 		vec3 envFactorRoughness = environmentColor.rgb * pow(1.0f - clamp(dot(normal, viewDir), 0.0f, 1.0f), 5.0f) * (1.0f - roughness);
 		vec3 envFactorMetallic = environmentColor.rgb * nDotL * metallic * (1.0f - roughness);
 		
-		environmentComponent = (envFactorRoughness + envFactorMetallic) * shadow;
+		environmentComponent = (envFactorRoughness + envFactorMetallic) * shadow * max(ubo.lightStrength, 0.2f);
 		
 		outColor = vec4(ambientComponent, 1.0f) + vec4(diffuseComponent, 1.0f) + vec4(specularComponent, 1.0f) + vec4(environmentComponent, 1.0f);
 		

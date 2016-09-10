@@ -51,16 +51,10 @@ bool TimeCycle::Init(Skydome * skydome, Sunlight * light)
 					file >> entry.atmosphereColor.r >> entry.atmosphereColor.g >> entry.atmosphereColor.b;
 				else if (attribute == "skyheight")
 					file >> entry.skyHeight;
-				else if (attribute == "ambient")
-					file >> entry.ambientColor.r >> entry.ambientColor.g >> entry.ambientColor.b;
-				else if (attribute == "diffuse")
-					file >> entry.diffuseColor.r >> entry.diffuseColor.g >> entry.diffuseColor.b;
-				else if (attribute == "specular")
-					file >> entry.specularColor.r >> entry.specularColor.g >> entry.specularColor.b;
 				else if (attribute == "lightdir")
 					file >> entry.lightDirection.x >> entry.lightDirection.y >> entry.lightDirection.z;
-				else if (attribute == "shadow")
-					file >> entry.shadowStrength;
+				else if (attribute == "lightstrength")
+					file >> entry.lightStrength;
 				else
 				{
 					gLogManager->AddMessage("ERROR: Unknown attribute detected: " + attribute);
@@ -91,19 +85,19 @@ int TimeCycle::ConvertToMinutes(unsigned short hour, unsigned short minutes)
 	return hour * 60 + minutes;
 }
 
-float TimeCycle::ConvertToMixValue(unsigned short hour, unsigned short minutes, Entry first, Entry second)
+float TimeCycle::ConvertToMixValue(unsigned short hour, unsigned short minutes, Entry first, Entry second, float minuteInterpValue)
 {
-	int firstEntryInMinutes = ConvertToMinutes(first.hour, first.minute);
-	int secondEntryInMinutes = ConvertToMinutes(second.hour, second.minute);
-	int currentTimeInMinutes = ConvertToMinutes(hour, minute);
-
+	float firstEntryInMinutes = (float)ConvertToMinutes(first.hour, first.minute);
+	float secondEntryInMinutes = (float)ConvertToMinutes(second.hour, second.minute);
+	float currentTimeInMinutes = (float)ConvertToMinutes(hour, minute) + minuteInterpValue;
+	
 	if (firstEntryInMinutes == secondEntryInMinutes)
 		return 1.0f;
 
-	int interval = secondEntryInMinutes - firstEntryInMinutes;
+	float interval = secondEntryInMinutes - firstEntryInMinutes;
 	currentTimeInMinutes -= firstEntryInMinutes;
 
-	return (float)currentTimeInMinutes / interval;
+	return currentTimeInMinutes / interval;
 }
 
 void TimeCycle::Update()
@@ -164,26 +158,20 @@ void TimeCycle::Update()
 	second = currentWeather.entries[entryIndex];
 	
 	// Mix the values between the two entries
-	float mixValue = ConvertToMixValue(hour, minute, first, second);
+	float mixValue = ConvertToMixValue(hour, minute, first, second, min(timer->GetTimeProgress() / timePassSpeed, 1.0f));
 
 	glm::vec3 skyColor = glm::mix(first.skyColor, second.skyColor, mixValue);
 	glm::vec3 atmosphereColor = glm::mix(first.atmosphereColor, second.atmosphereColor, mixValue);
 	float skyHeight = glm::mix(first.skyHeight, second.skyHeight, mixValue);
-	glm::vec3 ambientColor = glm::mix(first.ambientColor, second.ambientColor, mixValue);
-	glm::vec3 diffuseColor = glm::mix(first.diffuseColor, second.diffuseColor, mixValue);
-	glm::vec3 specularColor = glm::mix(first.specularColor, second.specularColor, mixValue);
 	glm::vec3 lightDir = glm::mix(first.lightDirection, second.lightDirection, mixValue);
-	float shadowStrength = glm::mix(first.shadowStrength, second.shadowStrength, mixValue);
+	float lightStrength = glm::mix(first.lightStrength, second.lightStrength, mixValue);
 
 	// Apply the values to light and skydome
 	skydomePtr->SetSkyColor(skyColor.r, skyColor.g, skyColor.b, 1.0f);
 	skydomePtr->SetAtmosphereColor(atmosphereColor.r, atmosphereColor.g, atmosphereColor.b, 1.0f);
 	skydomePtr->SetAtmosphereHeight(skyHeight);
-	lightPtr->SetAmbientColor(ambientColor.r, ambientColor.g, ambientColor.b, 1.0f);
-	lightPtr->SetDiffuseColor(diffuseColor.r, diffuseColor.g, diffuseColor.b, 1.0f);
-	lightPtr->SetSpecularColor(specularColor.r, specularColor.g, specularColor.b, 1.0f);
 	lightPtr->SetLightDirection(lightDir.x, lightDir.y, lightDir.z);
-	lightPtr->SetShadowStrength(shadowStrength);
+	lightPtr->SetLightStrength(lightStrength);
 }
 
 void TimeCycle::SetTime(unsigned short hour, unsigned short minute)

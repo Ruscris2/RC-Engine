@@ -41,3 +41,11 @@ bool GameplayTimer::IsTimerRunning()
 {
 	return timerRunning;
 }
+
+float GameplayTimer::GetTimeProgress()
+{
+	if (!timerRunning)
+		return -1.0f;
+
+	return (float)(timeGetTime() - timeStart);
+}
