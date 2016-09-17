@@ -32,7 +32,7 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanCommandBu
 	Physics * physics, float mass)
 {
 	this->physics = physics;
-	
+
 	if (!InitVertexUniformBuffer(vulkan->GetVulkanDevice()))
 		return false;
 
@@ -361,8 +361,11 @@ bool Model::ReadRCMFile(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffe
 	for (unsigned int i = 0; i < meshCount; i++)
 	{
 		// Create and read mesh data
+		char meshIdentifier[16];
+		sprintf(meshIdentifier, "_mesh%d", i);
+
 		Mesh * mesh = new Mesh();
-		if (!mesh->Init(vulkan, file))
+		if (!mesh->Init(vulkan, file, filename + meshIdentifier))
 		{
 			gLogManager->AddMessage("ERROR: Failed to init a mesh!");
 			return false;

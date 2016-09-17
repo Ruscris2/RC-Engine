@@ -7,6 +7,9 @@
 
 #include "SkinnedMesh.h"
 #include "StdInc.h"
+#include "BufferManager.h"
+
+extern BufferManager * gBufferManager;
 
 SkinnedMesh::SkinnedMesh()
 {
@@ -20,7 +23,7 @@ SkinnedMesh::~SkinnedMesh()
 	vertexBuffer = NULL;
 }
 
-bool SkinnedMesh::Init(VulkanInterface * vulkan, FILE * modelFile)
+bool SkinnedMesh::Init(VulkanInterface * vulkan, FILE * modelFile, std::string meshName)
 {
 	VulkanDevice * vulkanDevice = vulkan->GetVulkanDevice();
 	VulkanCommandPool * cmdPool = vulkan->GetVulkanCommandPool();
@@ -42,15 +45,15 @@ bool SkinnedMesh::Init(VulkanInterface * vulkan, FILE * modelFile)
 	cmdBuffer->BeginRecording();
 
 	// Vertex buffer
-	vertexBuffer = new VulkanBuffer();
-	if (!vertexBuffer->Init(vulkanDevice, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexData,
-		sizeof(Vertex) * vertexCount, true, cmdBuffer))
+	vertexBuffer = gBufferManager->RequestBuffer(meshName + "VB", vulkanDevice, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		vertexData, sizeof(Vertex) * vertexCount, true, cmdBuffer);
+	if (vertexBuffer == nullptr)
 		return false;
 
 	// Index buffer
-	indexBuffer = new VulkanBuffer();
-	if (!indexBuffer->Init(vulkanDevice, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexData,
-		sizeof(uint32_t) * indexCount, true, cmdBuffer))
+	indexBuffer = gBufferManager->RequestBuffer(meshName + "IB", vulkanDevice, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		indexData, sizeof(uint32_t) * indexCount, true, cmdBuffer);
+	if (indexBuffer == nullptr)
 		return false;
 
 	cmdBuffer->EndRecording();
@@ -79,8 +82,8 @@ bool SkinnedMesh::Init(VulkanInterface * vulkan, FILE * modelFile)
 void SkinnedMesh::Unload(VulkanInterface * vulkan)
 {
 	SAFE_UNLOAD(materialUBO, vulkan->GetVulkanDevice());
-	SAFE_UNLOAD(indexBuffer, vulkan->GetVulkanDevice());
-	SAFE_UNLOAD(vertexBuffer, vulkan->GetVulkanDevice());
+	gBufferManager->ReleaseBuffer(indexBuffer, vulkan->GetVulkanDevice());
+	gBufferManager->ReleaseBuffer(vertexBuffer, vulkan->GetVulkanDevice());
 }
 
 void SkinnedMesh::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer)

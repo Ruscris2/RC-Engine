@@ -80,8 +80,11 @@ bool SkinnedModel::Init(std::string filename, VulkanInterface * vulkan, VulkanCo
 	for (unsigned int i = 0; i < meshCount; i++)
 	{
 		// Create and read mesh data
+		char meshIdentifier[16];
+		sprintf(meshIdentifier, "_mesh%d", i);
+
 		SkinnedMesh * mesh = new SkinnedMesh();
-		if (!mesh->Init(vulkan, file))
+		if (!mesh->Init(vulkan, file, filename + meshIdentifier))
 		{
 			gLogManager->AddMessage("ERROR: Failed to init a mesh!");
 			return false;

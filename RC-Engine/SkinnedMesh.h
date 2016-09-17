@@ -45,7 +45,7 @@ class SkinnedMesh
 		SkinnedMesh();
 		~SkinnedMesh();
 
-		bool Init(VulkanInterface * vulkan, FILE * modelFile);
+		bool Init(VulkanInterface * vulkan, FILE * modelFile, std::string meshName);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer);
 		void UpdateUniformBuffer(VulkanInterface * vulkan);

@@ -43,7 +43,7 @@ class Mesh
 		Mesh();
 		~Mesh();
 
-		bool Init(VulkanInterface * vulkan, FILE * modelFile);
+		bool Init(VulkanInterface * vulkan, FILE * modelFile, std::string meshName);
 		void Unload(VulkanInterface * vulkan);
 		void Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer);
 		void SetMaterial(Material * material);

@@ -168,6 +168,9 @@
     <ClCompile Include="Cubemap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="BufferManager.cpp">
+      <Filter>Source Files\Resource Managers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="WinWindow.h">
@@ -304,6 +307,9 @@
     </ClInclude>
     <ClInclude Include="Cubemap.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BufferManager.h">
+      <Filter>Header Files\Resource Managers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

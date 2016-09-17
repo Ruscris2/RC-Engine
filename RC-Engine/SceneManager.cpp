@@ -14,8 +14,10 @@
 #include "Timer.h"
 #include "StdInc.h"
 #include "TextureManager.h"
+#include "BufferManager.h"
 
 TextureManager * gTextureManager;
+BufferManager * gBufferManager;
 
 extern LogManager * gLogManager;
 extern Input * gInput;
@@ -65,6 +67,7 @@ SceneManager::~SceneManager()
 	SAFE_DELETE(frustumCuller);
 	SAFE_DELETE(timeCycle);
 	SAFE_DELETE(physics);
+	SAFE_DELETE(gBufferManager);
 	SAFE_DELETE(gTextureManager);
 }
 
@@ -72,6 +75,7 @@ bool SceneManager::Init(VulkanInterface * vulkan)
 {
 	// Init resource managers
 	gTextureManager = new TextureManager();
+	gBufferManager = new BufferManager();
 
 	// Init command buffers
 	initCommandBuffer = new VulkanCommandBuffer();
@@ -356,7 +360,8 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		if (gInput->WasKeyPressed(KEYBOARD_KEY_Q))
 		{
 			char msg[64];
-			sprintf(msg, "OBJ: %zu TXD: %zu", modelList.size(), gTextureManager->GetLoadedTexturesCount());
+			sprintf(msg, "OBJ: %zu TXD: %zu BUF: %zu", modelList.size(), gTextureManager->GetLoadedTexturesCount(),
+				gBufferManager->GetLoadedBuffersCount());
 			gLogManager->AddMessage(msg);
 		}
 		if (gInput->WasKeyPressed(KEYBOARD_KEY_Z))
