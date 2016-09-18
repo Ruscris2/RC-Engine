@@ -31,7 +31,14 @@ class Model
 		};
 		VertexUniformBuffer vertexUniformBuffer;
 
+		struct FrustumUniformBuffer
+		{
+			float frustumCullCascade[SHADOW_CASCADE_COUNT];
+		};
+		FrustumUniformBuffer frustumCullData;
+
 		VulkanBuffer * deferredVS_UBO;
+		VulkanBuffer * shadowGS_UBO;
 
 		Physics * physics;
 		bool collisionMeshPresent;
@@ -44,7 +51,7 @@ class Model
 		btScalar mass;
 		btVector3 inertia;
 	private:
-		bool InitVertexUniformBuffer(VulkanDevice * vulkanDevice);
+		bool InitUniformBuffers(VulkanDevice * vulkanDevice);
 		bool ReadRCMFile(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer, std::string filename);
 		void ReadCollisionFile(std::string filename);
 		void SetupPhysicsObject(float mass);
@@ -63,6 +70,7 @@ class Model
 		void SetPosition(float x, float y, float z);
 		void SetRotation(float x, float y, float z);
 		void SetVelocity(float x, float y, float z);
+		void SetFrustumCullData(float * data);
 		unsigned int GetMeshCount();
 		Mesh * GetMesh(int meshId);
 		Material * GetMaterial(int materialId);

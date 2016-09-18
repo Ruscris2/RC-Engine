@@ -10,6 +10,7 @@
 #include "WireframeModel.h"
 #include "Sunlight.h"
 #include "VulkanBuffer.h"
+#include "FrustumCuller.h"
 
 #pragma once
 
@@ -26,6 +27,7 @@ class ShadowMaps
 		glm::mat4 * orthoMatrices;
 		glm::mat4 * viewMatrices;
 		float depthRadius;
+		float frustumRadius;
 
 		glm::mat4 * projectionMatrixPartitions;
 
@@ -35,6 +37,8 @@ class ShadowMaps
 		};
 		GeometryUniformBuffer geometryUniformBuffer;
 		VulkanBuffer * shadowGS_UBO;
+
+		FrustumCuller ** cascadeFrustumCullers;
 	public:
 		ShadowMaps();
 
@@ -51,4 +55,5 @@ class ShadowMaps
 		glm::mat4 GetLightViewProj(int index);
 		VkSampler GetSampler();
 		uint32_t GetMapSize();
+		FrustumCuller * GetFrustumCuller(int index);
 };

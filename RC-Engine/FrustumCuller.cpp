@@ -6,6 +6,7 @@
 ==========================================================================================*/
 
 #include "FrustumCuller.h"
+#include "Model.h"
 
 FrustumCuller::FrustumCuller()
 {
@@ -13,10 +14,9 @@ FrustumCuller::FrustumCuller()
 		planes[i] = glm::vec4();
 }
 
-void FrustumCuller::BuildFrustum(Camera * camera)
+void FrustumCuller::BuildFrustum(glm::mat4 viewProjMatrix)
 {
 	float length;
-	glm::mat4 viewProjMatrix = camera->GetProjectionMatrix() * camera->GetViewMatrix();
 
 	// Near plane
 	planes[0][0] = viewProjMatrix[0][3] + viewProjMatrix[0][2];

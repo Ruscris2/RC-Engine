@@ -6,8 +6,7 @@
 ==========================================================================================*/
 #pragma once
 
-#include "Camera.h"
-#include "Model.h"
+#include "glm.hpp"
 
 class FrustumCuller
 {
@@ -16,6 +15,6 @@ class FrustumCuller
 	public:
 		FrustumCuller();
 
-		void BuildFrustum(Camera * camera);
-		bool IsInsideFrustum(Model * model);
+		void BuildFrustum(glm::mat4 viewProjMatrix);
+		bool IsInsideFrustum(class Model * model);
 };

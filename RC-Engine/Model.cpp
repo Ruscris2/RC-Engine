@@ -33,7 +33,7 @@ bool Model::Init(std::string filename, VulkanInterface * vulkan, VulkanCommandBu
 {
 	this->physics = physics;
 
-	if (!InitVertexUniformBuffer(vulkan->GetVulkanDevice()))
+	if (!InitUniformBuffers(vulkan->GetVulkanDevice()))
 		return false;
 
 	if (!ReadRCMFile(vulkan, cmdBuffer, filename))
@@ -62,6 +62,7 @@ void Model::Unload(VulkanInterface * vulkan)
 	else
 		SAFE_DELETE(emptyCollisionShape);
 
+	SAFE_UNLOAD(shadowGS_UBO, vulkanDevice);
 	SAFE_UNLOAD(deferredVS_UBO, vulkanDevice);
 
 	for (unsigned int i = 0; i < textures.size(); i++)
@@ -110,6 +111,7 @@ void Model::Render(VulkanInterface * vulkan, VulkanCommandBuffer * commandBuffer
 		}
 		else if (vulkanPipeline->GetPipelineName() == "SHADOW")
 		{
+			shadowGS_UBO->Update(vulkan->GetVulkanDevice(), &frustumCullData, sizeof(frustumCullData));
 			UpdateDescriptorSet(vulkan, vulkanPipeline, meshes[i], shadowMaps);
 
 			// Record draw command
@@ -181,6 +183,12 @@ void Model::SetRotation(float x, float y, float z)
 void Model::SetVelocity(float x, float y, float z)
 {
 	rigidBody->setLinearVelocity(btVector3(x, y, z));
+}
+
+void Model::SetFrustumCullData(float * data)
+{
+	for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
+		frustumCullData.frustumCullCascade[i] = data[i];
 }
 
 unsigned int Model::GetMeshCount()
@@ -294,7 +302,7 @@ void Model::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipel
 	}
 	else if (pipeline->GetPipelineName() == "SHADOW")
 	{
-		VkWriteDescriptorSet descriptorWrite[2];
+		VkWriteDescriptorSet descriptorWrite[3];
 
 		descriptorWrite[0] = {};
 		descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -316,17 +324,37 @@ void Model::UpdateDescriptorSet(VulkanInterface * vulkan, VulkanPipeline * pipel
 		descriptorWrite[1].dstArrayElement = 0;
 		descriptorWrite[1].dstBinding = 1;
 
+		descriptorWrite[2] = {};
+		descriptorWrite[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[2].pNext = NULL;
+		descriptorWrite[2].dstSet = pipeline->GetDescriptorSet();
+		descriptorWrite[2].descriptorCount = 1;
+		descriptorWrite[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite[2].pBufferInfo = shadowGS_UBO->GetBufferInfo();
+		descriptorWrite[2].dstArrayElement = 0;
+		descriptorWrite[2].dstBinding = 2;
+
 		vkUpdateDescriptorSets(vulkan->GetVulkanDevice()->GetDevice(), sizeof(descriptorWrite) / sizeof(descriptorWrite[0]), descriptorWrite, 0, NULL);
 	}
 }
 
-bool Model::InitVertexUniformBuffer(VulkanDevice * vulkanDevice)
+bool Model::InitUniformBuffers(VulkanDevice * vulkanDevice)
 {
 	deferredVS_UBO = new VulkanBuffer();
 	if (!deferredVS_UBO->Init(vulkanDevice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &vertexUniformBuffer,
 		sizeof(vertexUniformBuffer), false))
 	{
 		gLogManager->AddMessage("ERROR: Failed to init deferred vs uniform buffer!");
+		return false;
+	}
+
+	for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
+		frustumCullData.frustumCullCascade[i] = 0.0f;
+	shadowGS_UBO = new VulkanBuffer();
+	if (!shadowGS_UBO->Init(vulkanDevice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &frustumCullData,
+		sizeof(frustumCullData), false))
+	{
+		gLogManager->AddMessage("ERROR: Failed to init shadow gs uniform buffer!");
 		return false;
 	}
 

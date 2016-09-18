@@ -117,11 +117,20 @@ bool ShadowMaps::Init(VulkanInterface * vulkan, VulkanCommandBuffer * cmdBuffer,
 		sizeof(geometryUniformBuffer), false))
 		return false;
 
+	// Create a frustum culler for each cascade
+	cascadeFrustumCullers = new FrustumCuller*[SHADOW_CASCADE_COUNT + 1];
+	for (int i = 0; i < SHADOW_CASCADE_COUNT + 1; i++)
+		cascadeFrustumCullers[i] = new FrustumCuller();
+
 	return true;
 }
 
 void ShadowMaps::Unload(VulkanInterface * vulkan)
 {
+	for (int i = 0; i < SHADOW_CASCADE_COUNT + 1; i++)
+		SAFE_DELETE(cascadeFrustumCullers[i]);
+	SAFE_DELETE(cascadeFrustumCullers);
+
 	SAFE_UNLOAD(shadowGS_UBO, vulkan->GetVulkanDevice());
 	SAFE_DELETE(projectionMatrixPartitions);
 	SAFE_DELETE(viewMatrices);
@@ -156,8 +165,7 @@ void ShadowMaps::SetDepthBias(VulkanCommandBuffer * cmdBuffer)
 
 void ShadowMaps::UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera, Sunlight * light)
 {
-	if (gInput->IsKeyPressed(KEYBOARD_KEY_Q))
-		return;
+	frustumRadius = 0.0f;
 
 	for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
 	{
@@ -186,6 +194,7 @@ void ShadowMaps::UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera,
 
 		// Calculate the radius
 		float radius = glm::distance(frustumCorners[0], frustumCorners[6]) / 2.0f;
+		frustumRadius += radius;
 
 		// Calculate the center
 		glm::vec3 frustumCenter = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -219,7 +228,15 @@ void ShadowMaps::UpdatePartitions(VulkanInterface * vulkan, Camera * viewcamera,
 		viewMatrices[i] = glm::lookAt(eye, frustumCenter, up);
 		orthoMatrices[i] = glm::ortho(-radius, radius, -radius, radius, -depthRadius, depthRadius);
 		geometryUniformBuffer.lightViewProj[i] = orthoMatrices[i] * viewMatrices[i];
+
+		cascadeFrustumCullers[i]->BuildFrustum(geometryUniformBuffer.lightViewProj[i]);
 	}
+
+	// Create shadow map bound frustum culler
+	orthoMatrices[SHADOW_CASCADE_COUNT - 1] = glm::ortho(-frustumRadius, frustumRadius, -frustumRadius, frustumRadius,
+		-depthRadius, depthRadius);
+	cascadeFrustumCullers[SHADOW_CASCADE_COUNT]->BuildFrustum(orthoMatrices[SHADOW_CASCADE_COUNT - 1]
+		* viewMatrices[SHADOW_CASCADE_COUNT - 1]);
 
 	shadowGS_UBO->Update(vulkan->GetVulkanDevice(), &geometryUniformBuffer, sizeof(geometryUniformBuffer));
 }
@@ -257,4 +274,9 @@ VkSampler ShadowMaps::GetSampler()
 uint32_t ShadowMaps::GetMapSize()
 {
 	return mapSize;
+}
+
+FrustumCuller * ShadowMaps::GetFrustumCuller(int index)
+{
+	return cascadeFrustumCullers[index];
 }

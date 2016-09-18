@@ -312,7 +312,7 @@ void SceneManager::Render(VulkanInterface * vulkan)
 	if (currentGameState == GAME_STATE_INGAME)
 	{
 		physics->Update();
-		frustumCuller->BuildFrustum(camera);
+		frustumCuller->BuildFrustum(camera->GetProjectionMatrix() * camera->GetViewMatrix());
 		timeCycle->Update();
 
 		glm::vec3 playerPos = player->GetPosition();
@@ -395,8 +395,23 @@ void SceneManager::Render(VulkanInterface * vulkan)
 		
 		shadowMaps->BeginShadowPass(deferredCommandBuffer);
 
+		float frustumCullData[SHADOW_CASCADE_COUNT];
 		for (unsigned int i = 0; i < modelList.size(); i++)
-			modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadow(), NULL, shadowMaps);
+		{
+			// Check if model is inside shadow map bound
+			if (shadowMaps->GetFrustumCuller(SHADOW_CASCADE_COUNT)->IsInsideFrustum(modelList[i]))
+			{
+				for (int j = 0; j < SHADOW_CASCADE_COUNT; j++)
+				{
+					if (shadowMaps->GetFrustumCuller(j)->IsInsideFrustum(modelList[i]))
+						frustumCullData[j] = 1.0f;
+					else
+						frustumCullData[j] = 0.0f;
+				}
+				modelList[i]->SetFrustumCullData(frustumCullData);
+				modelList[i]->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadow(), NULL, shadowMaps);
+			}
+		}
 
 		player->GetModel()->Render(vulkan, deferredCommandBuffer, pipelineManager->GetShadowSkinned(), NULL, shadowMaps);
 

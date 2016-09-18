@@ -766,7 +766,7 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 	vertexLayoutShadow[0].offset = 0;
 
 	// Layout bindings
-	VkDescriptorSetLayoutBinding layoutBindingsShadow[2];
+	VkDescriptorSetLayoutBinding layoutBindingsShadow[3];
 
 	layoutBindingsShadow[0].binding = 0;
 	layoutBindingsShadow[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -780,12 +780,20 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 	layoutBindingsShadow[1].stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT;
 	layoutBindingsShadow[1].pImmutableSamplers = VK_NULL_HANDLE;
 
+	layoutBindingsShadow[2].binding = 2;
+	layoutBindingsShadow[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindingsShadow[2].descriptorCount = 1;
+	layoutBindingsShadow[2].stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT;
+	layoutBindingsShadow[2].pImmutableSamplers = VK_NULL_HANDLE;
+
 	// Type counts
-	VkDescriptorPoolSize typeCounts[2];
+	VkDescriptorPoolSize typeCounts[3];
 	typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	typeCounts[0].descriptorCount = 1;
 	typeCounts[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	typeCounts[1].descriptorCount = 1;
+	typeCounts[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	typeCounts[2].descriptorCount = 1;
 
 	struct DeferredVertex {
 		float x, y, z;
@@ -802,7 +810,7 @@ bool PipelineManager::BuildShadowPipeline(VulkanInterface * vulkan, ShadowMaps *
 	pipelineCI.vertexLayout = vertexLayoutShadow;
 	pipelineCI.numVertexLayout = 1;
 	pipelineCI.layoutBindings = layoutBindingsShadow;
-	pipelineCI.numLayoutBindings = 2;
+	pipelineCI.numLayoutBindings = 3;
 	pipelineCI.typeCounts = typeCounts;
 	pipelineCI.strideSize = sizeof(DeferredVertex);
 	pipelineCI.numColorAttachments = 0;
