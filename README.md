@@ -8,7 +8,7 @@ RC-Engine is an open-source 3D game engine using Vulkan.
 Requirements for compiling and building the project:
 - Windows operating system
 - Visual Studio 2015
-- LunarG Vulkan SDK 1.0.17.0 installed in default location (for custom path, modify project settings)
+- LunarG Vulkan SDK 1.0.26.0 installed in default location (for custom path, modify project settings)
 
 After compile, executables can be found in the "bin" directory inside the project directory.
 

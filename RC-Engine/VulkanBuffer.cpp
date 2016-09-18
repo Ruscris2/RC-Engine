@@ -73,9 +73,6 @@ bool VulkanBuffer::Init(VulkanDevice * vulkanDevice, VkBufferUsageFlags usage, c
 			return false;
 		}
 
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingMemory;
-
 		VkBufferCreateInfo bufferCI{};
 		bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		bufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -129,9 +126,6 @@ bool VulkanBuffer::Init(VulkanDevice * vulkanDevice, VkBufferUsageFlags usage, c
 		VkBufferCopy copyRegion{};
 		copyRegion.size = dataSize;
 		vkCmdCopyBuffer(cmdBuffer->GetCommandBuffer(), stagingBuffer, buffer, 1, &copyRegion);
-
-		vkFreeMemory(vulkanDevice->GetDevice(), stagingMemory, VK_NULL_HANDLE);
-		vkDestroyBuffer(vulkanDevice->GetDevice(), stagingBuffer, VK_NULL_HANDLE);
 	}
 
 	return true;
@@ -156,6 +150,11 @@ void VulkanBuffer::Update(VulkanDevice * vulkanDevice, const void * dataPtr, siz
 
 void VulkanBuffer::Unload(VulkanDevice * vulkanDevice)
 {
+	if (stagedBuffer)
+	{
+		vkFreeMemory(vulkanDevice->GetDevice(), stagingMemory, VK_NULL_HANDLE);
+		vkDestroyBuffer(vulkanDevice->GetDevice(), stagingBuffer, VK_NULL_HANDLE);
+	}
 	vkFreeMemory(vulkanDevice->GetDevice(), memory, VK_NULL_HANDLE);
 	vkDestroyBuffer(vulkanDevice->GetDevice(), buffer, VK_NULL_HANDLE);
 }

@@ -18,6 +18,9 @@ class VulkanBuffer
 		VkDescriptorBufferInfo bufferInfo;
 		VkMemoryRequirements memReq;
 		bool stagedBuffer;
+
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingMemory;
 	public:
 		VulkanBuffer();
 

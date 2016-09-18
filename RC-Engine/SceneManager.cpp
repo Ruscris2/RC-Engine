@@ -264,7 +264,6 @@ bool SceneManager::LoadGame(VulkanInterface * vulkan)
 
 void SceneManager::Unload(VulkanInterface * vulkan)
 {
-	SAFE_UNLOAD(testCubemap, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(splashScreen, vulkan);
 
 	SAFE_UNLOAD(male, vulkan);
@@ -273,6 +272,8 @@ void SceneManager::Unload(VulkanInterface * vulkan)
 
 	SAFE_UNLOAD(skydome, vulkan);
 	SAFE_UNLOAD(renderDummy, vulkan);
+
+	SAFE_UNLOAD(testCubemap, vulkan->GetVulkanDevice());
 
 	SAFE_UNLOAD(lightManager, vulkan->GetVulkanDevice());
 	SAFE_UNLOAD(shadowMaps, vulkan);

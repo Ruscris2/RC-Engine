@@ -123,6 +123,7 @@ bool VulkanDevice::Init(VulkanInstance * vulkanInstance, HWND hwnd)
 	deviceFeatures.shaderCullDistance = VK_TRUE;
 	deviceFeatures.geometryShader = VK_TRUE;
 	deviceFeatures.shaderTessellationAndGeometryPointSize = VK_TRUE;
+	deviceFeatures.fillModeNonSolid = VK_TRUE;
 
 	// Device
 	VkDeviceCreateInfo deviceCI{};

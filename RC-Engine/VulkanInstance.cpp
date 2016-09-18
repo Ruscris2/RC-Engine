@@ -24,7 +24,7 @@ bool VulkanInstance::Init()
 
 	VkApplicationInfo appicationInfo{};
 	appicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appicationInfo.apiVersion = VK_MAKE_VERSION(1, 0, 17);
+	appicationInfo.apiVersion = VK_MAKE_VERSION(1, 0, 26);
 
 	VkInstanceCreateInfo instanceCI{};
 	instanceCI.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
