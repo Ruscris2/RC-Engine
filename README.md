@@ -4,6 +4,8 @@
 
 RC-Engine is an open-source 3D game engine using Vulkan.
 
+[Video showing off an old build of RC-Engine (no Physically Based Rendering)](https://www.youtube.com/watch?v=u8YhH-_oORs)
+
 # Building the project
 Requirements for compiling and building the project:
 - Windows operating system
